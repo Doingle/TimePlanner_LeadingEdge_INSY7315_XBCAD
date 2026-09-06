@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="TimePlanner.Core/TimePlanner.Core.csproj" />
+    <Project Path="TimePlanner.Dashboard/TimePlanner.Dashboard.csproj" />
+    <Project Path="TimePlanner.Widget/TimePlanner.Widget.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="TimePlanner.Core.Tests/TimePlanner.Core.Tests.csproj" />
+  </Folder>
+</Solution>
