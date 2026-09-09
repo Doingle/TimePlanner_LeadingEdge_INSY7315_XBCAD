@@ -1,0 +1,30 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, development ]
+  pull_request:
+    branches: [ main, development ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore TimePlanner.slnx
+
+      - name: Build solution
+        run: dotnet build TimePlanner.slnx --no-restore --configuration Release
+
+      #Tests not implemented yet
+      # - name: Run tests
+      #   run: dotnet test TimePlanner.slnx --no-build --configuration Release
