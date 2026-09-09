@@ -24,7 +24,7 @@ namespace TimePlanner.Core.Domain.Entities
             foreach (var project in Projects)
             {
                 foreach (var task in project.Tasks) {
-                    total += task.Duration;
+                    total += task.GetTotalLoggedTime();
                 }
             }
             return total;
