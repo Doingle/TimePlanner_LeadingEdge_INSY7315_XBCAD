@@ -7,7 +7,7 @@ namespace TimePlanner.Widget
     /// <summary>
     /// Interaction logic for App.xaml
     /// </summary>
-    public partial class App : Application
+    public partial class TimeSheetReview : Window
     {
     }
 
