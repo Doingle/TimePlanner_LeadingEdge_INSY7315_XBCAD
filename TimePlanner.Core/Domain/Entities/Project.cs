@@ -1,15 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Linq;
-
-namespace TimePlanner.Core.Domain.Entities
+﻿namespace TimePlanner.Core.Domain.Entities
 {
     //-----------------------------
     //this class represents a project which is commisioned by a company (client) and is connected to a task within TimePlanner
     public class Project
     {
         public int ProjectID { get; set; }
+        public int? CompanyId { get; set; }
         public Company? Company { get; set; }
         public string Name { get; set; } = string.Empty;
         public string ClientName { get; set; } = string.Empty;

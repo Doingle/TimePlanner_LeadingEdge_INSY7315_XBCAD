@@ -19,4 +19,8 @@
     <Folder Include="Views\CsvUpload\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\TimePlanner.Core\TimePlanner.Core.csproj" />
+  </ItemGroup>
+
 </Project>
