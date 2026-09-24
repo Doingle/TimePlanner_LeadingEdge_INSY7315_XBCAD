@@ -20,4 +20,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\TimePlanner.Core\TimePlanner.Core.csproj" />
+  </ItemGroup>
+
 </Project>
