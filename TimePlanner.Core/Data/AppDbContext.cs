@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using TimePlanner.Core.Domain.Entities;
 
 namespace TimePlanner.Core.Data
@@ -16,6 +16,7 @@ namespace TimePlanner.Core.Data
         public DbSet<AppUser> Users => Set<AppUser>();
         public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();
         public DbSet<TimeSheet> TimeSheets => Set<TimeSheet>();
+        public DbSet<UserSettings> UserSettings => Set<UserSettings>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -27,9 +28,12 @@ namespace TimePlanner.Core.Data
             modelBuilder.Entity<TimeEntry>().HasKey(e => e.TimeEntryId);
             modelBuilder.Entity<TimeSheet>().HasKey(s => s.TimeSheetId);
 
+            //company is required on every project, and a company that still has projects cannot be deleted
             modelBuilder.Entity<Project>()
                 .HasOne(p => p.Company).WithMany(c => c.Projects)
-                .HasForeignKey(p => p.CompanyId);
+                .HasForeignKey(p => p.CompanyId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<WorkTask>()
                 .HasOne(t => t.Project).WithMany(p => p.Tasks)
@@ -59,6 +63,20 @@ namespace TimePlanner.Core.Data
                 .HasOne(s => s.Project).WithMany()
                 .HasForeignKey(s => s.ProjectId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserSettings>().HasKey(s => s.UserSettingsId);
+
+            modelBuilder.Entity<UserSettings>()
+                .HasOne(s => s.User).WithOne(u => u.Settings)
+                .HasForeignKey<UserSettings>(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AppUser>()
+                .HasIndex(u => u.LocalAccountName)
+                .IsUnique();
+
+            modelBuilder.Entity<WorkTask>().Property(t => t.Status).HasConversion<string>();
+            modelBuilder.Entity<Project>().Property(p => p.Status).HasConversion<string>();
         }
     }
 }
