@@ -1,10 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using TimePlanner.Core.Domain.Entities;
 
 namespace TimePlanner.Core.Repositories.Interfaces
 {
-    internal interface IProjectRepository
+    //-----------------------------
+    //data access for projects
+    public interface IProjectRepository
     {
+        Task<Project?> GetByIdAsync(int id);
+        Task<List<Project>> GetByCompanyAsync(int companyId);
+        Task<List<Project>> GetAllAsync();
+        Task AddAsync(Project project);
     }
 }
+//------------------------------EOF-----------------------------\\
