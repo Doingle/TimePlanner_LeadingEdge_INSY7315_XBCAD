@@ -18,6 +18,8 @@ namespace TimePlanner.Core.Data
         public DbSet<TimeSheet> TimeSheets => Set<TimeSheet>();
         public DbSet<UserSettings> UserSettings => Set<UserSettings>();
         public DbSet<Category> Categories => Set<Category>();
+        public DbSet<DaySession> DaySessions => Set<DaySession>();
+        public DbSet<SessionPause> SessionPauses => Set<SessionPause>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -79,9 +81,17 @@ namespace TimePlanner.Core.Data
             modelBuilder.Entity<WorkTask>().Property(t => t.Status).HasConversion<string>();
             modelBuilder.Entity<Project>().Property(p => p.Status).HasConversion<string>();
 
-            //categories tag the kind of work on a task, names are unique
+            //categories form the activity tree, names are unique among siblings
             modelBuilder.Entity<Category>().HasKey(c => c.CategoryId);
-            modelBuilder.Entity<Category>().HasIndex(c => c.Name).IsUnique();
+            modelBuilder.Entity<Category>().HasIndex(c => new { c.ParentCategoryId, c.Name }).IsUnique();
+
+            modelBuilder.Entity<Category>().HasIndex(c => c.Name).IsUnique().HasFilter("\"ParentCategoryId\" IS NULL");
+
+            //a category that still has sub activities cannot be deleted
+            modelBuilder.Entity<Category>()
+                .HasOne(c => c.Parent).WithMany()
+                .HasForeignKey(c => c.ParentCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             //every task needs a category, and a category still used by a task cannot be deleted
             modelBuilder.Entity<WorkTask>()
@@ -93,13 +103,40 @@ namespace TimePlanner.Core.Data
             modelBuilder.Entity<Category>().HasData(
                 new Category { CategoryId = 1, Name = "Meeting", Colour = "#6366F1", SortOrder = 1, IsBillable = true },
                 new Category { CategoryId = 2, Name = "Coding", Colour = "#7C3AED", SortOrder = 2, IsBillable = true },
-                new Category { CategoryId = 3, Name = "Break", Colour = "#16A34A", SortOrder = 3, IsBillable = false },
                 new Category { CategoryId = 4, Name = "Email", Colour = "#EA580C", SortOrder = 4, IsBillable = true },
                 new Category { CategoryId = 5, Name = "Admin", Colour = "#71717A", SortOrder = 5, IsBillable = true },
-                new Category { CategoryId = 6, Name = "Design", Colour = "#DB2777", SortOrder = 6, IsBillable = true });
+                new Category { CategoryId = 6, Name = "Design", Colour = "#DB2777", SortOrder = 3, IsBillable = true },
+                new Category { CategoryId = 7, Name = "Learning", Colour = "#0891B2", SortOrder = 6, IsBillable = false });
 
             //the ignored check in action is stored as its name, the same as statuses
             modelBuilder.Entity<UserSettings>().Property(s => s.IgnoredCheckInAction).HasConversion<string>();
+
+            modelBuilder.Entity<DaySession>().HasKey(s => s.DaySessionId);
+            modelBuilder.Entity<SessionPause>().HasKey(p => p.SessionPauseId);
+
+            //day sessions belong to a user, and a user with tracked days cannot be deleted
+            modelBuilder.Entity<DaySession>()
+                .HasOne(s => s.User).WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            //a user can only have one open day session at a time
+            modelBuilder.Entity<DaySession>()
+                .HasIndex(s => s.UserId)
+                .IsUnique()
+                .HasFilter("\"EndedAt\" IS NULL");
+
+            //pauses belong to their session and are deleted with it
+            modelBuilder.Entity<SessionPause>()
+                .HasOne(p => p.DaySession).WithMany(s => s.Pauses)
+                .HasForeignKey(p => p.DaySessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //a session can only have one pause in progress at a time
+            modelBuilder.Entity<SessionPause>()
+                .HasIndex(p => p.DaySessionId)
+                .IsUnique()
+                .HasFilter("\"EndedAt\" IS NULL");
         }
     }
 }
