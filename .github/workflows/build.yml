@@ -25,6 +25,5 @@ jobs:
       - name: Build solution
         run: dotnet build TimePlanner.slnx --no-restore --configuration Release
 
-      #Tests not implemented yet
-      # - name: Run tests
-      #   run: dotnet test TimePlanner.slnx --no-build --configuration Release
+      - name: Run tests
+        run: dotnet test TimePlanner.slnx --no-build --configuration Release
