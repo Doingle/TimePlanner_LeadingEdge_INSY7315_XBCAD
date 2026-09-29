@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TimePlanner.Core.Data;
 
@@ -10,9 +11,11 @@ using TimePlanner.Core.Data;
 namespace TimePlanner.Core.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260929133225_AddCategoriesAndCheckInRules")]
+    partial class AddCategoriesAndCheckInRules
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
@@ -62,19 +65,12 @@ namespace TimePlanner.Core.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("ParentCategoryId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("CategoryId");
 
                     b.HasIndex("Name")
-                        .IsUnique()
-                        .HasFilter("\"ParentCategoryId\" IS NULL");
-
-                    b.HasIndex("ParentCategoryId", "Name")
                         .IsUnique();
 
                     b.ToTable("Categories");
@@ -98,6 +94,14 @@ namespace TimePlanner.Core.Migrations
                         },
                         new
                         {
+                            CategoryId = 3,
+                            Colour = "#16A34A",
+                            IsBillable = false,
+                            Name = "Break",
+                            SortOrder = 3
+                        },
+                        new
+                        {
                             CategoryId = 4,
                             Colour = "#EA580C",
                             IsBillable = true,
@@ -118,14 +122,6 @@ namespace TimePlanner.Core.Migrations
                             Colour = "#DB2777",
                             IsBillable = true,
                             Name = "Design",
-                            SortOrder = 3
-                        },
-                        new
-                        {
-                            CategoryId = 7,
-                            Colour = "#0891B2",
-                            IsBillable = false,
-                            Name = "Learning",
                             SortOrder = 6
                         });
                 });
@@ -143,30 +139,6 @@ namespace TimePlanner.Core.Migrations
                     b.HasKey("CompanyId");
 
                     b.ToTable("Companies");
-                });
-
-            modelBuilder.Entity("TimePlanner.Core.Domain.Entities.DaySession", b =>
-                {
-                    b.Property<int>("DaySessionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("EndedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("StartedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("DaySessionId");
-
-                    b.HasIndex("UserId")
-                        .IsUnique()
-                        .HasFilter("\"EndedAt\" IS NULL");
-
-                    b.ToTable("DaySessions");
                 });
 
             modelBuilder.Entity("TimePlanner.Core.Domain.Entities.Project", b =>
@@ -197,30 +169,6 @@ namespace TimePlanner.Core.Migrations
                     b.HasIndex("CompanyId");
 
                     b.ToTable("Projects");
-                });
-
-            modelBuilder.Entity("TimePlanner.Core.Domain.Entities.SessionPause", b =>
-                {
-                    b.Property<int>("SessionPauseId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("DaySessionId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("EndedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("StartedAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("SessionPauseId");
-
-                    b.HasIndex("DaySessionId")
-                        .IsUnique()
-                        .HasFilter("\"EndedAt\" IS NULL");
-
-                    b.ToTable("SessionPauses");
                 });
 
             modelBuilder.Entity("TimePlanner.Core.Domain.Entities.TimeEntry", b =>
@@ -323,6 +271,12 @@ namespace TimePlanner.Core.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<TimeOnly>("WorkdayEnd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeOnly>("WorkdayStart")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("UserSettingsId");
 
                     b.HasIndex("UserId")
@@ -368,27 +322,6 @@ namespace TimePlanner.Core.Migrations
                     b.ToTable("Tasks");
                 });
 
-            modelBuilder.Entity("TimePlanner.Core.Domain.Entities.Category", b =>
-                {
-                    b.HasOne("TimePlanner.Core.Domain.Entities.Category", "Parent")
-                        .WithMany()
-                        .HasForeignKey("ParentCategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Parent");
-                });
-
-            modelBuilder.Entity("TimePlanner.Core.Domain.Entities.DaySession", b =>
-                {
-                    b.HasOne("TimePlanner.Core.Domain.Entities.AppUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("TimePlanner.Core.Domain.Entities.Project", b =>
                 {
                     b.HasOne("TimePlanner.Core.Domain.Entities.Company", "Company")
@@ -398,17 +331,6 @@ namespace TimePlanner.Core.Migrations
                         .IsRequired();
 
                     b.Navigation("Company");
-                });
-
-            modelBuilder.Entity("TimePlanner.Core.Domain.Entities.SessionPause", b =>
-                {
-                    b.HasOne("TimePlanner.Core.Domain.Entities.DaySession", "DaySession")
-                        .WithMany("Pauses")
-                        .HasForeignKey("DaySessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("DaySession");
                 });
 
             modelBuilder.Entity("TimePlanner.Core.Domain.Entities.TimeEntry", b =>
@@ -501,11 +423,6 @@ namespace TimePlanner.Core.Migrations
             modelBuilder.Entity("TimePlanner.Core.Domain.Entities.Company", b =>
                 {
                     b.Navigation("Projects");
-                });
-
-            modelBuilder.Entity("TimePlanner.Core.Domain.Entities.DaySession", b =>
-                {
-                    b.Navigation("Pauses");
                 });
 
             modelBuilder.Entity("TimePlanner.Core.Domain.Entities.Project", b =>

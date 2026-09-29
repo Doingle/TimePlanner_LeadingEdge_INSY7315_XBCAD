@@ -18,7 +18,11 @@ namespace TimePlanner.Core.Domain.Entities
         //short display name shown in the check in task picker
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public string Category { get; set; } = string.Empty;
+
+        //the kind of work this task represents, automatic tasks are named after their category
+        public int CategoryId { get; set; }
+        public Category? Category { get; set; }
+
         public WorkTaskStatus Status { get; set; } = WorkTaskStatus.Open;
 
         //this collection holds the time entries associated with each task

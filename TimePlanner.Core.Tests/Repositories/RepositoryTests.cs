@@ -54,9 +54,9 @@ namespace TimePlanner.Core.Tests.Repositories
             await sp.GetRequiredService<IAppUserRepository>().AddAsync(user);
 
             var tasks = sp.GetRequiredService<IWorkTaskRepository>();
-            var open = new WorkTask { Name = "Open task", Category = "Coding", ProjectID = project.ProjectID, AssignedUserID = user.UserId };
+            var open = new WorkTask { Name = "Open task", CategoryId = 2, ProjectID = project.ProjectID, AssignedUserID = user.UserId };
             await tasks.AddAsync(open);
-            await tasks.AddAsync(new WorkTask { Name = "Done task", Category = "Coding", ProjectID = project.ProjectID, AssignedUserID = user.UserId, Status = WorkTaskStatus.Done });
+            await tasks.AddAsync(new WorkTask { Name = "Done task", CategoryId = 2, ProjectID = project.ProjectID, AssignedUserID = user.UserId, Status = WorkTaskStatus.Done });
 
             return (user.UserId, project.ProjectID, company.CompanyId, open.TaskID);
         }
