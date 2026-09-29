@@ -1,0 +1,142 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Tokens.xaml" />
+        <ResourceDictionary Source="Fields.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- The dropdown panel: as wide as the field, 4 under it -->
+    <Style x:Key="Menu.Dropdown" TargetType="ContextMenu">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="HasDropShadow" Value="False" />
+        <Setter Property="controls:PopupPlacement.Kind" Value="Dropdown" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+        <Setter Property="FontWeight" Value="{StaticResource FontWeightRegular}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}"
+                      Width="{Binding PlacementTarget.ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                        <Border Style="{StaticResource Menu.Shadow}" />
+                        <Border Style="{StaticResource Menu.Panel}">
+                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" KeyboardNavigation.TabNavigation="Cycle" />
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A row. Activity rows open a submenu beside them; Recent and Add rows do not. -->
+    <Style x:Key="Menu.Row" TargetType="MenuItem">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Height" Value="{StaticResource SizeControl}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Grid x:Name="Root" Background="Transparent" SnapsToDevicePixels="True">
+                        <Border x:Name="Bg" CornerRadius="{StaticResource RadiusRow}" Background="Transparent" />
+                        <DockPanel Margin="8,0">
+                            <Grid DockPanel.Dock="Left" Width="{StaticResource SizeIconSm}" Height="{StaticResource SizeIconSm}"
+                              Margin="0,0,8,0" VerticalAlignment="Center">
+                                <controls:Icon x:Name="Tick" Kind="Check" Size="{StaticResource SizeIconSm}" Visibility="Hidden" />
+                                <ContentPresenter ContentSource="Icon" />
+                            </Grid>
+                            <controls:Icon x:Name="Caret" Kind="ChevronRight" Size="{StaticResource SizeIconSm}" DockPanel.Dock="Right"
+                                       Margin="8,0,0,0" VerticalAlignment="Center" Visibility="Collapsed"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <ContentPresenter x:Name="HeaderSite" ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="False" />
+                        </DockPanel>
+
+                        <!-- Submenu: beside its row, 8 above it, flips left near the screen edge -->
+                        <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False" PopupAnimation="None"
+                           IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                           PlacementTarget="{Binding ElementName=Root}" controls:PopupPlacement.Kind="Submenu">
+                            <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}" TextElement.FontWeight="{StaticResource FontWeightRegular}">
+                                <Border Style="{StaticResource Menu.Shadow}" />
+                                <Border Style="{StaticResource Menu.Panel}" MinWidth="176" MaxWidth="220">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" KeyboardNavigation.TabNavigation="Cycle" />
+                                </Border>
+                            </Grid>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="HasItems" Value="True">
+                            <Setter TargetName="Caret" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="controls:MenuAssist.IsEmptyBranch" Value="True">
+                            <Setter TargetName="Caret" Property="Foreground" Value="{StaticResource BorderControlBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSubmenuOpen" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="HeaderSite" Property="TextElement.FontWeight" Value="{StaticResource FontWeightSemibold}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The inline add field: [input] 8 [tick button], then the keyboard hint -->
+    <Style x:Key="Menu.AddField" TargetType="MenuItem">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="StaysOpenOnClick" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <ContentPresenter ContentSource="Header" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Divider: runs the full width of the panel, to its border -->
+    <Style x:Key="Menu.Separator" TargetType="Separator">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Margin" Value="-8,4" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <!-- A 1px slot, painted one physical pixel thick on scaled displays -->
+                    <Grid Height="1">
+                        <Border Height="{DynamicResource Hairline}" VerticalAlignment="Top" Background="{StaticResource BorderSubtleBrush}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Group label ("Recent"): 12 / 16 semibold, secondary. The text is in Tag. -->
+    <Style x:Key="Menu.Label" TargetType="Separator">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <TextBlock Margin="8,8,8,4" Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
+                           FontSize="{StaticResource FontSizeCaption}" LineHeight="{StaticResource LineHeightCaption}"
+                           LineStackingStrategy="BlockLineHeight" FontWeight="{StaticResource FontWeightSemibold}"
+                           Foreground="{StaticResource TextSecondaryBrush}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>
