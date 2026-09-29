@@ -1,0 +1,32 @@
+using Microsoft.EntityFrameworkCore;
+using TimePlanner.Core.Data;
+using TimePlanner.Core.Domain.Entities;
+using TimePlanner.Core.Repositories.Interfaces;
+
+namespace TimePlanner.Core.Repositories.SQLite
+{
+    //-----------------------------
+    //ef core implementation of IProjectRepository
+    public class SQLiteProjectRepository : IProjectRepository
+    {
+        private readonly AppDbContext _db;
+
+        public SQLiteProjectRepository(AppDbContext db) => _db = db;
+
+        public Task<Project?> GetByIdAsync(int id) =>
+            _db.Projects.AsNoTracking().Include(p => p.Company).FirstOrDefaultAsync(p => p.ProjectID == id);
+
+        public Task<List<Project>> GetByCompanyAsync(int companyId) =>
+            _db.Projects.AsNoTracking().Where(p => p.CompanyId == companyId).OrderBy(p => p.Name).ToListAsync();
+
+        public Task<List<Project>> GetAllAsync() =>
+            _db.Projects.AsNoTracking().Include(p => p.Company).OrderBy(p => p.Name).ToListAsync();
+
+        public async Task AddAsync(Project project)
+        {
+            _db.Projects.Add(project);
+            await _db.SaveChangesAsync();
+        }
+    }
+}
+//------------------------------EOF-----------------------------\\

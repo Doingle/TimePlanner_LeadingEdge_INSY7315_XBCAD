@@ -1,10 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using TimePlanner.Core.Domain.Entities;
 
 namespace TimePlanner.Core.Repositories.Interfaces
 {
-    internal interface ICompanyRepository
+    //-----------------------------
+    //data access for companies
+    public interface ICompanyRepository
     {
+        Task<Company?> GetByIdAsync(int id);
+        Task<List<Company>> GetAllAsync();
+        Task AddAsync(Company company);
     }
 }
+//------------------------------EOF-----------------------------\\
