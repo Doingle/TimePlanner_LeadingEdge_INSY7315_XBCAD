@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
+using TimePlanner.Core.Domain.Enums;
 
 namespace TimePlanner.Core.Tests.Data
 {
@@ -44,7 +45,7 @@ namespace TimePlanner.Core.Tests.Data
             var company = new Company { Name = "Test Client" };
             var project = new Project { Name = "Test Project", Company = company };
             var user = new AppUser { Name = "Test User", Email = "test@example.com", LocalAccountName = "testuser" };
-            var task = new WorkTask { Name = "Build feature", Category = "Coding", Project = project, AssignedUser = user };
+            var task = new WorkTask { Name = "Build feature", CategoryId = 2, Project = project, AssignedUser = user };
             context.Tasks.Add(task);
             context.SaveChanges();
         }
@@ -127,13 +128,17 @@ namespace TimePlanner.Core.Tests.Data
             using var readContext = CreateContext();
             var settings = readContext.UserSettings.Single();
 
-            Assert.Equal(30, settings.CheckInIntervalMinutes);
+            Assert.Equal(90, settings.CheckInIntervalMinutes);
             Assert.Equal(10, settings.SnoozeMinutes);
             Assert.Equal(3, settings.MaxSnoozes);
             Assert.Equal(new TimeOnly(12, 0), settings.LunchStart);
             Assert.Equal(new TimeOnly(13, 0), settings.LunchEnd);
             Assert.Equal(new TimeOnly(8, 0), settings.WorkdayStart);
             Assert.Equal(new TimeOnly(17, 0), settings.WorkdayEnd);
+            Assert.Equal(3, settings.MaxSkipsPerDay);
+            Assert.Equal(8.0, settings.DailyGoalHours);
+            Assert.Equal(5, settings.IgnoredCheckInMinutes);
+            Assert.Equal(IgnoredCheckInAction.KeepAsking, settings.IgnoredCheckInAction);
         }
 
         //-----------------------------
@@ -154,6 +159,75 @@ namespace TimePlanner.Core.Tests.Data
             secondContext.UserSettings.Add(new UserSettings { UserId = userId });
 
             Assert.Throws<DbUpdateException>(() => secondContext.SaveChanges());
+        }
+
+        //-----------------------------
+        //the six default categories exist after migrating, in display order, with only Break non billable
+        [Fact]
+        public void DefaultCategories_AreSeeded()
+        {
+            using var context = CreateContext();
+
+            var categories = context.Categories.OrderBy(c => c.SortOrder).ToList();
+
+            Assert.Equal(new[] { "Meeting", "Coding", "Break", "Email", "Admin", "Design" }, categories.Select(c => c.Name));
+            Assert.Equal(new[] { "Break" }, categories.Where(c => !c.IsBillable).Select(c => c.Name));
+        }
+
+        //-----------------------------
+        //a task must point at an existing category
+        [Fact]
+        public void TaskWithoutCategory_IsRejected()
+        {
+            using var context = CreateContext();
+            var company = new Company { Name = "Test Client" };
+            var project = new Project { Name = "Test Project", Company = company };
+            var user = new AppUser { Name = "Test User", Email = "test@example.com" };
+            context.Tasks.Add(new WorkTask { Name = "No category", Project = project, AssignedUser = user });
+
+            Assert.Throws<DbUpdateException>(() => context.SaveChanges());
+        }
+
+        //-----------------------------
+        //a category that is still used by a task cannot be deleted
+        [Fact]
+        public void DeletingCategoryInUse_IsBlocked()
+        {
+            SeedBasicGraph();
+            using var context = CreateContext();
+            var coding = context.Categories.Single(c => c.Name == "Coding");
+
+            context.Categories.Remove(coding);
+
+            Assert.Throws<DbUpdateException>(() => context.SaveChanges());
+        }
+
+        //-----------------------------
+        //two categories cannot share a name
+        [Fact]
+        public void CategoryName_MustBeUnique()
+        {
+            using var context = CreateContext();
+            context.Categories.Add(new Category { Name = "Coding", Colour = "#000000", SortOrder = 99 });
+
+            Assert.Throws<DbUpdateException>(() => context.SaveChanges());
+        }
+
+        //-----------------------------
+        //the ignored check in action is written to the database as its enum name, not a number
+        [Fact]
+        public void IgnoredCheckInAction_IsStoredAsText()
+        {
+            using (var context = CreateContext())
+            {
+                context.Users.Add(new AppUser { Name = "User A", Email = "a@example.com", LocalAccountName = "usera", Settings = new UserSettings() });
+                context.SaveChanges();
+            }
+
+            using var readContext = CreateContext();
+            var actions = readContext.Database.SqlQueryRaw<string>("SELECT IgnoredCheckInAction AS Value FROM UserSettings").ToList();
+
+            Assert.Equal(new[] { "KeepAsking" }, actions);
         }
     }
 }
