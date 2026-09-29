@@ -1,4 +1,95 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Tokens.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- Baseline alignment -->
+    <TranslateTransform x:Key="Baseline.Body" Y="-0.43" />
+    <TranslateTransform x:Key="Baseline.Title" Y="-0.44" />
+    <TranslateTransform x:Key="Baseline.Timer" Y="0.8" />
+    <TranslateTransform x:Key="Baseline.None" Y="0" />
+
+    <!-- Body: 14 / 20 regular -->
+    <Style x:Key="Text.Body" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+        <Setter Property="FontWeight" Value="{StaticResource FontWeightRegular}" />
+        <Setter Property="LineHeight" Value="{StaticResource LineHeightBody}" />
+        <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="RenderTransform" Value="{StaticResource Baseline.Body}" />
+    </Style>
+
+    <!-- Caption: 12 / 16 regular -->
+    <Style x:Key="Text.Caption" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+        <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}" />
+        <Setter Property="LineHeight" Value="{StaticResource LineHeightCaption}" />
+        <Setter Property="RenderTransform" Value="{StaticResource Baseline.None}" />
+    </Style>
+
+    <!-- Title: 20 / 28 semibold -->
+    <Style x:Key="Text.Title" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+        <Setter Property="FontSize" Value="{StaticResource FontSizeTitle}" />
+        <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+        <Setter Property="LineHeight" Value="{StaticResource LineHeightTitle}" />
+        <Setter Property="RenderTransform" Value="{StaticResource Baseline.Title}" />
+    </Style>
+
+    <!-- Subtitle: body, secondary, 4 under the title -->
+    <Style x:Key="Text.Subtitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Margin" Value="{StaticResource GapTitleToSubtitle}" />
+    </Style>
+
+    <!-- Label: 14 / 20 semibold, secondary, 8 above its control -->
+    <Style x:Key="Text.Label" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+        <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Margin" Value="{StaticResource GapLabelToControl}" />
+    </Style>
+
+    <!-- "(optional)" inside a label: body weight, tertiary -->
+    <Style x:Key="Run.Optional" TargetType="Run">
+        <Setter Property="FontWeight" Value="{StaticResource FontWeightRegular}" />
+        <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}" />
+    </Style>
+
+    <!-- Help text: caption, tertiary, 8 under its control -->
+    <Style x:Key="Text.Help" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+        <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}" />
+        <Setter Property="Margin" Value="{StaticResource GapControlToHelp}" />
+    </Style>
+
+    <!-- Timer readout: 32 / 40 semibold, tabular figures -->
+    <Style x:Key="Text.Timer" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+        <Setter Property="FontSize" Value="{StaticResource FontSizeTimer}" />
+        <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+        <Setter Property="LineHeight" Value="{StaticResource LineHeightTimer}" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+        <Setter Property="RenderTransform" Value="{StaticResource Baseline.Timer}" />
+    </Style>
+
+    <!-- The one line under the timer: what the widget is doing -->
+    <Style x:Key="Text.Status" TargetType="TextBlock" BasedOn="{StaticResource Text.Subtitle}" />
+
+    <!-- Day stat value: 24 / 32 semibold, tabular figures -->
+    <Style x:Key="Text.Stat" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+        <Setter Property="FontSize" Value="{StaticResource FontSizeStat}" />
+        <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+        <Setter Property="LineHeight" Value="{StaticResource LineHeightStat}" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+        <Setter Property="RenderTransform" Value="{StaticResource Baseline.None}" />
+    </Style>
+
+    <!-- Day stat label: body, secondary, 4 under the value -->
+    <Style x:Key="Text.StatLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Subtitle}" />
+
+    <!-- Inline error under a field: caption, primary, beside an alert icon -->
+    <Style x:Key="Text.Error" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}" />
+
 </ResourceDictionary>
