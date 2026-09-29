@@ -75,5 +75,105 @@
     <SolidColorBrush x:Key="DataTrackBrush" Color="{StaticResource DataTrackColor}" />
     <SolidColorBrush x:Key="FocusBrush" Color="{StaticResource FocusColor}" />
     <SolidColorBrush x:Key="ScrimBrush" Color="{StaticResource ScrimColor}" />
+    
+    
+
+    <!-- ==================================== TYPE ==================================== -->
+
+    <FontFamily x:Key="FontFamily">Segoe UI</FontFamily>
+
+    <sys:Double x:Key="FontSizeCaption">12</sys:Double>
+    <sys:Double x:Key="LineHeightCaption">16</sys:Double>
+    <sys:Double x:Key="FontSizeBody">14</sys:Double>
+    <sys:Double x:Key="LineHeightBody">20</sys:Double>
+    <sys:Double x:Key="FontSizeTitle">20</sys:Double>
+    <sys:Double x:Key="LineHeightTitle">28</sys:Double>
+    <sys:Double x:Key="FontSizeStat">24</sys:Double>
+    <sys:Double x:Key="LineHeightStat">32</sys:Double>
+    <sys:Double x:Key="FontSizeTimer">32</sys:Double>
+    <sys:Double x:Key="LineHeightTimer">40</sys:Double>
+
+    <FontWeight x:Key="FontWeightRegular">Normal</FontWeight>
+    <FontWeight x:Key="FontWeightSemibold">SemiBold</FontWeight>
+
+
+    
+    <!-- ==================================== SPACING ==================================== -->
+    
+    <sys:Double x:Key="Space4">4</sys:Double>
+    <sys:Double x:Key="Space8">8</sys:Double>
+    <sys:Double x:Key="Space16">16</sys:Double>
+    <sys:Double x:Key="Space24">24</sys:Double>
+    <sys:Double x:Key="Space32">32</sys:Double>
+
+    <!-- Vertical rhythm, as margins -->
+    <Thickness x:Key="GapTitleToSubtitle">0,4,0,0</Thickness>
+    <Thickness x:Key="GapLabelToControl">0,0,0,8</Thickness>
+    <Thickness x:Key="GapControlToHelp">0,8,0,0</Thickness>
+    <Thickness x:Key="GapFieldToField">0,16,0,0</Thickness>
+    <Thickness x:Key="GapSection">0,24,0,0</Thickness>
+    <Thickness x:Key="GapStacked">0,8,0,0</Thickness>
+
+    <!-- Shell padding -->
+    <Thickness x:Key="ShellPadding">16,24,16,16</Thickness>
+    <Thickness x:Key="ShellPaddingWithFoot">16,24,16,8</Thickness>
+
+    
+
+    <!-- ==================================== SIZING ==================================== -->
+
+    <sys:Double x:Key="WidgetWidth">320</sys:Double>
+    <sys:Double x:Key="SizeControl">40</sys:Double>
+    <sys:Double x:Key="SizeBadge">40</sys:Double>
+    <sys:Double x:Key="SizeIcon">20</sys:Double>
+    <sys:Double x:Key="SizeIconSm">16</sys:Double>
+    <sys:Double x:Key="SizeTextArea">64</sys:Double>
+    <sys:Double x:Key="SizeProgress">8</sys:Double>
+    <sys:Double x:Key="SizeSwitchW">40</sys:Double>
+    <sys:Double x:Key="SizeSwitchH">24</sys:Double>
+    <sys:Double x:Key="SizeThumb">16</sys:Double>
+    <sys:Double x:Key="SizeRangeThumb">20</sys:Double>
+    <sys:Double x:Key="SizeShapeGlyph">24</sys:Double>
+
+
+
+    <!-- ==================================== SHAPE & DEPTH ==================================== -->
+
+    <CornerRadius x:Key="RadiusControl">8</CornerRadius>
+    <CornerRadius x:Key="RadiusRow">4</CornerRadius>
+    <CornerRadius x:Key="RadiusShell">16</CornerRadius>
+
+    <!-- Fully rounded -->
+    <CornerRadius x:Key="RadiusFull">999</CornerRadius>
+    <CornerRadius x:Key="RadiusPill">20</CornerRadius>
+    <CornerRadius x:Key="RadiusSwitch">12</CornerRadius>
+    <CornerRadius x:Key="RadiusGrip">2</CornerRadius>
+    <CornerRadius x:Key="RadiusBanner">15.5,15.5,0,0</CornerRadius>
+    <CornerRadius x:Key="RadiusMark">5</CornerRadius>
+
+    <!-- Line widths -->
+    <Thickness x:Key="BorderWidth">1</Thickness>
+    <Thickness x:Key="BorderWidthSelected">2</Thickness>
+    <sys:Double x:Key="Hairline">1</sys:Double>
+
+    <!-- Shadows -->
+    <DropShadowEffect x:Key="ShadowShell" Color="{StaticResource ShadowColor}" Opacity="0.24"
+                  BlurRadius="36" ShadowDepth="8" Direction="270" RenderingBias="Quality" />
+    
+    <DropShadowEffect x:Key="ShadowMenu" Color="{StaticResource ShadowColor}" Opacity="0.16"
+                  BlurRadius="24" ShadowDepth="8" Direction="270" RenderingBias="Quality" />
+
+    <!-- Raised -->
+    <DropShadowEffect x:Key="ShadowRaisedGlowEdge" Color="{StaticResource GlowColor}" Opacity="1"
+                  BlurRadius="14" ShadowDepth="0" RenderingBias="Quality" />
+    <DropShadowEffect x:Key="ShadowRaisedGlow" Color="{StaticResource GlowColor}" Opacity="0.85"
+                  BlurRadius="44" ShadowDepth="0" RenderingBias="Quality" />
+    <DropShadowEffect x:Key="ShadowRaisedHalo" Color="{StaticResource ShadowColor}" Opacity="0.22"
+                  BlurRadius="24" ShadowDepth="0" RenderingBias="Quality" />
+    <DropShadowEffect x:Key="ShadowRaisedDrop" Color="{StaticResource ShadowColor}" Opacity="0.4"
+                  BlurRadius="66" ShadowDepth="18" Direction="270" RenderingBias="Quality" />
+
+    <!-- Idle "Faded" -->
+    <sys:Double x:Key="IdleFadedOpacity">0.4</sys:Double>
 
 </ResourceDictionary>
