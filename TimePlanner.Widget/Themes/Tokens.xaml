@@ -1,4 +1,79 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+﻿<!--
+  INSY WIDGET — TOKENS
+
+  Every value the widget is allowed to use. Components and screens reference these keys only. 
+
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- ====================================  COLOR ==================================== -->
     
+    <Color x:Key="TextPrimaryColor">#18181B</Color>      
+    <Color x:Key="TextSecondaryColor">#52525B</Color>    
+    <Color x:Key="TextTertiaryColor">#71717A</Color>     
+    <Color x:Key="TextDisabledColor">#A1A1AA</Color>     
+    <Color x:Key="TextOnActionColor">#FFFFFF</Color>      
+    <Color x:Key="TextOnActionSecondaryColor">#D4D4D8</Color>  
+    <Color x:Key="TextAccentColor">#6247AA</Color>
+
+    <!-- Color — action: primary button, hero band,focus ring, selected border -->
+    <Color x:Key="ActionColor">#6247AA</Color>
+    <Color x:Key="ActionHoverColor">#553D96</Color>
+    <Color x:Key="ActionPressedColor">#483382</Color>
+    <Color x:Key="ActionDisabledColor">#E4E4E7</Color>
+
+    <!-- Color — surfaces and borders -->
+    <Color x:Key="SurfaceColor">#FFFFFF</Color>
+    <Color x:Key="SurfaceSubtleColor">#F4F4F5</Color>
+    <Color x:Key="SurfacePressedColor">#E4E4E7</Color>
+    <Color x:Key="AccentFillColor">#EDE3F4</Color>
+    <Color x:Key="BorderControlColor">#8A8A93</Color>
+    <Color x:Key="BorderStrongColor">#52525B</Color>
+    <Color x:Key="BorderSelectedColor">#6247AA</Color>
+    <Color x:Key="BorderSubtleColor">#E4E4E7</Color>
+    <Color x:Key="HandleColor">#D4D4D8</Color>
+    <Color x:Key="HandleOnActionColor">#73FFFFFF</Color>
+
+    <!-- Color — data, focus, overlays -->
+    <Color x:Key="DataColor">#52525B</Color>
+    <Color x:Key="DataTrackColor">#E4E4E7</Color>
+    <Color x:Key="FocusColor">#6247AA</Color>
+    <Color x:Key="ScrimColor">#7A18181B</Color>
+    <Color x:Key="ShadowColor">#18181B</Color>
+    <Color x:Key="GlowColor">#FFFFFF</Color>
+
+    <!-- Brushes: what components actually use -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="{StaticResource TextTertiaryColor}" />
+    <SolidColorBrush x:Key="TextDisabledBrush" Color="{StaticResource TextDisabledColor}" />
+    <SolidColorBrush x:Key="TextOnActionBrush" Color="{StaticResource TextOnActionColor}" />
+    <SolidColorBrush x:Key="TextOnActionSecondaryBrush" Color="{StaticResource TextOnActionSecondaryColor}" />
+    <SolidColorBrush x:Key="TextAccentBrush" Color="{StaticResource TextAccentColor}" />
+
+    <SolidColorBrush x:Key="ActionBrush" Color="{StaticResource ActionColor}" />
+    <SolidColorBrush x:Key="ActionHoverBrush" Color="{StaticResource ActionHoverColor}" />
+    <SolidColorBrush x:Key="ActionPressedBrush" Color="{StaticResource ActionPressedColor}" />
+    <SolidColorBrush x:Key="ActionDisabledBrush" Color="{StaticResource ActionDisabledColor}" />
+
+    <SolidColorBrush x:Key="ToggleOnBrush" Color="{StaticResource ToggleOnColor}" />
+
+    <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
+    <SolidColorBrush x:Key="SurfaceSubtleBrush" Color="{StaticResource SurfaceSubtleColor}" />
+    <SolidColorBrush x:Key="SurfacePressedBrush" Color="{StaticResource SurfacePressedColor}" />
+    <SolidColorBrush x:Key="AccentFillBrush" Color="{StaticResource AccentFillColor}" />
+    <SolidColorBrush x:Key="BorderControlBrush" Color="{StaticResource BorderControlColor}" />
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="{StaticResource BorderStrongColor}" />
+    <SolidColorBrush x:Key="BorderSelectedBrush" Color="{StaticResource BorderSelectedColor}" />
+    <SolidColorBrush x:Key="BorderSubtleBrush" Color="{StaticResource BorderSubtleColor}" />
+    <SolidColorBrush x:Key="HandleBrush" Color="{StaticResource HandleColor}" />
+    <SolidColorBrush x:Key="HandleOnActionBrush" Color="{StaticResource HandleOnActionColor}" />
+
+    <SolidColorBrush x:Key="DataBrush" Color="{StaticResource DataColor}" />
+    <SolidColorBrush x:Key="DataTrackBrush" Color="{StaticResource DataTrackColor}" />
+    <SolidColorBrush x:Key="FocusBrush" Color="{StaticResource FocusColor}" />
+    <SolidColorBrush x:Key="ScrimBrush" Color="{StaticResource ScrimColor}" />
+
 </ResourceDictionary>
