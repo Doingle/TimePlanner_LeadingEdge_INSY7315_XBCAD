@@ -33,10 +33,6 @@ namespace TimePlanner.Core.Domain.Entities
         //no check ins are prompted between LunchStart and LunchEnd
         public TimeOnly LunchStart { get; set; } = new TimeOnly(12, 0);
         public TimeOnly LunchEnd { get; set; } = new TimeOnly(13, 0);
-
-        //check ins are only prompted between WorkdayStart and WorkdayEnd
-        public TimeOnly WorkdayStart { get; set; } = new TimeOnly(8, 0);
-        public TimeOnly WorkdayEnd { get; set; } = new TimeOnly(17, 0);
     }
 }
 //------------------------------EOF-----------------------------\\
