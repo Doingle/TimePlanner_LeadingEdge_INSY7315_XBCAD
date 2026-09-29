@@ -7,7 +7,7 @@
         <ResourceDictionary Source="Fields.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
-    <!-- The dropdown panel: as wide as the field, 4 under it -->
+    <!-- The dropdown panel-->
     <Style x:Key="Menu.Dropdown" TargetType="ContextMenu">
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="HasDropShadow" Value="False" />
@@ -16,6 +16,7 @@
         <Setter Property="FontFamily" Value="{StaticResource FontFamily}" />
         <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
         <Setter Property="FontWeight" Value="{StaticResource FontWeightRegular}" />
+        
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContextMenu">
@@ -31,7 +32,6 @@
         </Setter>
     </Style>
 
-    <!-- A row. Activity rows open a submenu beside them; Recent and Add rows do not. -->
     <Style x:Key="Menu.Row" TargetType="MenuItem">
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -54,7 +54,7 @@
                             <ContentPresenter x:Name="HeaderSite" ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="False" />
                         </DockPanel>
 
-                        <!-- Submenu: beside its row, 8 above it, flips left near the screen edge -->
+                        <!-- Submenu -->
                         <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False" PopupAnimation="None"
                            IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
                            PlacementTarget="{Binding ElementName=Root}" controls:PopupPlacement.Kind="Submenu">
@@ -89,7 +89,7 @@
         </Setter>
     </Style>
 
-    <!-- The inline add field: [input] 8 [tick button], then the keyboard hint -->
+    <!-- The inline add field-->
     <Style x:Key="Menu.AddField" TargetType="MenuItem">
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="Focusable" Value="False" />
@@ -104,7 +104,7 @@
         </Setter>
     </Style>
 
-    <!-- Divider: runs the full width of the panel, to its border -->
+    <!-- Divider -->
     <Style x:Key="Menu.Separator" TargetType="Separator">
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="Focusable" Value="False" />
@@ -113,7 +113,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Separator">
-                    <!-- A 1px slot, painted one physical pixel thick on scaled displays -->
+                    
                     <Grid Height="1">
                         <Border Height="{DynamicResource Hairline}" VerticalAlignment="Top" Background="{StaticResource BorderSubtleBrush}" />
                     </Grid>
@@ -122,7 +122,7 @@
         </Setter>
     </Style>
 
-    <!-- Group label ("Recent"): 12 / 16 semibold, secondary. The text is in Tag. -->
+    <!-- Group label -->
     <Style x:Key="Menu.Label" TargetType="Separator">
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="Focusable" Value="False" />

@@ -1,7 +1,8 @@
 ﻿<!-- SHELL: the card every screen sits in, and the small shared pieces inside it. -->
     
     <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                        xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
 
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="Tokens.xaml" />
