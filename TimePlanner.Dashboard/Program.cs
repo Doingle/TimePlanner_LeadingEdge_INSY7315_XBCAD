@@ -54,6 +54,7 @@ using (var scope = app.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
     scope.ServiceProvider.GetRequiredService<AuthDbContext>().Database.Migrate();
+    await IdentitySeeder.SeedAsync(scope.ServiceProvider, app.Configuration);
 }
 
 // Configure the HTTP request pipeline.
