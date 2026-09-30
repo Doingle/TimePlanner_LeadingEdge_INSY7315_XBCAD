@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Dashboard.Data;
+using TimePlanner.Dashboard.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +43,28 @@ builder.Services.ConfigureApplicationCookie(o =>
     o.Cookie.SameSite = SameSiteMode.Lax;
     o.SlidingExpiration = true;
     o.ExpireTimeSpan = TimeSpan.FromHours(8);
+});
+
+// API clients authenticate with a bearer token, the pages keep using the cookie above. AddIdentity already set the
+// cookie as the default scheme, so api controllers opt in with AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme.
+builder.Services.AddSingleton<JwtTokenService>();
+builder.Services.AddAuthentication().AddJwtBearer(o =>
+{
+    // keep the short claim names ("email", "role") instead of renaming them to long schema urls
+    o.MapInboundClaims = false;
+    o.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = JwtTokenService.KeyFrom(builder.Configuration),
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromSeconds(30),
+        NameClaimType = "email",
+        RoleClaimType = "role"
+    };
 });
 
 // Secure by default: every endpoint requires a login unless it opts out with [AllowAnonymous].
