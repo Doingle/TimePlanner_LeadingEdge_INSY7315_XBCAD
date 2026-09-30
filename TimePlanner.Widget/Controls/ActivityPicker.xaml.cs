@@ -7,12 +7,10 @@ using System.Windows.Media;
 using System.Windows.Threading;
 namespace TimePlanner.Widget.Controls
 {
-    /// <summary>
-    /// Interaction logic for ActivityPicker.xaml
-    /// </summary>
+
     public partial class ActivityPicker : UserControl
     {
-        private const string Chevron = "›";   // ›  single right-pointing angle quotation mark
+        private const string Chevron = "›";   
         private const int RecentLimit = 3;
 
         private readonly Dictionary<string, MenuItem> _rows = [];
@@ -20,8 +18,6 @@ namespace TimePlanner.Widget.Controls
         private List<IReadOnlyList<string>> _recent = [];
         private IReadOnlyList<string> _selected = [];
         private ContextMenu? _menu;
-
-        // The level currently showing the inline add field, if any
         private IReadOnlyList<string>? _addPath;
         private MenuItem? _addField;
         private TextBox? _addInput;
@@ -32,12 +28,10 @@ namespace TimePlanner.Widget.Controls
             RenderValue();
         }
 
-        /// <summary>Raised when the user picks or adds an activity.</summary>
         public event EventHandler? SelectionChanged;
 
         public IReadOnlyList<string> SelectedPath => _selected;
 
-        /// <summary>Gives the picker its tree, recent list and current choice. The lists are edited in place.</summary>
         public void Load(List<ActivityNode> tree, List<IReadOnlyList<string>> recent, IReadOnlyList<string> selected)
         {
             _tree = tree;
@@ -46,7 +40,6 @@ namespace TimePlanner.Widget.Controls
             RenderValue();
         }
 
-        /// <summary>Saving checks that an activity was chosen; if not, the field shows its inline error.</summary>
         public bool Validate()
         {
             if (_selected.Count > 0)
@@ -60,10 +53,6 @@ namespace TimePlanner.Widget.Controls
 
         public void FocusField() => PickerButton.Focus();
 
-        /// <summary>
-        /// Opens the menu. <paramref name="expand"/> opens the submenus along a path;
-        /// <paramref name="addingAt"/> opens a level with its add field showing.
-        /// </summary>
         public void Open(IReadOnlyList<string>? expand = null, IReadOnlyList<string>? addingAt = null)
         {
             _addPath = addingAt;
@@ -72,7 +61,6 @@ namespace TimePlanner.Widget.Controls
             Field.SetIsOpen(PickerButton, true);
             _menu.IsOpen = true;
 
-            // A MenuItem that is not loaded yet opens as soon as it is, so a whole path can be set at once
             foreach (var path in new[] { expand, addingAt })
             {
                 if (path == null) continue;
