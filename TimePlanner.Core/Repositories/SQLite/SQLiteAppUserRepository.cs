@@ -27,6 +27,16 @@ namespace TimePlanner.Core.Repositories.SQLite
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
         }
+
+        //-----------------------------
+        //adds new settings or updates saved ones
+        public async Task SaveSettingsAsync(UserSettings settings)
+        {
+            _db.ChangeTracker.Clear();
+            //zero id means row is new
+            _db.Entry(settings).State = settings.UserSettingsId == 0 ? EntityState.Added : EntityState.Modified;
+            await _db.SaveChangesAsync();
+        }
     }
 }
 //------------------------------EOF-----------------------------\\

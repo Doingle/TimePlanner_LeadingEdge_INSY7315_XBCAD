@@ -10,6 +10,9 @@ namespace TimePlanner.Core.Repositories.Interfaces
         Task<List<Project>> GetByCompanyAsync(int companyId);
         Task<List<Project>> GetAllAsync();
         Task AddAsync(Project project);
+
+        //active projects with their company
+        Task<List<Project>> GetActiveAsync();
     }
 }
 //------------------------------EOF-----------------------------\\

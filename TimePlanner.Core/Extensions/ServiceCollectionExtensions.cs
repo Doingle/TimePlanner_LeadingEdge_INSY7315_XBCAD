@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Repositories.Interfaces;
 using TimePlanner.Core.Repositories.SQLite;
+using TimePlanner.Core.Services;
 
 namespace TimePlanner.Core.Extensions
 {
@@ -22,6 +23,16 @@ namespace TimePlanner.Core.Extensions
             services.AddScoped<IAppUserRepository, SQLiteAppUserRepository>();
             services.AddScoped<ITimeEntryRepository, SQLiteTimeEntryRepository>();
             services.AddScoped<ITimeSheetRepository, SQLiteTimeSheetRepository>();
+            services.AddScoped<ICategoryRepository, SQLiteCategoryRepository>();
+            services.AddScoped<IDaySessionRepository, SQLiteDaySessionRepository>();
+
+            //widget services share the scope of their repos
+            services.AddSingleton<TimeEntryFactory>();
+            services.AddScoped<DaySessionService>();
+            services.AddScoped<SettingsService>();
+            services.AddScoped<ActivityService>();
+            services.AddScoped<EntryService>();
+            services.AddScoped<LocalSetupService>();
 
             return services;
         }
