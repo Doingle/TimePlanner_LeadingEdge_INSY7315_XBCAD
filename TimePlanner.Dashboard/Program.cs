@@ -102,3 +102,6 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
+
+// exposes the top level Program class to the api test project (WebApplicationFactory<Program>)
+public partial class Program { }
