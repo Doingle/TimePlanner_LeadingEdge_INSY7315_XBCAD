@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
+using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Core.Repositories.Interfaces;
 
 namespace TimePlanner.Core.Repositories.SQLite
@@ -27,6 +28,15 @@ namespace TimePlanner.Core.Repositories.SQLite
             _db.Projects.Add(project);
             await _db.SaveChangesAsync();
         }
+
+        //-----------------------------
+        //active projects sorted by company then name
+        public Task<List<Project>> GetActiveAsync() =>
+            _db.Projects.AsNoTracking()
+                .Include(p => p.Company)
+                .Where(p => p.Status == ProjectStatus.Active)
+                .OrderBy(p => p.Company!.Name).ThenBy(p => p.Name)
+                .ToListAsync();
     }
 }
 //------------------------------EOF-----------------------------\\

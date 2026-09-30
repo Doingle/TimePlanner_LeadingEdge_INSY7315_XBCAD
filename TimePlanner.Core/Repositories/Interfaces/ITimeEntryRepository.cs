@@ -14,6 +14,12 @@ namespace TimePlanner.Core.Repositories.Interfaces
 
         //saves every entry in a single transaction, nothing is stored if one fails
         Task AddRangeAsync(IEnumerable<TimeEntry> entries);
+
+        //newest entry for the user with their task
+        Task<TimeEntry?> GetLatestForUserAsync(int userId);
+
+        //activity ids from newest entries with no duplicates
+        Task<List<int>> GetRecentCategoryIdsAsync(int userId, int count);
     }
 }
 //------------------------------EOF-----------------------------\\

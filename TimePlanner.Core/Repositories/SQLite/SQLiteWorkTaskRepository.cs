@@ -31,6 +31,12 @@ namespace TimePlanner.Core.Repositories.SQLite
             _db.Tasks.Add(task);
             await _db.SaveChangesAsync();
         }
+
+        //-----------------------------
+        //finds the task for a project activity and user
+        public Task<WorkTask?> FindAsync(int projectId, int categoryId, int assignedUserId) =>
+            _db.Tasks.AsNoTracking().FirstOrDefaultAsync(t =>
+                t.ProjectID == projectId && t.CategoryId == categoryId && t.AssignedUserID == assignedUserId);
     }
 }
 //------------------------------EOF-----------------------------\\

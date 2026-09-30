@@ -29,11 +29,34 @@ namespace TimePlanner.Core.Repositories.SQLite
             await _db.SaveChangesAsync();
         }
 
-        //ef wraps one SaveChanges call in a single transaction
+        //ef calls in single transaction
         public async Task AddRangeAsync(IEnumerable<TimeEntry> entries)
         {
             _db.TimeEntries.AddRange(entries);
             await _db.SaveChangesAsync();
+        }
+
+        //-----------------------------
+        //newest entry by end time with respective task
+        public Task<TimeEntry?> GetLatestForUserAsync(int userId) =>
+            _db.TimeEntries.AsNoTracking()
+                .Include(e => e.Task)
+                .Where(e => e.UserId == userId)
+                .OrderByDescending(e => e.EndTime)
+                .FirstOrDefaultAsync();
+
+        //-----------------------------
+        //newest activity ids for the user
+        public async Task<List<int>> GetRecentCategoryIdsAsync(int userId, int count)
+        {
+            var ids = await _db.TimeEntries.AsNoTracking()
+                .Where(e => e.UserId == userId)
+                .OrderByDescending(e => e.EndTime)
+                .Select(e => e.Task!.CategoryId)
+                .Take(200)
+                .ToListAsync();
+
+            return ids.Distinct().Take(count).ToList();
         }
     }
 }
