@@ -1,0 +1,97 @@
+@using System.Globalization
+@using TimePlanner.Dashboard.Services.Reports
+@model ReportPageModel
+@{
+    ViewData["Title"] = "Hours report";
+}
+
+<h1 class="h3 mb-3">Hours report</h1>
+
+<form method="get" asp-action="Index" class="row g-3 mb-4">
+    <div class="col-sm-6 col-md-3">
+        <label for="from" class="form-label">From</label>
+        <input type="date" id="from" name="from" class="form-control" value="@Model.From.ToString("yyyy-MM-dd")" required />
+    </div>
+    <div class="col-sm-6 col-md-3">
+        <label for="to" class="form-label">To</label>
+        <input type="date" id="to" name="to" class="form-control" value="@Model.To.ToString("yyyy-MM-dd")" required />
+    </div>
+    <div class="col-sm-6 col-md-3">
+        <label for="groupBy" class="form-label">Group by</label>
+        <select id="groupBy" name="groupBy" class="form-select">
+            @foreach (var option in Enum.GetValues<ReportGrouping>())
+            {
+                <option value="@option" selected="@(option == Model.GroupBy)">@option</option>
+            }
+        </select>
+    </div>
+    @if (Model.CanPickUser)
+    {
+        <div class="col-sm-6 col-md-3">
+            <label for="userId" class="form-label">Person</label>
+            <select id="userId" name="userId" class="form-select">
+                <option value="">Everyone</option>
+                @foreach (var user in Model.Users)
+                {
+                    <option value="@user.Id" selected="@(user.Id == Model.UserId)">@user.Name</option>
+                }
+            </select>
+        </div>
+    }
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">Show report</button>
+    </div>
+</form>
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+else if (Model.Report != null)
+{
+    var report = Model.Report;
+    <p>
+        <strong>@report.TotalHours.ToString("0.00", CultureInfo.InvariantCulture) hours</strong> in @report.Entries entr@(report.Entries == 1 ? "y" : "ies"),
+        @report.BillableHours.ToString("0.00", CultureInfo.InvariantCulture) billable, from @report.From.ToString("yyyy-MM-dd") to @report.To.ToString("yyyy-MM-dd").
+    </p>
+
+    @if (report.Rows.Count == 0)
+    {
+        <p class="text-muted">No time was logged in this period.</p>
+    }
+    else
+    {
+        <table class="table table-sm">
+            <caption class="visually-hidden">Hours grouped by @Model.GroupBy</caption>
+            <thead>
+                <tr>
+                    <th scope="col">@Model.GroupBy</th>
+                    <th scope="col" class="text-end">Hours</th>
+                    <th scope="col" class="text-end">Billable</th>
+                    <th scope="col" class="text-end">Entries</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in report.Rows)
+                {
+                    <tr>
+                        <th scope="row" class="fw-normal">@row.Label</th>
+                        <td class="text-end">@row.Hours.ToString("0.00", CultureInfo.InvariantCulture)</td>
+                        <td class="text-end">@row.BillableHours.ToString("0.00", CultureInfo.InvariantCulture)</td>
+                        <td class="text-end">@row.Entries</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (Model.CanExport)
+    {
+        <a class="btn btn-outline-secondary" asp-action="Export" asp-route-from="@Model.From.ToString("yyyy-MM-dd")"
+           asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-userId="@Model.UserId">Download timesheet (CSV)</a>
+    }
+    else
+    {
+        <p class="text-muted">Pick a person to download their timesheet.</p>
+    }
+}

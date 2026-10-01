@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Core.Repositories.Interfaces;
+using TimePlanner.Core.Services;
 using TimePlanner.Dashboard.Data;
 
 namespace TimePlanner.Api.Tests
@@ -97,6 +98,23 @@ namespace TimePlanner.Api.Tests
             var entry = new TimeEntry { UserId = userId, TaskId = task.TaskID, StartTime = start, EndTime = start.AddMinutes(45), Note = $"Note {tag}", Method = EntryMethod.Manual };
             await sp.GetRequiredService<ITimeEntryRepository>().AddAsync(entry);
             return (company.CompanyId, project.ProjectID, task.TaskID, entry.TimeEntryId);
+        }
+
+        //-----------------------------
+        //stores one entry of an exact length for a user, creating the company, project and task when new. Category ids are the seeded ones
+        public async Task<Project> AddEntryAsync(int userId, string company, string project, int categoryId, DateTime start, int minutes, string? note = null)
+        {
+            using var scope = Services.CreateScope();
+            var sp = scope.ServiceProvider;
+            var entries = sp.GetRequiredService<EntryService>();
+
+            var stored = await entries.AddProjectAsync(company, project, null);
+            var task = await entries.FindOrCreateTaskAsync(userId, stored.ProjectID, categoryId);
+            await sp.GetRequiredService<ITimeEntryRepository>().AddAsync(new TimeEntry
+            {
+                UserId = userId, TaskId = task.TaskID, StartTime = start, EndTime = start.AddMinutes(minutes), Note = note, Method = EntryMethod.Manual
+            });
+            return stored;
         }
 
         //-----------------------------
