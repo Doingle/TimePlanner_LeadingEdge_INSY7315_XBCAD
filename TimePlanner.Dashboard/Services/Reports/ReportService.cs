@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Services;
+using TimePlanner.Dashboard.Data;
 
 namespace TimePlanner.Dashboard.Services.Reports
 {
@@ -38,8 +39,13 @@ namespace TimePlanner.Dashboard.Services.Reports
             { "Date", "Activity/Task", "Client / Project", "Start Time", "End Time", "Duration (hours)", "Notes", "Billable" };
 
         private readonly AppDbContext _db;
+        private readonly AuditLogger _audit;
 
-        public ReportService(AppDbContext db) => _db = db;
+        public ReportService(AppDbContext db, AuditLogger audit)
+        {
+            _db = db;
+            _audit = audit;
+        }
 
         //-----------------------------
         //developers may only see their own time, admin and billing may see anyone's. Returns false when the request asks for someone else's
@@ -131,6 +137,7 @@ namespace TimePlanner.Dashboard.Services.Reports
         {
             var entries = await LoadAsync(from, to, userId, null);
             var activities = new ActivityLookup(await _db.Categories.AsNoTracking().ToListAsync());
+            await _audit.LogAsync(AuditActions.TimesheetExported, $"profile {userId}, {from:yyyy-MM-dd} to {to:yyyy-MM-dd}, {entries.Count} entries");
 
             using var memory = new MemoryStream();
             await using (var writer = new StreamWriter(memory, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), leaveOpen: true))
