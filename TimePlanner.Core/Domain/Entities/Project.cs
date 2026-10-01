@@ -19,3 +19,5 @@ namespace TimePlanner.Core.Domain.Entities
     }
 }
 //------------------------------EOF-----------------------------\\
+
+
