@@ -1,7 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Repositories.Interfaces;

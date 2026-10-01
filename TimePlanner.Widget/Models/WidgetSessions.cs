@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using TimePlanner.Core.Domain.Entities;
 
 namespace TimePlanner.Widget.Models
 {
@@ -20,10 +21,11 @@ namespace TimePlanner.Widget.Models
 
     public sealed class WidgetSession
     {
-        public int IntervalMinutes { get; set; } = CheckInPolicy.DefaultIntervalMinutes;
-        public IdleVisibility IdleVisibility { get; set; } = IdleVisibility.Visible;
-        public IdleShape IdleShape { get; set; } = IdleShape.Pill;
-        public bool SoundOnCheckIn { get; set; } = true;
-        public WorkDay Day { get; } = SampleData.CreateDay();
+        public AppUser User { get; set; } = new() { Settings = new UserSettings() };
+        public UserSettings Settings => User.Settings ??= new UserSettings();
+        public WidgetPreferences Preferences { get; set; } = new();
+        public int? ProjectId { get; set; }
+
+        public IReadOnlyList<string> Activity { get; set; } = [];
     }
 }

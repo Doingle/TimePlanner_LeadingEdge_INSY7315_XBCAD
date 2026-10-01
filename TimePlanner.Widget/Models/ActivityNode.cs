@@ -4,7 +4,10 @@ using System.Text;
 
 namespace TimePlanner.Widget.Models
 {
-    internal class ActivityNode
+    public sealed class ActivityNode(string label, params ActivityNode[] children)
     {
+        public string Label { get; } = label;
+
+        public List<ActivityNode> Children { get; } = [.. children];
     }
 }
