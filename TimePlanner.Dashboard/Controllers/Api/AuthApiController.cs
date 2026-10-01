@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using TimePlanner.Dashboard.Security;
 using TimePlanner.Dashboard.Data;
 using TimePlanner.Dashboard.Services;
 
@@ -17,14 +19,16 @@ namespace TimePlanner.Dashboard.Controllers.Api
         private readonly UserManager<ApplicationUser> _users;
         private readonly SignInManager<ApplicationUser> _signIn;
         private readonly JwtTokenService _tokens;
+        private readonly AuditLogger _audit;
         private readonly ILogger<AuthApiController> _logger;
 
         public AuthApiController(UserManager<ApplicationUser> users, SignInManager<ApplicationUser> signIn,
-            JwtTokenService tokens, ILogger<AuthApiController> logger)
+            JwtTokenService tokens, AuditLogger audit, ILogger<AuthApiController> logger)
         {
             _users = users;
             _signIn = signIn;
             _tokens = tokens;
+            _audit = audit;
             _logger = logger;
         }
 
@@ -37,12 +41,15 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //-----------------------------
         //every failure returns the same 401 whether the email is unknown, the password is wrong or the account is locked out,
         //and failures count towards the same lockout policy as the website
-        //ponytail: an unknown email skips the password hash so it answers slightly faster, add a dummy hash if timing enumeration matters
+        //an unknown email still pays for a password hash, so the response time does not reveal which emails have accounts
         [AllowAnonymous]
         [HttpPost("login")]
+        [EnableRateLimiting(SecurityExtensions.LoginLimiter)]
         public async Task<IActionResult> Login(LoginRequest request)
         {
             var user = await _users.FindByEmailAsync(request.Email);
+            if (user == null)
+                _users.PasswordHasher.HashPassword(new ApplicationUser(), request.Password);
             var result = user == null
                 ? Microsoft.AspNetCore.Identity.SignInResult.Failed
                 : await _signIn.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
@@ -50,9 +57,11 @@ namespace TimePlanner.Dashboard.Controllers.Api
             if (!result.Succeeded)
             {
                 _logger.LogWarning("Failed api login attempt (locked out: {LockedOut})", result.IsLockedOut);
+                await _audit.LogAsync(result.IsLockedOut ? AuditActions.LoginLockedOut : AuditActions.LoginFailed, "api", request.Email);
                 return Problem(title: "Invalid email or password.", statusCode: StatusCodes.Status401Unauthorized);
             }
 
+            await _audit.LogAsync(AuditActions.LoginSucceeded, "api", request.Email, user!.Id);
             var (token, expires) = _tokens.Create(user!, await _users.GetRolesAsync(user!));
             return Ok(new TokenResponse(token, "Bearer", expires));
         }
