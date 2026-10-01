@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Media;
 using System.Text;
 using System.Windows;
+using Microsoft.Win32;
 using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
@@ -11,6 +12,22 @@ using TimePlanner.Widget.Views;
 
 namespace TimePlanner.Widget
 {
+    /// <summary>Which way into the Log entry form the user came, which decides its way out.</summary>
+    public enum LogEntryMode
+    {
+        CheckIn,
+        LogNow,
+        EndOfDay,
+    }
+
+    /// <summary>Somewhere the widget can show a screen. The widget window implements it.</summary>
+    public interface IWidgetHost
+    {
+        void Present(FrameworkElement screen, bool activate = true);
+
+        void HideWidget();
+    }
+
     public sealed class WidgetFlow
     {
         private enum Screen

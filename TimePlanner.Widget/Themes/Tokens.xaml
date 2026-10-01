@@ -24,6 +24,9 @@
     <Color x:Key="ActionPressedColor">#483382</Color>
     <Color x:Key="ActionDisabledColor">#E4E4E7</Color>
 
+    <!-- Color — controls -->
+    <Color x:Key="ToggleOnColor">#52525B</Color>
+
     <!-- Color — surfaces and borders -->
     <Color x:Key="SurfaceColor">#FFFFFF</Color>
     <Color x:Key="SurfaceSubtleColor">#F4F4F5</Color>

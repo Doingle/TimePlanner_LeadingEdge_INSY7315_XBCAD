@@ -10,8 +10,14 @@ namespace TimePlanner.Widget.Models
         public const string Separator = " › ";
 
 
-        public static IReadOnlyList<string> Of(WorkTask task) =>
-            [.. task.Category.Split('›', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries), task.Name];
+        // A task's activity is its category in Core's activity tree: the path runs from the top-level category down to it
+        public static IReadOnlyList<string> Of(WorkTask task)
+        {
+            var path = new List<string>();
+            for (var category = task.Category; category != null; category = category.Parent)
+                path.Insert(0, category.Name);
+            return path.Count > 0 ? path : [task.Name];
+        }
 
 
         public static string CategoryOf(IReadOnlyList<string> path) => string.Join(Separator, path.Take(path.Count - 1));

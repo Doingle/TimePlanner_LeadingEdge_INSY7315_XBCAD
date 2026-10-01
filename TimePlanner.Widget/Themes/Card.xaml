@@ -93,4 +93,26 @@
         </Setter>
     </Style>
 
+    <!-- Icon badge: 40px circle on the subtle surface, 20px icon -->
+    <Style x:Key="Badge" TargetType="Border">
+        <Setter Property="Width" Value="{StaticResource SizeBadge}" />
+        <Setter Property="Height" Value="{StaticResource SizeBadge}" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusFull}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+
+    <!-- Day stat tile -->
+    <Style x:Key="Stat" TargetType="Border">
+        <Setter Property="Padding" Value="16" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
+    </Style>
+
+    <!-- Text-button row: one 40px row; a lone text button centres in it -->
+    <Style x:Key="FootRow" TargetType="Grid">
+        <Setter Property="MinHeight" Value="{StaticResource SizeControl}" />
+    </Style>
+
 </ResourceDictionary>

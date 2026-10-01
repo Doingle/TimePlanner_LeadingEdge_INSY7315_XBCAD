@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using TimePlanner.Core.Services;
 using TimePlanner.Widget.Models;
 namespace TimePlanner.Widget.Controls
 {
@@ -162,6 +163,11 @@ namespace TimePlanner.Widget.Controls
                 _rows[PathKey(nodePath)] = row;
                 items.Add(row);
             }
+
+            // Core keeps the top-level activities fixed and nests the rest at most MaxDepth deep,
+            // so only the levels in between offer Add
+            if (path.Count == 0 || path.Count >= ActivityService.MaxDepth)
+                return;
 
             if (nodes.Count > 0)
                 items.Add(new Separator { Style = Res<Style>("Menu.Separator") });

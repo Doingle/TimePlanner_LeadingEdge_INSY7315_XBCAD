@@ -131,9 +131,9 @@ namespace TimePlanner.Widget.Views
             var next = scheduler.NextCheckIn(scheduler.Now, TimeSpan.FromMinutes(settings.CheckInIntervalMinutes));
             var lead = _isSettings ? "Next check-in moves to " : "First check-in at ";
 
+            // Tracking runs until the day is ended, so a check-in is always coming unless the timer is paused
             IntervalHelp.Text = next is { } at ? lead + Format.Clock(at)
-                : scheduler.IsPaused ? "The interval counts from when you resume the timer."
-                : $"No check-ins after {Format.Clock(DateTime.Today + settings.WorkdayEnd.ToTimeSpan())} today.";
+                : "The interval counts from when you resume the timer.";
         }
 
         private void Visibility_Checked(object sender, RoutedEventArgs e)
