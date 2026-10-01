@@ -92,7 +92,8 @@ namespace TimePlanner.Widget.Services
 
             await using var scope = scopes.CreateAsyncScope();
             var services = scope.ServiceProvider;
-            var categoryId = await FindOrAddActivityAsync(services.GetRequiredService<ActivityService>(), activity);
+            var categoryId = await FindOrAddActivityAsync(services.GetRequiredService<ActivityService>(),
+                services.GetRequiredService<ICategoryRepository>(), activity);
             var task = await services.GetRequiredService<EntryService>().FindOrCreateTaskAsync(userId, projectId, categoryId);
 
             var factory = services.GetRequiredService<TimeEntryFactory>();
@@ -106,11 +107,9 @@ namespace TimePlanner.Widget.Services
             await services.GetRequiredService<ITimeEntryRepository>().AddRangeAsync(entries);
         }
 
-        /// <summary>
-        /// The activity at a path, adding the levels the user typed that are not in the tree yet. Core
-        /// keeps the top level fixed, so a new activity always goes under one of its categories.
-        /// </summary>
-        private static async Task<int> FindOrAddActivityAsync(ActivityService activities, IReadOnlyList<string> path)
+        /// <summary>The activity at a path, adding the levels the user typed that are not in the tree yet.</summary>
+        private static async Task<int> FindOrAddActivityAsync(ActivityService activities, ICategoryRepository categories,
+            IReadOnlyList<string> path)
         {
             if (await activities.FindByPathAsync(path) is { } existing)
                 return existing;
@@ -118,11 +117,24 @@ namespace TimePlanner.Widget.Services
             if (!path.All(InputLimits.IsValidActivityName))
                 throw new ArgumentException("An activity name is blank, too long, or has characters it cannot have.", nameof(path));
 
-            var id = await activities.FindByPathAsync([path[0]])
-                ?? throw new ArgumentException("A new activity has to go under one of the existing top-level activities.", nameof(path));
+            var id = await activities.FindByPathAsync([path[0]]) ?? await AddTopLevelAsync(categories, path[0].Trim());
             foreach (var name in path.Skip(1))
                 id = await activities.AddActivityAsync(id, name.Trim());
             return id;
+        }
+
+        // ActivityService only adds activities under an existing one, so a new top-level activity goes in
+        // through Core's category repository: after the others, in Category's default colour and billable
+        private static async Task<int> AddTopLevelAsync(ICategoryRepository categories, string name)
+        {
+            var last = (await categories.GetAllAsync())
+                .Where(c => c.ParentCategoryId == null)
+                .Select(c => c.SortOrder)
+                .DefaultIfEmpty()
+                .Max();
+            var category = new Category { Name = name, SortOrder = last + 1 };
+            await categories.AddAsync(category);
+            return category.CategoryId;
         }
 
         /// <summary>
