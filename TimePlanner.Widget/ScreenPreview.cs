@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Design-review and test tooling: compiled into debug builds only, never into a release build.
+#if DEBUG
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -121,3 +123,4 @@ namespace TimePlanner.Widget
         }
     }
 }
+#endif

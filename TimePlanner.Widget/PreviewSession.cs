@@ -76,4 +76,5 @@ namespace TimePlanner.Widget
         public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Local;
     }
 }
+#endif
 

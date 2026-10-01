@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using TimePlanner.Core.Data;
+using TimePlanner.Core.Extensions;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
 
@@ -23,7 +24,7 @@ namespace TimePlanner.Widget
             Directory.CreateDirectory(DataFolder);
             var builder = CreateBuilder();
             var connectionString = builder.Configuration.GetConnectionString("Default")
-                ?? $"Data Source={Path.Combine(DataFolder, "timeplanner.db")}";
+                ?? DatabasePaths.GetDefaultConnectionString();
             Register(builder.Services, window, connectionString, TimeProvider.System,
                 new PreferencesStore(Path.Combine(DataFolder, "widget.json")));
             return builder.Build();
@@ -38,11 +39,11 @@ namespace TimePlanner.Widget
         }
 #endif
 
+        // Core registers its database context per scope, so the migration runs in a scope of its own
         public static async Task MigrateAsync(IServiceProvider services)
         {
-            var factory = services.GetRequiredService<IDbContextFactory<AppDbContext>>();
-            await using var db = await factory.CreateDbContextAsync();
-            await db.Database.MigrateAsync();
+            await using var scope = services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
         }
 
         private static HostApplicationBuilder CreateBuilder()

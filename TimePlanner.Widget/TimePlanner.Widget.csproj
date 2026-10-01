@@ -6,6 +6,9 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UseWPF>true</UseWPF>
+		<!-- Per-monitor DPI awareness (see app.manifest), so the widget stays sharp on every display -->
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<ApplicationIcon>Assests\insy.ico</ApplicationIcon>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -16,6 +19,11 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\TimePlanner.Core\TimePlanner.Core.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The tray icon loads it as Assets/insy.ico -->
+		<Resource Include="Assests\insy.ico" Link="Assets\insy.ico" />
 	</ItemGroup>
 
 </Project>
