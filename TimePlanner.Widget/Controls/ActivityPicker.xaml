@@ -1,0 +1,19 @@
+﻿<UserControl x:Class="TimePlanner.Widget.Controls.ActivityPicker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
+             Focusable="False">
+    <StackPanel>
+        <!-- Closed: the chosen level reads first; the levels above it are smaller context -->
+        <Button x:Name="PickerButton" Style="{StaticResource SelectButton}" Click="PickerButton_Click">
+            <controls:BreadcrumbPanel x:Name="PathPanel" />
+        </Button>
+
+        <!-- Inline error: icon + text, never a colour change alone -->
+        <StackPanel x:Name="ErrorLine" Orientation="Horizontal" Margin="0,8,0,0" Visibility="Collapsed">
+            <controls:Icon Kind="Alert" Size="{StaticResource SizeIconSm}" VerticalAlignment="Top" Margin="0,0,4,0" />
+            <TextBlock Style="{StaticResource Text.Error}" Text="Choose an activity to save this entry." />
+        </StackPanel>
+    </StackPanel>
+</UserControl>
+
