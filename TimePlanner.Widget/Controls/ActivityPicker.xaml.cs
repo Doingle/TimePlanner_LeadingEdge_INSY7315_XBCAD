@@ -5,12 +5,13 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using TimePlanner.Widget.Models;
 namespace TimePlanner.Widget.Controls
 {
 
     public partial class ActivityPicker : UserControl
     {
-        private const string Chevron = "›";   
+        private const string Chevron = "›";  
         private const int RecentLimit = 3;
 
         private readonly Dictionary<string, MenuItem> _rows = [];
@@ -31,6 +32,7 @@ namespace TimePlanner.Widget.Controls
         public event EventHandler? SelectionChanged;
 
         public IReadOnlyList<string> SelectedPath => _selected;
+
 
         public void Load(List<ActivityNode> tree, List<IReadOnlyList<string>> recent, IReadOnlyList<string> selected)
         {
@@ -53,6 +55,7 @@ namespace TimePlanner.Widget.Controls
 
         public void FocusField() => PickerButton.Focus();
 
+
         public void Open(IReadOnlyList<string>? expand = null, IReadOnlyList<string>? addingAt = null)
         {
             _addPath = addingAt;
@@ -73,7 +76,6 @@ namespace TimePlanner.Widget.Controls
                 FocusAddInput();
         }
 
-        // ------------------------------------------------------------------ closed field
 
         private void PickerButton_Click(object sender, RoutedEventArgs e)
         {
@@ -117,8 +119,6 @@ namespace TimePlanner.Widget.Controls
             PickerButton.ToolTip = spoken;
             AutomationProperties.SetName(PickerButton, "Activity, " + spoken);
         }
-
-        // ------------------------------------------------------------------ menu
 
         private ContextMenu BuildMenu()
         {
@@ -200,7 +200,7 @@ namespace TimePlanner.Widget.Controls
 
         private MenuItem AddField(IReadOnlyList<string> path)
         {
-            var input = new TextBox { Style = Res<Style>("Input"), Padding = new Thickness(6, 0, 6, 0) };
+            var input = new TextBox { Style = Res<Style>("Input"), Padding = new Thickness(6, 0, 6, 0), MaxLength = InputLimits.ActivityName };
             Field.SetPlaceholder(input, "New item");
             AutomationProperties.SetName(input, AddLabel(path));
             input.PreviewKeyDown += (_, e) =>
@@ -289,7 +289,7 @@ namespace TimePlanner.Widget.Controls
 
         private void Commit(IReadOnlyList<string> path, string text)
         {
-            var name = text.Trim();
+            var name = InputLimits.CleanActivityName(text);
             if (name.Length == 0)
                 return;
 
@@ -351,7 +351,6 @@ namespace TimePlanner.Widget.Controls
             }
         }
 
-        // ------------------------------------------------------------------ helpers
 
         private static MenuItem? OwningRow(DependencyObject? d)
         {
@@ -404,5 +403,6 @@ namespace TimePlanner.Widget.Controls
             VerticalAlignment = VerticalAlignment.Center,
         };
     }
-
 }
+
+

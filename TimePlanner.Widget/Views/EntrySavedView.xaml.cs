@@ -18,9 +18,24 @@ namespace TimePlanner.Widget.Views
     /// </summary>
     public partial class EntrySavedView : UserControl
     {
-        public EntrySavedView()
+        private readonly WidgetFlow _flow;
+
+        public EntrySavedView(WidgetFlow flow)
         {
             InitializeComponent();
+            _flow = flow;
+
+            var scheduler = flow.Scheduler;
+            Subtitle.Text = scheduler.PromptAt switch
+            {
+                null => "No more check-ins today.",
+                { } due when due <= scheduler.Now => "The next check-in is due now.",
+                { } next => $"Next check-in at {Format.Clock(next)}.",
+            };
         }
+
+        private void KeepTracking_Click(object sender, RoutedEventArgs e) => _flow.KeepTracking();
+
+        private async void EndDay_Click(object sender, RoutedEventArgs e) => await _flow.EndDayAsync();
     }
 }

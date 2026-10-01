@@ -1,12 +1,36 @@
 ﻿<UserControl x:Class="TimePlanner.Widget.Views.TimerView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:TimePlanner.Widget.Views"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-            
-    </Grid>
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
+    
+    <controls:WidgetCard x:Name="Card" Padding="{StaticResource ShellPaddingWithFoot}"
+                         MouseEnter="Card_MouseEnter" MouseLeave="Card_MouseLeave">
+        <controls:WidgetCard.CornerContent>
+            <Button Style="{StaticResource Button.Icon}" ToolTip="Settings" AutomationProperties.Name="Settings" Click="Settings_Click">
+                <controls:Icon Kind="Settings" />
+            </Button>
+        </controls:WidgetCard.CornerContent>
+
+        <StackPanel>
+            <DockPanel>
+                <Button x:Name="PauseButton" Style="{StaticResource Button.IconOutlined}" VerticalAlignment="Top" Margin="0,0,16,0"
+                        ToolTip="Pause the timer" AutomationProperties.Name="Pause the timer" Click="PauseButton_Click">
+                    <controls:Icon x:Name="PauseIcon" Kind="Pause" />
+                </Button>
+                <StackPanel>
+                    <TextBlock x:Name="TimerText" Style="{StaticResource Text.Timer}" Text="01:12"
+                               AutomationProperties.Name="1 hour 12 minutes" />
+                    <TextBlock x:Name="StatusText" Style="{StaticResource Text.Status}" Text="Until your next check-in"
+                               AutomationProperties.LiveSetting="Polite" />
+                </StackPanel>
+            </DockPanel>
+
+            <StackPanel Margin="{StaticResource GapSection}">
+                <Button Style="{StaticResource Button.Primary}" Content="Log now" Click="LogNow_Click" />
+                <Grid Style="{StaticResource FootRow}">
+                    <Button Style="{StaticResource Button.Text}" Content="End day" Click="EndDay_Click" />
+                </Grid>
+            </StackPanel>
+        </StackPanel>
+    </controls:WidgetCard>
 </UserControl>

@@ -1,12 +1,68 @@
-﻿<UserControl x:Class="TimePlanner.Widget.Views.DayEndedView"
+﻿<<UserControl x:Class="TimePlanner.Widget.Views.DayEndedView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:TimePlanner.Widget.Views"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-            
-    </Grid>
-</UserControl>
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
+    
+    <controls:WidgetCard x:Name="Card" Padding="{StaticResource ShellPaddingWithFoot}" AutomationProperties.Name="Day ended">
+        <controls:WidgetCard.CornerContent>
+            <Button Style="{StaticResource Button.Icon}" ToolTip="Close" AutomationProperties.Name="Close" Click="Close_Click">
+                <controls:Icon Kind="Close" />
+            </Button>
+        </controls:WidgetCard.CornerContent>
+
+        <StackPanel>
+            <DockPanel>
+                <Border Style="{StaticResource Badge}" Margin="0,0,16,0">
+                    <controls:Icon Kind="Check" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Title}" Text="Day ended" />
+                    <TextBlock x:Name="DateText" Style="{StaticResource Text.Subtitle}" Text="Tuesday, Aug 1" />
+                </StackPanel>
+            </DockPanel>
+
+            <Grid Margin="{StaticResource GapSection}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource Stat}">
+                    <StackPanel>
+                        <TextBlock x:Name="LoggedValue" Style="{StaticResource Text.Stat}" Text="7h 30m" />
+                        <TextBlock Style="{StaticResource Text.StatLabel}" Text="Logged" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource Stat}">
+                    <StackPanel>
+                        <TextBlock x:Name="EntriesValue" Style="{StaticResource Text.Stat}" Text="8" />
+                        <TextBlock Style="{StaticResource Text.StatLabel}" Text="Entries" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <TextBlock x:Name="EmptyHelp" Style="{StaticResource Text.Help}" Visibility="Collapsed"
+                       Text="There is nothing to export. Resume the day if you are still working." />
+
+            <StackPanel x:Name="ExportActions" Margin="{StaticResource GapSection}">
+                <Button Style="{StaticResource Button.Primary}" AutomationProperties.Name="Export CSV" Click="Export_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <controls:Icon Kind="Download" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Export CSV" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}" Content="Open timesheet"
+                        Click="OpenTimesheet_Click" />
+                <Grid Style="{StaticResource FootRow}">
+                    <Button Style="{StaticResource Button.Text}" Content="Resume day" Click="Resume_Click" />
+                </Grid>
+            </StackPanel>
+
+            <StackPanel x:Name="EmptyActions" Margin="{StaticResource GapSection}" Visibility="Collapsed">
+                <Button Style="{StaticResource Button.Primary}" Content="Resume day" Click="Resume_Click" />
+                <Button Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}" Content="Open timesheet"
+                        Click="OpenTimesheet_Click" />
+            </StackPanel>
+        </StackPanel>
+    </controls:WidgetCard>
+    </UserControl>

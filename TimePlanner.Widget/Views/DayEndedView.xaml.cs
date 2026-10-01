@@ -1,26 +1,45 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using TimePlanner.Widget.Models;
 
 namespace TimePlanner.Widget.Views
 {
-    /// <summary>
-    /// Interaction logic for DayEndedView.xaml
-    /// </summary>
     public partial class DayEndedView : UserControl
     {
-        public DayEndedView()
+        private readonly WidgetFlow _flow;
+        private readonly DaySummary _day;
+
+        public DayEndedView(WidgetFlow flow, DaySummary day)
         {
             InitializeComponent();
+            _flow = flow;
+            _day = day;
+            DateText.Text = Format.Day(day.Day);
+
+            if (day.Entries.Count > 0)
+            {
+                LoggedValue.Text = Format.Duration(day.Logged);
+                EntriesValue.Text = day.Entries.Count.ToString(CultureInfo.InvariantCulture);
+                return;
+            }
+
+            LoggedValue.Text = "0m";
+            EntriesValue.Text = "0";
+            LoggedValue.Foreground = EntriesValue.Foreground = (Brush)FindResource("TextTertiaryBrush");
+            EmptyHelp.Visibility = Visibility.Visible;
+            ExportActions.Visibility = Visibility.Collapsed;
+            EmptyActions.Visibility = Visibility.Visible;
+            Card.Padding = (Thickness)FindResource("ShellPadding");
         }
+
+        private async void Export_Click(object sender, RoutedEventArgs e) => await _flow.ExportCsvAsync(_day);
+
+        private void OpenTimesheet_Click(object sender, RoutedEventArgs e) => _flow.ShowTimesheet(_day);
+
+        private void Resume_Click(object sender, RoutedEventArgs e) => _flow.ResumeDay();
+
+        private void Close_Click(object sender, RoutedEventArgs e) => _flow.DismissDayEnded();
     }
 }

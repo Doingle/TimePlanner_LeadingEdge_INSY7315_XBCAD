@@ -1,12 +1,25 @@
 ﻿<UserControl x:Class="TimePlanner.Widget.Views.EntrySavedView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:TimePlanner.Widget.Views"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-            
-    </Grid>
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
+    
+    <controls:WidgetCard AutomationProperties.Name="Entry saved">
+        <StackPanel>
+            <DockPanel>
+                <Border Style="{StaticResource Badge}" Margin="0,0,16,0">
+                    <controls:Icon Kind="Check" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Title}" Text="Entry saved" />
+                    <TextBlock x:Name="Subtitle" Style="{StaticResource Text.Subtitle}" Text="Next check-in at 6:05 PM." />
+                </StackPanel>
+            </DockPanel>
+
+            <StackPanel Margin="{StaticResource GapSection}">
+                <Button Style="{StaticResource Button.Primary}" Content="Keep tracking" Click="KeepTracking_Click" />
+                <Button Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}" Content="End day" Click="EndDay_Click" />
+            </StackPanel>
+        </StackPanel>
+    </controls:WidgetCard>
 </UserControl>
+

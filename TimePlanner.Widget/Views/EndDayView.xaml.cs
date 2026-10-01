@@ -1,15 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using TimePlanner.Widget.Models;
 
 namespace TimePlanner.Widget.Views
 {
@@ -18,9 +9,32 @@ namespace TimePlanner.Widget.Views
     /// </summary>
     public partial class EndDayView : UserControl
     {
-        public EndDayView()
+        private readonly WidgetFlow _flow;
+
+        public EndDayView(WidgetFlow flow)
         {
             InitializeComponent();
+            _flow = flow;
+
+            var scheduler = flow.Scheduler;
+            var unlogged = scheduler.Unlogged;
+            if (unlogged >= TimeSpan.FromMinutes(1))
+            {
+                Subtitle.Text = $"{Format.Duration(unlogged)} since {Format.Clock(scheduler.PeriodStart)} is not logged yet.";
+                LogLastButton.Content = $"Log the last {Format.Duration(unlogged)}";
+            }
+            else
+            {
+                Subtitle.Text = $"Everything is logged up to {Format.Clock(scheduler.PeriodStart)}.";
+                UnloggedActions.Visibility = Visibility.Collapsed;
+                LoggedActions.Visibility = Visibility.Visible;
+            }
         }
+
+        private async void LogLast_Click(object sender, RoutedEventArgs e) => await _flow.LogTimeAsync(LogEntryMode.EndOfDay);
+
+        private async void EndDay_Click(object sender, RoutedEventArgs e) => await _flow.EndDayAsync();
+
+        private void Cancel_Click(object sender, RoutedEventArgs e) => _flow.ShowTimer(activate: true);
     }
 }

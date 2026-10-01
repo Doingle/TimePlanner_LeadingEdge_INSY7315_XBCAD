@@ -1,15 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using TimePlanner.Widget.Models;
 
 namespace TimePlanner.Widget.Views
 {
@@ -18,9 +9,22 @@ namespace TimePlanner.Widget.Views
     /// </summary>
     public partial class CheckInAlertView : UserControl
     {
-        public CheckInAlertView()
+        private readonly WidgetFlow _flow;
+
+        public CheckInAlertView(WidgetFlow flow)
         {
             InitializeComponent();
+            _flow = flow;
+            Subtitle.Text = $"Log what you did since {Format.Clock(flow.Scheduler.PeriodStart)}.";
+
+            var snoozes = flow.Snooze.Left;
+            SnoozeButton.Content = $"Snooze {Format.Interval(flow.Snooze.Minutes)} ({snoozes} left)";
+            SnoozeButton.Visibility = snoozes > 0 ? Visibility.Visible : Visibility.Collapsed;
+            NoSnoozes.Visibility = snoozes > 0 ? Visibility.Collapsed : Visibility.Visible;
         }
+
+        private async void LogTime_Click(object sender, RoutedEventArgs e) => await _flow.LogTimeAsync(LogEntryMode.CheckIn);
+
+        private void Snooze_Click(object sender, RoutedEventArgs e) => _flow.SnoozeCheckIn();
     }
 }
