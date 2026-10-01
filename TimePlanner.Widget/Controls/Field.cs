@@ -31,3 +31,4 @@ namespace TimePlanner.Widget.Controls
         public static IconKind GetGlyph(DependencyObject d) => (IconKind)d.GetValue(GlyphProperty);
         public static void SetGlyph(DependencyObject d, IconKind value) => d.SetValue(GlyphProperty, value);
     }
+}
