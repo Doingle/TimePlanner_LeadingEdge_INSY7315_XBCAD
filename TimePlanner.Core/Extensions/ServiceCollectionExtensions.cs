@@ -13,10 +13,15 @@ namespace TimePlanner.Core.Extensions
 
         //----------------------------------------------------------------
         //this helper method registers all core repositories, db contexts and services into dependancy injection container
-        //scoped lifetimes, so a web request or a widget operation gets one DbContext shared by its repositories
-        public static IServiceCollection AddTimePlannerCore(this IServiceCollection services, string connectionString)
+        public static IServiceCollection AddTimePlannerCore(this IServiceCollection services, string connectionString) =>
+            services.AddTimePlannerCore<AppDbContext>(o => o.UseSqlite(connectionString));
+
+        //-----------------------------
+        //registers core with any provider and context type
+        public static IServiceCollection AddTimePlannerCore<TContext>(this IServiceCollection services, Action<DbContextOptionsBuilder> configureDatabase)
+            where TContext : AppDbContext
         {
-            services.AddDbContext<AppDbContext>(o => o.UseSqlite(connectionString));
+            services.AddDbContext<AppDbContext, TContext>(configureDatabase);
 
             services.AddScoped<ICompanyRepository, SQLiteCompanyRepository>();
             services.AddScoped<IProjectRepository, SQLiteProjectRepository>();
@@ -36,7 +41,7 @@ namespace TimePlanner.Core.Extensions
             services.AddScoped<EntryService>();
             services.AddScoped<LocalSetupService>();
 
-            //one engine and clock for the widget lifetime
+            //single engine and clock for the widget lifetime
             services.AddSingleton<IClock, SystemClock>();
             services.AddSingleton<CheckInEngine>();
 

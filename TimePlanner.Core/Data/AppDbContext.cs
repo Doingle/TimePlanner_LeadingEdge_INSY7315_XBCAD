@@ -10,6 +10,12 @@ namespace TimePlanner.Core.Data
 
         }
 
+        //-----------------------------
+        //lets provider specific subclasses pass their own options
+        protected AppDbContext(DbContextOptions options) : base(options)
+        {
+        }
+
         public DbSet<Company> Companies => Set<Company>();
         public DbSet<Project> Projects => Set<Project>();
         public DbSet<WorkTask> Tasks => Set<WorkTask>();
