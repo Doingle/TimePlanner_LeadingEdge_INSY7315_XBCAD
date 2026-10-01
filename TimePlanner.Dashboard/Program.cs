@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
@@ -9,18 +11,22 @@ using TimePlanner.Core.Data;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Dashboard.Data;
 using TimePlanner.Dashboard.Data.SqlServer;
+using TimePlanner.Dashboard.Security;
 using TimePlanner.Dashboard.Services;
 using TimePlanner.Dashboard.Services.Reports;
 using TimePlanner.Dashboard.Services.TimesheetImport;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("Default")
+// Settings are read when they are needed, not here: configuration added by the host (and by the test host) is only final once the app is built.
+static string ConnectionString(IServiceProvider services) =>
+    services.GetRequiredService<IConfiguration>().GetConnectionString("Default")
     ?? throw new InvalidOperationException("ConnectionStrings:Default is not configured.");
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+//sqlite locally and in tests while azure sets SqlServer
 //sqlite locally and in tests while azure sets SqlServer
 var useSqlServer = string.Equals(builder.Configuration["Database:Provider"], "SqlServer", StringComparison.OrdinalIgnoreCase);
 
@@ -28,16 +34,22 @@ var useSqlServer = string.Equals(builder.Configuration["Database:Provider"], "Sq
 //identity keeps its own history table either way
 if (useSqlServer)
 {
-    builder.Services.AddTimePlannerCore<SqlServerAppDbContext>(o => o.UseSqlServer(connectionString));
-    builder.Services.AddDbContext<AuthDbContext, SqlServerAuthDbContext>(options =>
-        options.UseSqlServer(connectionString, s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
+    builder.Services.AddTimePlannerCore<SqlServerAppDbContext>((services, o) => o.UseSqlServer(ConnectionString(services)));
+    builder.Services.AddDbContext<AuthDbContext, SqlServerAuthDbContext>((services, options) =>
+        options.UseSqlServer(ConnectionString(services), s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
 }
 else
 {
-    builder.Services.AddTimePlannerCore(connectionString);
-    builder.Services.AddDbContext<AuthDbContext>(options =>
-        options.UseSqlite(connectionString, s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
+    builder.Services.AddTimePlannerCore(ConnectionString);
+    builder.Services.AddDbContext<AuthDbContext>((services, options) =>
+        options.UseSqlite(ConnectionString(services), s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
 }
+builder.AddTimePlannerSecurity();
+builder.Services.AddTimePlannerCore(ConnectionString);
+
+// Identity lives in its own context and migration history so it never collides with AppDbContext migrations.
+builder.Services.AddDbContext<AuthDbContext>((services, options) =>
+    options.UseSqlite(ConnectionString(services), s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(o =>
 {
@@ -69,6 +81,8 @@ builder.Services.ConfigureApplicationCookie(o =>
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddScoped<TimesheetImportService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AuditLogger>();
 builder.Services.AddAuthentication().AddJwtBearer(o =>
 {
     // keep the short claim names ("email", "role") instead of renaming them to long schema urls
@@ -121,6 +135,12 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+// Behind a reverse proxy this must come first so the client address and https scheme are the real ones (only when Proxy:TrustForwardedHeaders is set).
+if (app.Configuration.GetValue<bool>("Proxy:TrustForwardedHeaders"))
+    app.UseForwardedHeaders();
+
+app.UseTimePlannerSecurityHeaders();
+
 // Api failures are always json problem details and never a stack trace or the html error page, in every environment.
 app.UseWhen(ctx => ctx.Request.Path.StartsWithSegments("/api"), api => api.UseExceptionHandler(errors => errors.Run(async ctx =>
 {
@@ -138,7 +158,6 @@ app.UseWhen(ctx => ctx.Request.Path.StartsWithSegments("/api"), api => api.UseEx
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -154,6 +173,18 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Api:Ena
 app.UseRouting();
 
 app.UseAuthentication();
+
+// Pages use the cookie scheme, which UseAuthentication has just run. Api calls carry a bearer token instead, so it is checked here as well:
+// the import limit is per user and needs to know who is calling before the limiter runs.
+app.UseWhen(ctx => ctx.Request.Path.StartsWithSegments("/api"), api => api.Use(async (ctx, next) =>
+{
+    var result = await ctx.AuthenticateAsync(JwtBearerDefaults.AuthenticationScheme);
+    if (result.Succeeded)
+        ctx.User = result.Principal;
+    await next();
+}));
+
+app.UseRateLimiter();
 app.UseAuthorization();
 
 // API docs are on in Development, and in other environments only when Api:EnableDocs is set.

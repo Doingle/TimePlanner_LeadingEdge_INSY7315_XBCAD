@@ -4,7 +4,9 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Domain.Enums;
@@ -16,7 +18,8 @@ namespace TimePlanner.Api.Tests
 {
     //-----------------------------
     //runs the real Dashboard in memory against a throwaway sqlite file with test only credentials and signing key.
-    //Environment variables are used because they outrank every other configuration source, so a developer's user-secrets can never leak into a test run
+    //Settings are added as the last configuration source so they outrank everything else, and the Testing environment never loads user-secrets,
+    //so a developer's own configuration can never leak into a test run. Every instance has its own settings, so a test can start a differently configured host
     public class ApiFactory : WebApplicationFactory<Program>
     {
         public const string AdminEmail = "admin@test.local";
@@ -25,17 +28,22 @@ namespace TimePlanner.Api.Tests
 
         private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"timeplanner-apitests-{Guid.NewGuid():N}.db");
 
-        public ApiFactory()
+        //-----------------------------
+        //the settings this host runs with. Rate limits are far above anything a test does, unless a test host lowers them
+        protected virtual Dictionary<string, string?> Settings() => new()
         {
-            Environment.SetEnvironmentVariable("ConnectionStrings__Default", $"Data Source={_dbPath}");
-            Environment.SetEnvironmentVariable("Seed__AdminEmail", AdminEmail);
-            Environment.SetEnvironmentVariable("Seed__AdminPassword", AdminPassword);
-            Environment.SetEnvironmentVariable("Jwt__Key", JwtKey);
-        }
+            ["ConnectionStrings:Default"] = $"Data Source={_dbPath}",
+            ["Seed:AdminEmail"] = AdminEmail,
+            ["Seed:AdminPassword"] = AdminPassword,
+            ["Jwt:Key"] = JwtKey,
+            ["RateLimiting:LoginPerMinute"] = "100000",
+            ["RateLimiting:ImportPerMinute"] = "100000"
+        };
 
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(Settings()));
         }
 
         //-----------------------------
@@ -127,6 +135,14 @@ namespace TimePlanner.Api.Tests
             var token = (await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("accessToken").GetString();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             return client;
+        }
+
+        //-----------------------------
+        //every audit row written so far, oldest first
+        public async Task<List<AuditEvent>> AuditEventsAsync()
+        {
+            using var scope = Services.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<AuthDbContext>().AuditEvents.AsNoTracking().OrderBy(e => e.Id).ToListAsync();
         }
 
         public async Task<bool> IsLockedOutAsync(string email)

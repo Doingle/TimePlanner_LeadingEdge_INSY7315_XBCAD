@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using TimePlanner.Dashboard.Security;
 using TimePlanner.Dashboard.Services.TimesheetImport;
 
 namespace TimePlanner.Dashboard.Controllers.Api
@@ -16,6 +18,7 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //the entries always belong to the caller (taken from the token), the body has no user field.
         //200 when stored (Created and Skipped count the entries), 400 with a row by row error list and nothing stored otherwise
         [HttpPost("import")]
+        [EnableRateLimiting(SecurityExtensions.ImportLimiter)]
         [RequestSizeLimit(2_000_000)]
         public async Task<ActionResult<ImportResult>> Import(ImportRequest request)
         {
@@ -33,6 +36,7 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //-----------------------------
         //the same import for a csv file sent as multipart form data in a field called file
         [HttpPost("import/csv")]
+        [EnableRateLimiting(SecurityExtensions.ImportLimiter)]
         [RequestSizeLimit(1_100_000)]
         public async Task<ActionResult<ImportResult>> ImportCsv(IFormFile file)
         {

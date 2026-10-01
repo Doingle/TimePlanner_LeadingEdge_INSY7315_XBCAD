@@ -4,6 +4,8 @@ using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Core.Repositories.Interfaces;
 using TimePlanner.Core.Services;
+using TimePlanner.Dashboard.Data;
+using TimePlanner.Dashboard.Services;
 
 namespace TimePlanner.Dashboard.Services.TimesheetImport
 {
@@ -31,10 +33,12 @@ namespace TimePlanner.Dashboard.Services.TimesheetImport
         private readonly IProjectRepository _projects;
         private readonly ITimeEntryRepository _timeEntries;
         private readonly TimeEntryFactory _factory;
+        private readonly AuditLogger _audit;
 
         public TimesheetImportService(AppDbContext db, EntryService entries, ActivityService activities, ICategoryRepository categories,
-            IProjectRepository projects, ITimeEntryRepository timeEntries, TimeEntryFactory factory)
+            IProjectRepository projects, ITimeEntryRepository timeEntries, TimeEntryFactory factory, AuditLogger audit)
         {
+            _audit = audit;
             _db = db;
             _entries = entries;
             _activities = activities;
@@ -81,9 +85,14 @@ namespace TimePlanner.Dashboard.Services.TimesheetImport
 
             var (valid, errors) = await ValidateAsync(rows);
             if (errors.Count > 0)
+            {
+                await _audit.LogAsync(AuditActions.TimesheetImportRejected, $"profile {userId}, {errors.Count} problem(s) in {rows.Count} row(s)");
                 return new ImportResult(0, 0, errors);
+            }
 
-            return await StoreAsync(userId, valid);
+            var stored = await StoreAsync(userId, valid);
+            await _audit.LogAsync(AuditActions.TimesheetImported, $"profile {userId}, created {stored.Created}, skipped {stored.Skipped}");
+            return stored;
         }
 
         //-----------------------------

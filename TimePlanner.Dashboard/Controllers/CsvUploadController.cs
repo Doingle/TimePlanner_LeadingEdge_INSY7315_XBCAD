@@ -1,6 +1,8 @@
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using TimePlanner.Dashboard.Security;
 using TimePlanner.Dashboard.Data;
 using TimePlanner.Dashboard.Services.TimesheetImport;
 
@@ -27,6 +29,7 @@ namespace TimePlanner.Dashboard.Controllers
         //the signed in user uploads a timesheet exported by the widget. Entries are stored for that user only
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting(SecurityExtensions.ImportLimiter)]
         [RequestSizeLimit(1_100_000)]
         public async Task<IActionResult> Index(IFormFile? file)
         {

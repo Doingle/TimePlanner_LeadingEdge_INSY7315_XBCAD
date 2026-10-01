@@ -20,5 +20,22 @@ namespace TimePlanner.Dashboard.Data
         //-----------------------------
         //lets provider specific subclasses pass their own options
         protected AuthDbContext(DbContextOptions options) : base(options) { }
+        
+        public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+
+            builder.Entity<AuditEvent>(e =>
+            {
+                e.Property(x => x.Email).HasMaxLength(256);
+                e.Property(x => x.Action).HasMaxLength(50).IsRequired();
+                e.Property(x => x.Detail).HasMaxLength(500);
+                e.Property(x => x.IpAddress).HasMaxLength(45);
+                e.HasIndex(x => x.TimestampUtc);
+                e.HasIndex(x => x.Action);
+            });
+        }
     }
 }
