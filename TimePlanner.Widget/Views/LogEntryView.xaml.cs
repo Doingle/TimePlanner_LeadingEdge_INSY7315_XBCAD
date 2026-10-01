@@ -97,7 +97,7 @@ namespace TimePlanner.Widget.Views
             }
         }
 
-        private void Snooze_Click(object sender, RoutedEventArgs e) => _flow.SnoozeCheckIn();
+        private async void Snooze_Click(object sender, RoutedEventArgs e) => await _flow.SnoozeCheckInAsync();
 
         private void Cancel_Click(object sender, RoutedEventArgs e) => _flow.CancelLogEntry(_mode);
 

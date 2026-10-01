@@ -1,4 +1,6 @@
-﻿using Microsoft.Data.Sqlite;
+﻿// Design-review and test tooling: compiled into debug builds only, never into a release build.
+#if DEBUG
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
@@ -52,10 +54,10 @@ namespace TimePlanner.Widget
             return this;
         }
 
-        public WidgetFlow StartDayAt(int hour, int minute)
+        public async Task<WidgetFlow> StartDayAtAsync(int hour, int minute)
         {
             At(hour, minute);
-            Flow.Scheduler.Start();
+            await Flow.Scheduler.StartAsync();
             return Flow;
         }
 

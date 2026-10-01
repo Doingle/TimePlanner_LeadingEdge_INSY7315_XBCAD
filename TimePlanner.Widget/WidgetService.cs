@@ -9,6 +9,7 @@ using System.IO;
 using System.Text;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Extensions;
+using TimePlanner.Core.Services;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
 
@@ -64,11 +65,13 @@ namespace TimePlanner.Widget
         {
             services.AddTimePlannerCore(connectionString);
 
+            // Core's check-in engine runs on the widget's clock rather than the system's, so the previews can set it
+            services.AddSingleton<IClock>(new TimeProviderClock(clock));
+
             services.AddSingleton(window);
             services.AddSingleton(clock);
             services.AddSingleton(preferences);
             services.AddSingleton<WidgetSession>();
-            services.AddSingleton<LunchBreakDetector>();
             services.AddSingleton<SnoozeManager>();
             services.AddSingleton<CheckInScheduler>();
             services.AddSingleton<TimeLogService>();
