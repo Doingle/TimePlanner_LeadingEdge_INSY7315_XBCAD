@@ -13,17 +13,22 @@ namespace TimePlanner.Core.Extensions
 
         //----------------------------------------------------------------
         //this helper method registers all core repositories, db contexts and services into dependancy injection container
-        //scoped lifetimes, so a web request or a widget operation gets one DbContext shared by its repositories
+ //scoped lifetimes, so a web request or a widget operation gets one DbContext shared by its repositories
         public static IServiceCollection AddTimePlannerCore(this IServiceCollection services, string connectionString) =>
             services.AddTimePlannerCore(_ => connectionString);
 
         //----------------------------------------------------------------
         //same registration, but the connection string is looked up when the first database context is created. A web host uses this so the value
         //can come from configuration that is only final once the host is built (and so a test host can run against its own database)
-        public static IServiceCollection AddTimePlannerCore(this IServiceCollection services, Func<IServiceProvider, string> connectionString)
-        {
-            services.AddDbContext<AppDbContext>((sp, o) => o.UseSqlite(connectionString(sp)));
+        public static IServiceCollection AddTimePlannerCore(this IServiceCollection services, Func<IServiceProvider, string> connectionString) =>
+            services.AddTimePlannerCore<AppDbContext>((sp, o) => o.UseSqlite(connectionString(sp)));
 
+        //-----------------------------
+        //registers core with any provider and context type
+        public static IServiceCollection AddTimePlannerCore<TContext>(this IServiceCollection services, Action<IServiceProvider, DbContextOptionsBuilder> configureDatabase)
+            where TContext : AppDbContext
+        {
+            services.AddDbContext<AppDbContext, TContext>(configureDatabase);
             services.AddScoped<ICompanyRepository, SQLiteCompanyRepository>();
             services.AddScoped<IProjectRepository, SQLiteProjectRepository>();
             services.AddScoped<IWorkTaskRepository, SQLiteWorkTaskRepository>();
@@ -42,7 +47,7 @@ namespace TimePlanner.Core.Extensions
             services.AddScoped<EntryService>();
             services.AddScoped<LocalSetupService>();
 
-            //one engine and clock for the widget lifetime
+            //single engine and clock for the widget lifetime
             services.AddSingleton<IClock, SystemClock>();
             services.AddSingleton<CheckInEngine>();
 

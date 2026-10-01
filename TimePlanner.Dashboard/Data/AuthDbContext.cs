@@ -17,6 +17,10 @@ namespace TimePlanner.Dashboard.Data
     {
         public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options) { }
 
+        //-----------------------------
+        //lets provider specific subclasses pass their own options
+        protected AuthDbContext(DbContextOptions options) : base(options) { }
+        
         public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
         protected override void OnModelCreating(ModelBuilder builder)

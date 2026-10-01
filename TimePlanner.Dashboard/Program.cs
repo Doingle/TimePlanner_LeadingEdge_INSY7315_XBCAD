@@ -10,6 +10,7 @@ using Microsoft.OpenApi;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Dashboard.Data;
+using TimePlanner.Dashboard.Data.SqlServer;
 using TimePlanner.Dashboard.Security;
 using TimePlanner.Dashboard.Services;
 using TimePlanner.Dashboard.Services.Reports;
@@ -24,6 +25,25 @@ static string ConnectionString(IServiceProvider services) =>
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+//sqlite locally and in tests while azure sets SqlServer
+//sqlite locally and in tests while azure sets SqlServer
+var useSqlServer = string.Equals(builder.Configuration["Database:Provider"], "SqlServer", StringComparison.OrdinalIgnoreCase);
+
+//each provider keeps its own context types and migrations
+//identity keeps its own history table either way
+if (useSqlServer)
+{
+    builder.Services.AddTimePlannerCore<SqlServerAppDbContext>((services, o) => o.UseSqlServer(ConnectionString(services)));
+    builder.Services.AddDbContext<AuthDbContext, SqlServerAuthDbContext>((services, options) =>
+        options.UseSqlServer(ConnectionString(services), s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
+}
+else
+{
+    builder.Services.AddTimePlannerCore(ConnectionString);
+    builder.Services.AddDbContext<AuthDbContext>((services, options) =>
+        options.UseSqlite(ConnectionString(services), s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
+}
 builder.AddTimePlannerSecurity();
 builder.Services.AddTimePlannerCore(ConnectionString);
 
