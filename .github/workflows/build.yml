@@ -7,7 +7,40 @@ on:
     branches: [ main, development ]
 
 jobs:
-  build:
+  # Core, Dashboard and both test projects. Runs on its own machine, so it reports on its own
+  # even when the widget job below is failing.
+  backend:
+    name: Backend (Core, Dashboard, tests)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Restoring the two test projects also restores everything they reference (Core and Dashboard).
+      - name: Restore dependencies
+        run: |
+          dotnet restore TimePlanner.Core.Tests
+          dotnet restore TimePlanner.Api.Tests
+
+      - name: Build
+        run: |
+          dotnet build TimePlanner.Core.Tests --no-restore --configuration Release
+          dotnet build TimePlanner.Api.Tests --no-restore --configuration Release
+
+      - name: Run tests
+        run: |
+          dotnet test TimePlanner.Core.Tests --no-build --configuration Release
+          dotnet test TimePlanner.Api.Tests --no-build --configuration Release
+
+  # The WPF widget needs Windows. Kept separate so a widget problem is visible as its own check.
+  widget:
+    name: Widget (WPF)
     runs-on: windows-latest
 
     steps:
@@ -20,10 +53,7 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore TimePlanner.slnx
+        run: dotnet restore TimePlanner.Widget
 
-      - name: Build solution
-        run: dotnet build TimePlanner.slnx --no-restore --configuration Release
-
-      - name: Run tests
-        run: dotnet test TimePlanner.slnx --no-build --configuration Release
+      - name: Build
+        run: dotnet build TimePlanner.Widget --no-restore --configuration Release
