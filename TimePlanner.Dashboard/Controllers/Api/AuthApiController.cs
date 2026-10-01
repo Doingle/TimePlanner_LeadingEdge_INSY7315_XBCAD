@@ -66,6 +66,7 @@ namespace TimePlanner.Dashboard.Controllers.Api
             return Ok(new
             {
                 Email = User.FindFirst("email")?.Value,
+                AppUserId = User.FindFirst("uid")?.Value,
                 Roles = User.FindAll("role").Select(c => c.Value)
             });
         }
