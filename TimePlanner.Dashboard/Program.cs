@@ -8,6 +8,7 @@ using Microsoft.OpenApi;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Dashboard.Data;
+using TimePlanner.Dashboard.Data.SqlServer;
 using TimePlanner.Dashboard.Services;
 using TimePlanner.Dashboard.Services.Reports;
 using TimePlanner.Dashboard.Services.TimesheetImport;
@@ -19,11 +20,24 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
-builder.Services.AddTimePlannerCore(connectionString);
 
-// Identity lives in its own context and migration history so it never collides with AppDbContext migrations.
-builder.Services.AddDbContext<AuthDbContext>(options =>
-    options.UseSqlite(connectionString, s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
+//sqlite locally and in tests while azure sets SqlServer
+var useSqlServer = string.Equals(builder.Configuration["Database:Provider"], "SqlServer", StringComparison.OrdinalIgnoreCase);
+
+//each provider keeps its own context types and migrations
+//identity keeps its own history table either way
+if (useSqlServer)
+{
+    builder.Services.AddTimePlannerCore<SqlServerAppDbContext>(o => o.UseSqlServer(connectionString));
+    builder.Services.AddDbContext<AuthDbContext, SqlServerAuthDbContext>(options =>
+        options.UseSqlServer(connectionString, s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
+}
+else
+{
+    builder.Services.AddTimePlannerCore(connectionString);
+    builder.Services.AddDbContext<AuthDbContext>(options =>
+        options.UseSqlite(connectionString, s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
+}
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(o =>
 {

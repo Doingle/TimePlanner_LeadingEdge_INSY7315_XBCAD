@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,5 +16,9 @@ namespace TimePlanner.Dashboard.Data
     public class AuthDbContext : IdentityDbContext<ApplicationUser>
     {
         public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options) { }
+
+        //-----------------------------
+        //lets provider specific subclasses pass their own options
+        protected AuthDbContext(DbContextOptions options) : base(options) { }
     }
 }
