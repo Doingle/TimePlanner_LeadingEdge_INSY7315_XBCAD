@@ -38,7 +38,7 @@ namespace TimePlanner.Widget.Views
 
         private void OpenTimesheet_Click(object sender, RoutedEventArgs e) => _flow.ShowTimesheet(_day);
 
-        private void Resume_Click(object sender, RoutedEventArgs e) => _flow.ResumeDay();
+        private async void Resume_Click(object sender, RoutedEventArgs e) => await _flow.ResumeDayAsync();
 
         private void Close_Click(object sender, RoutedEventArgs e) => _flow.DismissDayEnded();
     }

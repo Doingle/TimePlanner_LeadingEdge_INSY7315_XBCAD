@@ -76,7 +76,7 @@ namespace TimePlanner.Widget
 #if DEBUG
             _tray.AddPreviews(ShowPreview);
 #endif
-            _flow.ShowSetup();
+            _flow.ShowStart();
         }
 
         protected override void OnExit(ExitEventArgs e)

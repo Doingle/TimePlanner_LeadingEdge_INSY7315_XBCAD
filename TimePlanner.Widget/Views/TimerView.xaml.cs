@@ -65,16 +65,16 @@ namespace TimePlanner.Widget.Views
             TimerText.Foreground = (Brush)FindResource(paused != null ? "TextTertiaryBrush" : "TextPrimaryBrush");
             StatusText.Text = paused is { } pausedAt ? $"Paused at {Format.Clock(pausedAt)}"
                 : left == null ? "No more check-ins today"
-                : _flow.Snooze.SnoozedUntil is { } until && until >= scheduler.CheckInAt ? $"Check-in snoozed until {Format.Clock(until)}"
+                : scheduler.IsSnoozed && _flow.Snooze.SnoozedUntil is { } until ? $"Check-in snoozed until {Format.Clock(until)}"
                 : "Until your next check-in";
         }
 
-        private void PauseButton_Click(object sender, RoutedEventArgs e)
+        private async void PauseButton_Click(object sender, RoutedEventArgs e)
         {
             if (_flow.Scheduler.IsPaused)
-                _flow.Scheduler.Resume();
+                await _flow.Scheduler.ResumeAsync();
             else
-                _flow.Scheduler.Pause();
+                await _flow.Scheduler.PauseAsync();
             ShowState();
         }
 

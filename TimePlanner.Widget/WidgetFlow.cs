@@ -12,22 +12,6 @@ using TimePlanner.Widget.Views;
 
 namespace TimePlanner.Widget
 {
-    /// <summary>Which way into the Log entry form the user came, which decides its way out.</summary>
-    public enum LogEntryMode
-    {
-        CheckIn,
-        LogNow,
-        EndOfDay,
-    }
-
-    /// <summary>Somewhere the widget can show a screen. The widget window implements it.</summary>
-    public interface IWidgetHost
-    {
-        void Present(FrameworkElement screen, bool activate = true);
-
-        void HideWidget();
-    }
-
     public sealed class WidgetFlow
     {
         private enum Screen
@@ -81,6 +65,16 @@ namespace TimePlanner.Widget
             Session.User = await _log.SignInAsync();
             Session.Preferences = _preferences.Load();
             (Session.ProjectId, Session.Activity) = await _log.GetLastChoiceAsync(Session.User.UserId);
+            await Scheduler.InitialiseAsync();
+        }
+
+        /// <summary>The first screen: Setup, or the idle widget when today is still being tracked (the widget was restarted).</summary>
+        public void ShowStart()
+        {
+            if (Scheduler.IsRunning)
+                ShowIdle();
+            else
+                ShowSetup();
         }
 
         public SetupView ShowSetup()
@@ -90,10 +84,10 @@ namespace TimePlanner.Widget
             return view;
         }
 
-        public void StartTracking()
+        public async Task StartTrackingAsync()
         {
             _endedDay = null;
-            Scheduler.Start();
+            await Scheduler.StartAsync();
             ShowIdle();
         }
 
@@ -143,23 +137,23 @@ namespace TimePlanner.Widget
                 SystemSounds.Asterisk.Play();
         }
 
-        public void SnoozeCheckIn()
+        public async Task SnoozeCheckInAsync()
         {
-            Snooze.Snooze();
+            await Snooze.SnoozeAsync();
             ShowIdle();
         }
 
-
-        public LogPeriod GetLogPeriod(LogEntryMode mode)
+        /// <summary>The time still to log: from the end of the last entry (or the start of the day) until now, as Core logs it.</summary>
+        public LogPeriod GetLogPeriod()
         {
             var start = Scheduler.PeriodStart;
-            var end = mode == LogEntryMode.CheckIn && Scheduler.CheckInAt is { } due && due <= Scheduler.Now ? due : Scheduler.Now;
+            var end = Scheduler.Now;
             return new LogPeriod(start, end, Scheduler.WorkedBetween(start, end));
         }
 
         public async Task<LogEntryView> LogTimeAsync(LogEntryMode mode)
         {
-            var period = GetLogPeriod(mode);
+            var period = GetLogPeriod();
             var projects = await _log.GetProjectsAsync();
             var project = projects.FirstOrDefault(p => p.ProjectID == Session.ProjectId) ?? projects.FirstOrDefault();
             var activities = project != null ? await GetActivitiesAsync(project.ProjectID) : ActivityChoices.Empty();
@@ -181,12 +175,12 @@ namespace TimePlanner.Widget
 
         public async Task SaveEntryAsync(LogEntryMode mode, LogPeriod period, int projectId, IReadOnlyList<string> activity, string? note)
         {
-            var end = mode == LogEntryMode.CheckIn ? period.End : Scheduler.Now;
+            var end = Scheduler.Now;
             var method = mode == LogEntryMode.CheckIn ? EntryMethod.AutoPrompted : EntryMethod.Manual;
             await _log.SaveAsync(Session.User.UserId, projectId, activity, period.Start, end, note, method,
                 Scheduler.BreaksBetween(period.Start, end));
 
-            Scheduler.Logged(end);
+            await Scheduler.LoggedAsync();
             Session.ProjectId = projectId;
             Session.Activity = activity;
 
@@ -203,7 +197,7 @@ namespace TimePlanner.Widget
 
         public async Task<DaySummary> EndDayAsync()
         {
-            Scheduler.EndDay();
+            await Scheduler.EndDayAsync();
             var day = await _log.GetDayAsync(Session.User.UserId, Scheduler.Now);
             ShowDayEnded(day);
             return day;
@@ -215,10 +209,10 @@ namespace TimePlanner.Widget
             Present(Screen.DayEnded, new DayEndedView(this, day));
         }
 
-        public void ResumeDay()
+        public async Task ResumeDayAsync()
         {
             _endedDay = null;
-            Scheduler.ResumeDay();
+            await Scheduler.ResumeDayAsync();
             ShowIdle();
         }
 
@@ -240,14 +234,15 @@ namespace TimePlanner.Widget
                 InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             };
             if (dialog.ShowDialog(Application.Current.MainWindow) == true)
-                await _csv.WriteAsync(dialog.FileName, day.Entries, Session.User);
+                await _csv.WriteAsync(dialog.FileName, day.Entries);
         }
 
         public async Task ChangeIntervalAsync(int minutes)
         {
             Session.Settings.CheckInIntervalMinutes = minutes;
-            Scheduler.IntervalChanged();
             await _log.SaveSettingsAsync(Session.Settings);
+            // The engine reads the interval from the saved settings
+            await Scheduler.IntervalChangedAsync();
         }
 
         public void SavePreferences() => _preferences.Save(Session.Preferences);

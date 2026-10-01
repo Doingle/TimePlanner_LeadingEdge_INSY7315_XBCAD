@@ -164,9 +164,8 @@ namespace TimePlanner.Widget.Controls
                 items.Add(row);
             }
 
-            // Core keeps the top-level activities fixed and nests the rest at most MaxDepth deep,
-            // so only the levels in between offer Add
-            if (path.Count == 0 || path.Count >= ActivityService.MaxDepth)
+            // Core nests activities at most MaxDepth deep, so the deepest level offers no Add
+            if (path.Count >= ActivityService.MaxDepth)
                 return;
 
             if (nodes.Count > 0)
@@ -259,32 +258,38 @@ namespace TimePlanner.Widget.Controls
         private void BeginAdding(MenuItem addRow, IReadOnlyList<string> path)
         {
             CancelAdding();
-            if (ItemsControl.ItemsControlFromItemContainer(addRow) is not { } parent)
-                return;
-
-            var index = parent.Items.IndexOf(addRow);
-            if (index < 0)
-                return;
-
-            parent.Items[index] = AddField(path);
+            var field = AddField(path);
+            Replace(addRow, field, _addInput);
             FocusAddInput();
         }
 
         private void CancelAdding()
         {
-            if (_addField != null && _addPath != null && ItemsControl.ItemsControlFromItemContainer(_addField) is { } parent)
+            if (_addField != null && _addPath != null)
             {
-                var index = parent.Items.IndexOf(_addField);
-                if (index >= 0)
-                {
-                    var row = AddRow(_addPath);
-                    parent.Items[index] = row;
-                    Dispatcher.BeginInvoke(DispatcherPriority.Input, () => row.Focus());
-                }
+                var row = AddRow(_addPath);
+                Replace(_addField, row, row);
             }
             _addPath = null;
             _addField = null;
             _addInput = null;
+        }
+
+        // Puts one menu item in place of another. Keyboard focus moves to the new one before the old one
+        // goes: removing the focused item would take focus out of the menu, and a context menu closes then.
+        private static void Replace(MenuItem current, MenuItem replacement, UIElement? focus)
+        {
+            if (ItemsControl.ItemsControlFromItemContainer(current) is not { } parent)
+                return;
+
+            var index = parent.Items.IndexOf(current);
+            if (index < 0)
+                return;
+
+            parent.Items.Insert(index, replacement);
+            replacement.UpdateLayout();
+            focus?.Focus();
+            parent.Items.Remove(current);
         }
 
         private void FocusAddInput()

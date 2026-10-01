@@ -29,7 +29,7 @@ namespace TimePlanner.Widget.Views
             var scheduler = flow.Scheduler;
             Subtitle.Text = scheduler.PromptAt switch
             {
-                null => "No more check-ins today.",
+                null => "Check-ins wait while the timer is paused.",
                 { } due when due <= scheduler.Now => "The next check-in is due now.",
                 { } next => $"Next check-in at {Format.Clock(next)}.",
             };

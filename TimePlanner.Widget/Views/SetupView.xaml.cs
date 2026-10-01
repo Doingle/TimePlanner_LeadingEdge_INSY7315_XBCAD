@@ -104,12 +104,12 @@ namespace TimePlanner.Widget.Views
 
         private void CloseAdvanced_Click(object sender, RoutedEventArgs e) => Show(advanced: false, moveFocus: true);
 
-        private void Primary_Click(object sender, RoutedEventArgs e)
+        private async void Primary_Click(object sender, RoutedEventArgs e)
         {
             if (_isSettings)
                 _flow.ShowTimer(activate: true);
             else
-                _flow.StartTracking();
+                await _flow.StartTrackingAsync();
         }
 
         private void BackToTimer_Click(object sender, RoutedEventArgs e) => _flow.ShowTimer(activate: true);
@@ -128,7 +128,7 @@ namespace TimePlanner.Widget.Views
         {
             var scheduler = _flow.Scheduler;
             var settings = _flow.Session.Settings;
-            var next = scheduler.NextCheckIn(scheduler.Now, TimeSpan.FromMinutes(settings.CheckInIntervalMinutes));
+            var next = scheduler.NextCheckIn(TimeSpan.FromMinutes(settings.CheckInIntervalMinutes));
             var lead = _isSettings ? "Next check-in moves to " : "First check-in at ";
 
             // Tracking runs until the day is ended, so a check-in is always coming unless the timer is paused

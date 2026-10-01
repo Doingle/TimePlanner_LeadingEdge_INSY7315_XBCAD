@@ -25,6 +25,6 @@ namespace TimePlanner.Widget.Views
 
         private async void LogTime_Click(object sender, RoutedEventArgs e) => await _flow.LogTimeAsync(LogEntryMode.CheckIn);
 
-        private void Snooze_Click(object sender, RoutedEventArgs e) => _flow.SnoozeCheckIn();
+        private async void Snooze_Click(object sender, RoutedEventArgs e) => await _flow.SnoozeCheckInAsync();
     }
 }
