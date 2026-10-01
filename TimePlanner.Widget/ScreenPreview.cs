@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Windows;
 using System.Windows.Threading;
 using TimePlanner.Widget.Models;
 
 namespace TimePlanner.Widget
 {
+    public sealed record ScreenPreview(string Id, string Section, string Title, Func<PreviewSession, Task> Show, bool WithEntries = true);
+
     public static class ScreenPreviews
     {
         public static IReadOnlyList<ScreenPreview> All { get; } =

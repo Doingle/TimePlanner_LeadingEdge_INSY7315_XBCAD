@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Media;
 using System.Text;
 using System.Windows;
+using Microsoft.Win32;
 using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;

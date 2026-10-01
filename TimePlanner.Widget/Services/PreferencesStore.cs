@@ -4,7 +4,7 @@ using System.Text;
 
 namespace TimePlanner.Widget.Services
 {
-    internal class PreferencesStore
+    public class PreferencesStore
     {
     }
 }
