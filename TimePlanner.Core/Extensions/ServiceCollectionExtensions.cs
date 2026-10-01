@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Repositories.Interfaces;

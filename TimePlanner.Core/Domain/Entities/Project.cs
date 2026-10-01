@@ -13,6 +13,10 @@ namespace TimePlanner.Core.Domain.Entities
         public Company? Company { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
+
+        //optional hex colour in #RRGGBB form for the project dot in the widget, null means a neutral colour is used
+        public string? Colour { get; set; }
+
         public ProjectStatus Status { get; set; } = ProjectStatus.Active;
         public ICollection<WorkTask> Tasks { get; set; } = new List<WorkTask>();
         public List<WorkTask> GetTasks() => Tasks.ToList();

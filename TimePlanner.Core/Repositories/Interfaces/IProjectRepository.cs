@@ -1,4 +1,4 @@
-﻿using TimePlanner.Core.Domain.Entities;
+using TimePlanner.Core.Domain.Entities;
 
 namespace TimePlanner.Core.Repositories.Interfaces
 {

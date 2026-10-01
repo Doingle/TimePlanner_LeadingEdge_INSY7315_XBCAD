@@ -5,6 +5,7 @@
     <Project Path="TimePlanner.Widget/TimePlanner.Widget.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="TimePlanner.Api.Tests/TimePlanner.Api.Tests.csproj" />
     <Project Path="TimePlanner.Core.Tests/TimePlanner.Core.Tests.csproj" />
   </Folder>
 </Solution>
