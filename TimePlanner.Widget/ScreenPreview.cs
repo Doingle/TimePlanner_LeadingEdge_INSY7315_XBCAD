@@ -9,7 +9,6 @@ using TimePlanner.Widget.Models;
 
 namespace TimePlanner.Widget
 {
-    /// <summary>A screen in a given state: one of the figures in the spec's Screens section.</summary>
     public sealed record ScreenPreview(string Id, string Section, string Title, Func<PreviewSession, Task> Show, bool WithEntries = true);
 
     public static class ScreenPreviews

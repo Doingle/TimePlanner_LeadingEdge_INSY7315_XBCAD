@@ -5,11 +5,7 @@ using TimePlanner.Widget.Models;
 
 namespace TimePlanner.Widget.Services
 {
-    /// <summary>
-    /// Keeps <see cref="WidgetPreferences"/> in a small JSON file. Without a path (the previews)
-    /// they are kept in memory only.
-    /// </summary>
-    public sealed class PreferencesStore(string? path)
+    public class PreferencesStore
     {
         private static readonly JsonSerializerOptions Options = new()
         {

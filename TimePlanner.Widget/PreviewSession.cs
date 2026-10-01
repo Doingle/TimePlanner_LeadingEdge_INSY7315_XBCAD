@@ -1,6 +1,4 @@
-﻿// Design-review and test tooling: compiled into debug builds only, never into a release build.
-#if DEBUG
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;

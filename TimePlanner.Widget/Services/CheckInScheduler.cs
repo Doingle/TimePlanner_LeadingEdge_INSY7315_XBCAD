@@ -5,13 +5,7 @@ using TimePlanner.Widget.Models;
 
 namespace TimePlanner.Widget.Services
 {
-    /// <summary>
-    /// The check-in engine. It counts working time from the last check-in and works out when the
-    /// next one is due: after the user's interval of work, never during lunch, and later if they
-    /// snoozed it. Tracking runs until the user ends the day. Lunch and pauses stop the count and
-    /// are left out of the time that gets logged.
-    /// </summary>
-    public sealed class CheckInScheduler : IDisposable
+    public class CheckInScheduler
     {
         private readonly WidgetSession _session;
         private readonly LunchBreakDetector _lunch;
