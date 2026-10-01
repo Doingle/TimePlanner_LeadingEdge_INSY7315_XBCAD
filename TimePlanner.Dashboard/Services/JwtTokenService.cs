@@ -44,6 +44,9 @@ namespace TimePlanner.Dashboard.Services
                 new("email", user.Email ?? string.Empty),
                 new("jti", Guid.NewGuid().ToString())
             };
+            //uid links the login to the time tracking profile, so endpoints can scope data to its owner without a lookup
+            if (user.AppUserId != null)
+                claims.Add(new Claim("uid", user.AppUserId.Value.ToString()));
             claims.AddRange(roles.Select(r => new Claim("role", r)));
 
             var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
