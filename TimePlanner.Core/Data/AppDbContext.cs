@@ -20,6 +20,7 @@ namespace TimePlanner.Core.Data
         public DbSet<Category> Categories => Set<Category>();
         public DbSet<DaySession> DaySessions => Set<DaySession>();
         public DbSet<SessionPause> SessionPauses => Set<SessionPause>();
+        public DbSet<CheckInSkip> CheckInSkips => Set<CheckInSkip>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -137,6 +138,14 @@ namespace TimePlanner.Core.Data
                 .HasIndex(p => p.DaySessionId)
                 .IsUnique()
                 .HasFilter("\"EndedAt\" IS NULL");
+
+            modelBuilder.Entity<CheckInSkip>().HasKey(s => s.CheckInSkipId);
+
+            //skips belong to their day and go with it
+            modelBuilder.Entity<CheckInSkip>()
+                .HasOne(s => s.DaySession).WithMany()
+                .HasForeignKey(s => s.DaySessionId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
