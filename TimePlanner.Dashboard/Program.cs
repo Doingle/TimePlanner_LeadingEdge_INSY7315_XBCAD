@@ -9,6 +9,7 @@ using TimePlanner.Core.Data;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Dashboard.Data;
 using TimePlanner.Dashboard.Services;
+using TimePlanner.Dashboard.Services.Reports;
 using TimePlanner.Dashboard.Services.TimesheetImport;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -53,6 +54,7 @@ builder.Services.ConfigureApplicationCookie(o =>
 // cookie as the default scheme, so api controllers opt in with AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme.
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddScoped<TimesheetImportService>();
+builder.Services.AddScoped<ReportService>();
 builder.Services.AddAuthentication().AddJwtBearer(o =>
 {
     // keep the short claim names ("email", "role") instead of renaming them to long schema urls
