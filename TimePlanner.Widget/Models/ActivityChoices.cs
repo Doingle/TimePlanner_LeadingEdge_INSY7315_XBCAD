@@ -4,7 +4,8 @@ using System.Text;
 
 namespace TimePlanner.Widget.Models
 {
-    internal class ActivityChoices
+    public sealed record ActivityChoices(List<ActivityNode> Tree, List<IReadOnlyList<string>> Recent)
     {
+        public static ActivityChoices Empty() => new([], []);
     }
 }

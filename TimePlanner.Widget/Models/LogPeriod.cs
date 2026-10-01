@@ -4,7 +4,5 @@ using System.Text;
 
 namespace TimePlanner.Widget.Models
 {
-    internal class LogPeriod
-    {
-    }
+    public sealed record LogPeriod(DateTime Start, DateTime End, TimeSpan Worked);
 }
