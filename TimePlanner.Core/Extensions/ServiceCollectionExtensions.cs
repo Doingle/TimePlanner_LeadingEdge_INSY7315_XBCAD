@@ -26,6 +26,7 @@ namespace TimePlanner.Core.Extensions
             services.AddScoped<ITimeSheetRepository, SQLiteTimeSheetRepository>();
             services.AddScoped<ICategoryRepository, SQLiteCategoryRepository>();
             services.AddScoped<IDaySessionRepository, SQLiteDaySessionRepository>();
+            services.AddScoped<ICheckInSkipRepository, SQLiteCheckInSkipRepository>();
 
             //widget services share the scope of their repos
             services.AddSingleton<TimeEntryFactory>();
@@ -34,6 +35,10 @@ namespace TimePlanner.Core.Extensions
             services.AddScoped<ActivityService>();
             services.AddScoped<EntryService>();
             services.AddScoped<LocalSetupService>();
+
+            //one engine and clock for the widget lifetime
+            services.AddSingleton<IClock, SystemClock>();
+            services.AddSingleton<CheckInEngine>();
 
             return services;
         }
