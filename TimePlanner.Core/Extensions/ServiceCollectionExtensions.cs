@@ -15,15 +15,7 @@ namespace TimePlanner.Core.Extensions
         //this helper method registers all core repositories, db contexts and services into dependancy injection container
         public static IServiceCollection AddTimePlannerCore(this IServiceCollection services, string connectionString)
         {
-
-            services.AddDbContextFactory<AppDbContext>(options => options.UseSqlite(connectionString));
-
-            services.AddSingleton<IUserRepository, SQLiteUserRepository>();
-            services.AddSingleton<IProjectRepository, SQLiteProjectRepository>();
-            services.AddSingleton<IWorkTaskRepository, SQLiteWorkTaskRepository>();
-            services.AddSingleton<ITimeEntryRepository, SQLiteTimeEntryRepository>();
-            services.AddSingleton<TimeEntryFactory>();
-
+            services.AddDbContext<AppDbContext>(o => o.UseSqlite(connectionString));
             return services;
         }
 
