@@ -20,6 +20,12 @@ namespace TimePlanner.Core.Repositories.Interfaces
 
         //activity ids from newest entries with no duplicates
         Task<List<int>> GetRecentCategoryIdsAsync(int userId, int count);
+
+        //saves a changed entry
+        Task UpdateAsync(TimeEntry entry);
+
+        //deletes an entry by id
+        Task DeleteAsync(int id);
     }
 }
 //------------------------------EOF-----------------------------\\

@@ -195,6 +195,28 @@ namespace TimePlanner.Core.Services
             var activeIds = all.Where(c => !c.IsArchived).Select(c => c.CategoryId).ToHashSet();
             return ids.Where(id => activeIds.Contains(id)).Select(id => new RecentActivity(id, BuildPath(id, all))).ToList();
         }
+
+        //-----------------------------
+        //finds a path or adds its missing lower levels
+        public async Task<int> FindOrAddPathAsync(IReadOnlyList<string> path)
+        {
+            //a path needs at least its top level
+            if (path.Count == 0)
+            {
+                throw new ArgumentException("Choose an activity.", nameof(path));
+            }
+
+            var id = await FindByPathAsync(new[] { path[0] })
+                ?? throw new ArgumentException("Choose one of the main activities.", nameof(path));
+
+            //each lower level is found or added
+            foreach (var name in path.Skip(1))
+            {
+                id = await AddActivityAsync(id, name);
+            }
+
+            return id;
+        }
     }
 }
 //------------------------------EOF-----------------------------\\

@@ -58,6 +58,29 @@ namespace TimePlanner.Core.Repositories.SQLite
 
             return ids.Distinct().Take(count).ToList();
         }
+
+        //-----------------------------
+        //saves a changed entry
+        public async Task UpdateAsync(TimeEntry entry)
+        {
+            _db.ChangeTracker.Clear();
+            _db.Entry(entry).State = EntityState.Modified;
+            await _db.SaveChangesAsync();
+        }
+
+        //-----------------------------
+        //deletes an entry by id
+        public async Task DeleteAsync(int id)
+        {
+            var entry = await _db.TimeEntries.FindAsync(id);
+
+            //removes entry if present in database
+            if (entry != null)
+            {
+                _db.TimeEntries.Remove(entry);
+                await _db.SaveChangesAsync();
+            }
+        }
     }
 }
 //------------------------------EOF-----------------------------\\
