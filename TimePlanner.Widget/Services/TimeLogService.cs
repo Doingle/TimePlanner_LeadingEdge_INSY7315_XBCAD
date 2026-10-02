@@ -81,9 +81,15 @@ namespace TimePlanner.Widget.Services
         /// outside the breaks. What the user typed is checked here as well as in the fields, before
         /// any of it is saved.
         /// </summary>
-        public async Task SaveAsync(int userId, int projectId, IReadOnlyList<string> activity, DateTime start, DateTime end,
+        public async Task<int> SaveAsync(int userId, IReadOnlyList<string> projectPath, IReadOnlyList<string> activity, DateTime start, DateTime end,
             string? note, EntryMethod method, IEnumerable<(DateTime Start, DateTime End)> breaks)
         {
+            //company and project path must be client and project name
+            if (projectPath.Count != 2 || !InputLimits.IsValidCompanyOrProjectName(projectPath[0]) || !InputLimits.IsValidCompanyOrProjectName(projectPath[1]))
+            {
+                throw new ArgumentException("Choose a client and project to save this entry.", nameof(projectPath));
+            }
+
             note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
             if (note?.Length > InputLimits.Note)
                 throw new ArgumentException($"A note can be at most {InputLimits.Note} characters.", nameof(note));
@@ -92,9 +98,10 @@ namespace TimePlanner.Widget.Services
 
             await using var scope = scopes.CreateAsyncScope();
             var services = scope.ServiceProvider;
+            var project = await services.GetRequiredService<EntryService>().AddProjectAsync(projectPath[0].Trim(), projectPath[1].Trim(), null);
             var categoryId = await FindOrAddActivityAsync(services.GetRequiredService<ActivityService>(),
                 services.GetRequiredService<ICategoryRepository>(), activity);
-            var task = await services.GetRequiredService<EntryService>().FindOrCreateTaskAsync(userId, projectId, categoryId);
+            var task = await services.GetRequiredService<EntryService>().FindOrCreateTaskAsync(userId, project.ProjectID, categoryId);
 
             var factory = services.GetRequiredService<TimeEntryFactory>();
             var entries = CheckInScheduler.WorkingSpans(start, end, breaks)
@@ -105,6 +112,78 @@ namespace TimePlanner.Widget.Services
                 .ToList();
 
             await services.GetRequiredService<ITimeEntryRepository>().AddRangeAsync(entries);
+            return project.ProjectID;
+        }
+
+        //-----------------------------
+        //the activity tree with no recent list
+        public async Task<ActivityChoices> GetActivityTreeAsync()
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var tree = (await scope.ServiceProvider.GetRequiredService<ActivityService>().GetTreeAsync()).Select(ToNode).ToList();
+            return new ActivityChoices(tree, []);
+        }
+
+        //-----------------------------
+        //removes a company by name
+        public async Task<RemoveOutcome> RemoveCompanyAsync(string company)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            var match = (await services.GetRequiredService<ICompanyRepository>().GetAllAsync())
+                .FirstOrDefault(c => string.Equals(c.Name, company.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            //unpersisted company counts as deleted
+            if (match == null)
+            {
+                return new RemoveOutcome(RemoveResult.Deleted, "Removed.");
+            }
+
+            return await services.GetRequiredService<CatalogService>().RemoveCompanyAsync(match.CompanyId);
+        }
+
+        //-----------------------------
+        //removes a project by company and project name
+        public async Task<RemoveOutcome> RemoveProjectAsync(string company, string project)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            var comp = (await services.GetRequiredService<ICompanyRepository>().GetAllAsync())
+                .FirstOrDefault(c => string.Equals(c.Name, company.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            //unpersisted company has no persisted project
+            if (comp == null)
+            {
+                return new RemoveOutcome(RemoveResult.Deleted, "Removed.");
+            }
+
+            var proj = (await services.GetRequiredService<IProjectRepository>().GetByCompanyAsync(comp.CompanyId))
+                .FirstOrDefault(p => string.Equals(p.Name, project.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            //unpersisted project counts as deleted
+            if (proj == null)
+            {
+                return new RemoveOutcome(RemoveResult.Deleted, "Removed.");
+            }
+
+            return await services.GetRequiredService<CatalogService>().RemoveProjectAsync(proj.ProjectID);
+        }
+
+        //-----------------------------
+        //removes an activity at a given path
+        public async Task<RemoveOutcome> RemoveActivityAsync(IReadOnlyList<string> path)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            var categoryId = await services.GetRequiredService<ActivityService>().FindByPathAsync(path);
+
+            //unpersisted activity counts as deleted
+            if (categoryId == null)
+            {
+                return new RemoveOutcome(RemoveResult.Deleted, "Removed.");
+            }
+
+            return await services.GetRequiredService<CatalogService>().RemoveActivityAsync(categoryId.Value);
         }
 
         /// <summary>The activity at a path, adding the levels the user typed that are not in the tree yet.</summary>
@@ -117,24 +196,10 @@ namespace TimePlanner.Widget.Services
             if (!path.All(InputLimits.IsValidActivityName))
                 throw new ArgumentException("An activity name is blank, too long, or has characters it cannot have.", nameof(path));
 
-            var id = await activities.FindByPathAsync([path[0]]) ?? await AddTopLevelAsync(categories, path[0].Trim());
+            var id = await activities.FindByPathAsync([path[0]]) ?? throw new ArgumentException("Choose one of the main activities.", nameof(path));
             foreach (var name in path.Skip(1))
                 id = await activities.AddActivityAsync(id, name.Trim());
             return id;
-        }
-
-        // ActivityService only adds activities under an existing one, so a new top-level activity goes in
-        // through Core's category repository: after the others, in Category's default colour and billable
-        private static async Task<int> AddTopLevelAsync(ICategoryRepository categories, string name)
-        {
-            var last = (await categories.GetAllAsync())
-                .Where(c => c.ParentCategoryId == null)
-                .Select(c => c.SortOrder)
-                .DefaultIfEmpty()
-                .Max();
-            var category = new Category { Name = name, SortOrder = last + 1 };
-            await categories.AddAsync(category);
-            return category.CategoryId;
         }
 
         /// <summary>
