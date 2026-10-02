@@ -6,6 +6,12 @@
         element.style.backgroundColor = element.dataset.colour;
     });
 
+    //and anything sized by the data (a bar, part of a split bar) carries its width as data-percent="55"
+    document.querySelectorAll("[data-percent]").forEach(function (element) {
+        var percent = parseFloat(element.dataset.percent);
+        element.style.width = Math.min(100, Math.max(0, percent || 0)) + "%";
+    });
+
     //the account menu in the top bar closes when the user clicks elsewhere or presses Escape
     var menu = document.querySelector(".app-user");
     if (!menu)

@@ -256,14 +256,14 @@ body.app-body {
 
 .app-button--primary {
     color: #ffffff;
-    background: #8b5cf6;
-    border-color: #8b5cf6;
+    background: var(--app-purple);
+    border-color: var(--app-purple);
 }
 
     button.app-button--primary:hover,
     a.app-button--primary[href]:hover {
-        background: #7c3aed;
-        border-color: #7c3aed;
+        background: #6836e0;
+        border-color: #6836e0;
     }
 
 /* ---------- Page frame ---------- */

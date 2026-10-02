@@ -242,14 +242,14 @@ namespace TimePlanner.Api.Tests
             var month = await person.Browser.GetStringAsync("/Report?view=month&date=2026-09-16");
 
             Assert.Contains("14 Sep to 20 Sep 2026", week);
-            Assert.Contains("Billable <strong>2.00</strong> h", week);
-            Assert.Contains("non-billable <strong>1.00</strong> h", week);
+            Assert.Matches(@"Billable</span>\s*<strong>2:00</strong>", week);
+            Assert.Matches(@"Non-billable</span>\s*<strong>1:00</strong>", week);
             Assert.Contains("By category", week);
             Assert.Contains("By project", week);
             Assert.Contains("Acme / Web", week);
             Assert.Contains("September 2026", month);
             Assert.Contains("href=\"/Report?view=week&amp;date=2026-09-07&amp;groupBy=Project\"", week);
-            Assert.Contains("Download timesheet", week);
+            Assert.Contains("Download CSV", week);
         }
 
         [Fact]
@@ -262,7 +262,7 @@ namespace TimePlanner.Api.Tests
             var range = await person.Browser.GetStringAsync("/Report?from=2026-09-01&to=2026-09-30");
 
             Assert.Contains("view must be week or month", bad);
-            Assert.Contains("1.00 hours", range);
+            Assert.Contains("<strong>1:00</strong> in", range);
             Assert.Contains("By category", range);
         }
 

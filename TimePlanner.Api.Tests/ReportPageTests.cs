@@ -46,9 +46,9 @@ namespace TimePlanner.Api.Tests
             var html = await dev.Browser.GetStringAsync(Page(Day, Day));
 
             Assert.Contains($"{acme} / Web", html);
-            Assert.Contains("1.50 hours", html);
+            Assert.Contains("<strong>1:30</strong> in", html);
             Assert.DoesNotContain("Everyone", html);
-            Assert.Contains("Download timesheet", html);
+            Assert.Contains("Download CSV", html);
         }
 
         [Fact]
@@ -93,7 +93,7 @@ namespace TimePlanner.Api.Tests
             Assert.Contains("Everyone", everyone);
             Assert.Contains(dev.Email, everyone);
             Assert.Contains("Pick a person to download", everyone);
-            Assert.Contains("Download timesheet", one);
+            Assert.Contains("Download CSV", one);
             Assert.Contains("devs work", await export.Content.ReadAsStringAsync());
         }
 

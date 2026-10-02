@@ -2,170 +2,271 @@
 @using TimePlanner.Dashboard.Services.Reports
 @model ReportPageModel
 @{
-    ViewData["Title"] = "Hours report";
+    ViewData["Title"] = "My Reports";
     ViewData["Nav"] = "Reports";
     Layout = "_AppLayout";
     var culture = CultureInfo.InvariantCulture;
+
+    //hours as H:MM and shares as whole percents, the way the design shows them
+    string Hm(double hours)
+    {
+        var minutes = (int)Math.Round(hours * 60);
+        return $"{minutes / 60}:{(minutes % 60).ToString("00", culture)}";
+    }
+    string Pct(double percent) => Math.Round(percent, 0).ToString("0", culture) + "%";
+    string Width(double percent) => percent.ToString("0.#", culture);
+
+    //the range in short form for the download button and the totals, 28 Sep – 4 Oct
+    var range = $"{Model.From.ToString("d MMM", culture)} – {Model.To.ToString("d MMM", culture)}";
 }
 
-<h1 class="h3 mb-3">Hours report</h1>
+@section Styles {
+    <link rel="stylesheet" href="~/css/report.css" asp-append-version="true" />
+}
 
-@* quick periods: a whole week or month, with the previous and next one *@
-<nav class="mb-3" aria-label="Period">
-    <a asp-action="Index" asp-route-view="week" asp-route-groupBy="@Model.GroupBy" asp-route-userId="@Model.UserId" aria-current="@(Model.View == "week" ? "true" : null)">This week</a>
-    |
-    <a asp-action="Index" asp-route-view="month" asp-route-groupBy="@Model.GroupBy" asp-route-userId="@Model.UserId" aria-current="@(Model.View == "month" ? "true" : null)">This month</a>
+<div class="rp-header">
+    <h1 class="rp-title">My Reports</h1>
+
+    <div class="rp-actions">
+        <a class="app-button" asp-controller="CsvUpload" asp-action="Index">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m17 8-5-5-5 5" /><path d="M12 3v12" /></svg>
+            Upload CSV
+        </a>
+        @if (Model.CanExport)
+        {
+            <a class="app-button app-button--primary" asp-action="Export" asp-route-from="@Model.From.ToString("yyyy-MM-dd", culture)"
+               asp-route-to="@Model.To.ToString("yyyy-MM-dd", culture)" asp-route-userId="@Model.UserId">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" /></svg>
+                Download CSV · @range
+            </a>
+        }
+        else if (Model.Report != null)
+        {
+            <p class="rp-hint">Pick a person to download their timesheet.</p>
+        }
+    </div>
+</div>
+
+@* a whole week or month with the previous and next one, or the custom range picked below *@
+<div class="rp-period">
     @if (Model.View != null && Model.Previous != null && Model.Next != null)
     {
-        <span class="ms-3">
-            <a asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.Previous.Value.ToString("yyyy-MM-dd", culture)" asp-route-groupBy="@Model.GroupBy" asp-route-userId="@Model.UserId">Previous</a>
-            <strong class="mx-2">@Model.PeriodLabel</strong>
-            <a asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.Next.Value.ToString("yyyy-MM-dd", culture)" asp-route-groupBy="@Model.GroupBy" asp-route-userId="@Model.UserId">Next</a>
-        </span>
-    }
-</nav>
-
-<form method="get" asp-action="Index" class="row g-3 mb-4">
-    <div class="col-sm-6 col-md-3">
-        <label for="from" class="form-label">From</label>
-        <input type="date" id="from" name="from" class="form-control" value="@Model.From.ToString("yyyy-MM-dd")" required />
-    </div>
-    <div class="col-sm-6 col-md-3">
-        <label for="to" class="form-label">To</label>
-        <input type="date" id="to" name="to" class="form-control" value="@Model.To.ToString("yyyy-MM-dd")" required />
-    </div>
-    <div class="col-sm-6 col-md-3">
-        <label for="groupBy" class="form-label">Group by</label>
-        <select id="groupBy" name="groupBy" class="form-select">
-            @foreach (var option in Enum.GetValues<ReportGrouping>())
-            {
-                <option value="@option" selected="@(option == Model.GroupBy)">@option</option>
-            }
-        </select>
-    </div>
-    @if (Model.CanPickUser)
-    {
-        <div class="col-sm-6 col-md-3">
-            <label for="userId" class="form-label">Person</label>
-            <select id="userId" name="userId" class="form-select">
-                <option value="">Everyone</option>
-                @foreach (var user in Model.Users)
-                {
-                    <option value="@user.Id" selected="@(user.Id == Model.UserId)">@user.Name</option>
-                }
-            </select>
+        <div class="rp-stepper">
+            <a class="rp-stepper__step" asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.Previous.Value.ToString("yyyy-MM-dd", culture)" asp-route-groupBy="@Model.GroupBy" asp-route-userId="@Model.UserId">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+                <span class="app-sr-only">Previous @Model.View</span>
+            </a>
+            <span class="rp-stepper__label">@Model.PeriodLabel</span>
+            <a class="rp-stepper__step" asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.Next.Value.ToString("yyyy-MM-dd", culture)" asp-route-groupBy="@Model.GroupBy" asp-route-userId="@Model.UserId">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                <span class="app-sr-only">Next @Model.View</span>
+            </a>
         </div>
     }
-    <div class="col-12">
-        <button type="submit" class="btn btn-primary">Show report</button>
-    </div>
-</form>
+    else
+    {
+        <span class="rp-stepper__label">@Model.From.ToString("d MMM yyyy", culture) – @Model.To.ToString("d MMM yyyy", culture)</span>
+    }
+
+    @* switching opens the current week or month and keeps the grouping and person *@
+    <form class="rp-toggle" method="get" asp-action="Index" role="group" aria-label="View">
+        <input type="hidden" name="groupBy" value="@Model.GroupBy" />
+        @if (Model.UserId != null)
+        {
+            <input type="hidden" name="userId" value="@Model.UserId" />
+        }
+        <button class="rp-toggle__option" type="submit" name="view" value="week" aria-pressed="@(Model.View == "week" ? "true" : "false")">Week</button>
+        <button class="rp-toggle__option" type="submit" name="view" value="month" aria-pressed="@(Model.View == "month" ? "true" : "false")">Month</button>
+    </form>
+</div>
 
 @if (Model.Error != null)
 {
-    <div class="alert alert-danger" role="alert">@Model.Error</div>
+    <p class="rp-alert" role="alert">@Model.Error</p>
 }
-else if (Model.Report != null)
+
+@if (Model.Report != null && Model.Summary != null)
 {
-    var report = Model.Report;
-    <p>
-        <strong>@report.TotalHours.ToString("0.00", CultureInfo.InvariantCulture) hours</strong> in @report.Entries entr@(report.Entries == 1 ? "y" : "ies"),
-        @report.BillableHours.ToString("0.00", CultureInfo.InvariantCulture) billable, from @report.From.ToString("yyyy-MM-dd") to @report.To.ToString("yyyy-MM-dd").
-    </p>
+    var summary = Model.Summary;
+    var billableShare = summary.TotalHours > 0 ? summary.BillableHours / summary.TotalHours * 100 : 0;
+    var nonBillableShare = summary.TotalHours > 0 ? 100 - billableShare : 0;
 
-    @if (Model.Summary != null)
-    {
-        var summary = Model.Summary;
-        <section aria-labelledby="summary-title" class="mb-4">
-            <h2 class="h5" id="summary-title">Billable and non-billable</h2>
-            <p>
-                Billable <strong>@summary.BillableHours.ToString("0.00", culture)</strong> h,
-                non-billable <strong>@summary.NonBillableHours.ToString("0.00", culture)</strong> h,
-                total <strong>@summary.TotalHours.ToString("0.00", culture)</strong> h.
-            </p>
+    //bars are sized against the largest row, so the biggest one is always full
+    var largestProject = summary.ByProject.Count == 0 ? 0 : summary.ByProject.Max(r => r.Percent);
+    var largestCategory = summary.ByCategory.Count == 0 ? 0 : summary.ByCategory.Max(r => r.Percent);
+    string Bar(double percent, double largest) => Width(largest > 0 ? percent / largest * 100 : 0);
 
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <h3 class="h6">By category</h3>
-                    @if (summary.ByCategory.Count == 0)
-                    {
-                        <p class="text-muted">Nothing logged.</p>
-                    }
-                    else
-                    {
-                        <table class="table table-sm">
-                            <caption class="visually-hidden">Hours by category</caption>
-                            <thead><tr><th scope="col">Category</th><th scope="col" class="text-end">Hours</th><th scope="col" class="text-end">Share</th></tr></thead>
-                            <tbody>
-                                @foreach (var row in summary.ByCategory)
-                                {
-                                    <tr><th scope="row" class="fw-normal">@row.Label</th><td class="text-end">@row.Hours.ToString("0.00", culture)</td><td class="text-end">@row.Percent.ToString("0.#", culture)%</td></tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
+    <div class="rp-grid">
+        <div class="rp-card">
+            <section class="rp-total" aria-label="Time logged">
+                <p class="rp-total__label">Time logged, @range</p>
+                <p class="rp-total__value">@Hm(summary.TotalHours)</p>
+
+                @* app.js sizes each part from data-percent (inline styles are blocked by the CSP) *@
+                <div class="rp-split @(summary.TotalMinutes == 0 ? "rp-split--empty" : null)" aria-hidden="true">
+                    <span class="rp-split__part rp-split__part--billable" data-percent="@Width(billableShare)"></span>
+                    <span class="rp-split__part rp-split__part--non-billable" data-percent="@Width(nonBillableShare)"></span>
                 </div>
-                <div class="col-md-6">
-                    <h3 class="h6">By project</h3>
-                    @if (summary.ByProject.Count == 0)
-                    {
-                        <p class="text-muted">Nothing logged.</p>
-                    }
-                    else
-                    {
-                        <table class="table table-sm">
-                            <caption class="visually-hidden">Hours by project</caption>
-                            <thead><tr><th scope="col">Project</th><th scope="col" class="text-end">Hours</th><th scope="col" class="text-end">Share</th><th scope="col">Billing</th></tr></thead>
-                            <tbody>
-                                @foreach (var row in summary.ByProject)
-                                {
-                                    <tr><th scope="row" class="fw-normal">@row.Label</th><td class="text-end">@row.Hours.ToString("0.00", culture)</td><td class="text-end">@row.Percent.ToString("0.#", culture)%</td><td>@(row.Billable == true ? "Billable" : "Non-billable")</td></tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
-                </div>
-            </div>
-        </section>
-    }
 
-    @if (report.Rows.Count == 0)
-    {
-        <p class="text-muted">No time was logged in this period.</p>
-    }
-    else
-    {
-        <table class="table table-sm">
-            <caption class="visually-hidden">Hours grouped by @Model.GroupBy</caption>
-            <thead>
-                <tr>
-                    <th scope="col">@Model.GroupBy</th>
-                    <th scope="col" class="text-end">Hours</th>
-                    <th scope="col" class="text-end">Billable</th>
-                    <th scope="col" class="text-end">Entries</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var row in report.Rows)
+                <ul class="rp-legend">
+                    <li class="rp-legend__row">
+                        <span class="rp-swatch rp-swatch--billable"></span>
+                        <span class="rp-legend__name">Billable</span>
+                        <strong>@Hm(summary.BillableHours)</strong>
+                        <span class="rp-share">@Pct(billableShare)</span>
+                    </li>
+                    <li class="rp-legend__row">
+                        <span class="rp-swatch rp-swatch--non-billable"></span>
+                        <span class="rp-legend__name">Non-billable</span>
+                        <strong>@Hm(summary.NonBillableHours)</strong>
+                        <span class="rp-share">@Pct(nonBillableShare)</span>
+                    </li>
+                </ul>
+            </section>
+
+            <section class="rp-section" aria-labelledby="project-title">
+                <h2 class="rp-card__title" id="project-title">By project</h2>
+                @if (summary.ByProject.Count == 0)
                 {
-                    <tr>
-                        <th scope="row" class="fw-normal">@row.Label</th>
-                        <td class="text-end">@row.Hours.ToString("0.00", CultureInfo.InvariantCulture)</td>
-                        <td class="text-end">@row.BillableHours.ToString("0.00", CultureInfo.InvariantCulture)</td>
-                        <td class="text-end">@row.Entries</td>
-                    </tr>
+                    <p class="rp-empty">Nothing logged.</p>
                 }
-            </tbody>
-        </table>
-    }
+                else
+                {
+                    <ul class="rp-list">
+                        @foreach (var row in summary.ByProject)
+                        {
+                            var billing = row.Billable == true ? "billable" : "non-billable";
+                            <li class="rp-row">
+                                <span class="rp-row__name">@row.Label <span class="rp-tag">@(row.Billable == true ? "Billable" : "Non-billable")</span></span>
+                                <strong>@Hm(row.Hours)</strong>
+                                <span class="rp-share">@Pct(row.Percent)</span>
+                                <span class="rp-bar" aria-hidden="true"><span class="rp-bar__fill rp-bar__fill--@billing" data-percent="@Bar(row.Percent, largestProject)"></span></span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        </div>
 
-    @if (Model.CanExport)
-    {
-        <a class="btn btn-outline-secondary" asp-action="Export" asp-route-from="@Model.From.ToString("yyyy-MM-dd")"
-           asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-userId="@Model.UserId">Download timesheet (CSV)</a>
-    }
-    else
-    {
-        <p class="text-muted">Pick a person to download their timesheet.</p>
-    }
+        <section class="rp-card rp-card--categories" aria-labelledby="category-title">
+            <h2 class="rp-card__title" id="category-title">By category</h2>
+            @if (summary.ByCategory.Count == 0)
+            {
+                <p class="rp-empty">Nothing logged.</p>
+            }
+            else
+            {
+                <ul class="rp-list">
+                    @foreach (var row in summary.ByCategory)
+                    {
+                        <li class="rp-row">
+                            <span class="rp-row__name"><span class="rp-dot" data-colour="@row.Colour"></span>@row.Label</span>
+                            <strong>@Hm(row.Hours)</strong>
+                            <span class="rp-share">@Pct(row.Percent)</span>
+                            <span class="rp-bar" aria-hidden="true"><span class="rp-bar__fill" data-percent="@Bar(row.Percent, largestCategory)" data-colour="@row.Colour"></span></span>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    </div>
 }
+
+<section class="rp-card rp-files" aria-labelledby="files-title">
+    <div class="rp-files__head">
+        <h2 class="rp-files__title" id="files-title">Past CSV files</h2>
+        <div class="rp-toggle" role="group" aria-label="Files">
+            <button class="rp-toggle__option" type="button" aria-pressed="true">By week</button>
+            <button class="rp-toggle__option" type="button" aria-pressed="false">By month</button>
+        </div>
+    </div>
+
+    @* not stored yet. One row per download, newest first, replacing the empty message below:
+       <ul class="rp-list">
+           <li class="rp-file">
+               <svg class="rp-file__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" /></svg>
+               <span class="rp-file__name">time-tracker_2026-09-21_2026-09-27.csv</span>
+               <span class="rp-file__meta">Downloaded Mon 28 Sep at 09:02 · 14 KB</span>
+               <a class="rp-file__download" href="...">Download</a>
+           </li>
+       </ul> *@
+    <p class="rp-empty">No CSV files yet. Each timesheet you download appears here.</p>
+</section>
+
+@* everything the quick periods above do not cover: any range, another grouping and, for an admin, another person *@
+<section class="rp-card rp-detail" aria-labelledby="detail-title">
+    <h2 class="rp-card__title" id="detail-title">Detailed report</h2>
+
+    <form class="rp-filters" method="get" asp-action="Index">
+        <div class="rp-field">
+            <label class="rp-field__label" for="from">From</label>
+            <input class="rp-input" type="date" id="from" name="from" value="@Model.From.ToString("yyyy-MM-dd", culture)" required />
+        </div>
+        <div class="rp-field">
+            <label class="rp-field__label" for="to">To</label>
+            <input class="rp-input" type="date" id="to" name="to" value="@Model.To.ToString("yyyy-MM-dd", culture)" required />
+        </div>
+        <div class="rp-field">
+            <label class="rp-field__label" for="groupBy">Group by</label>
+            <select class="rp-input" id="groupBy" name="groupBy">
+                @foreach (var option in Enum.GetValues<ReportGrouping>())
+                {
+                    <option value="@option" selected="@(option == Model.GroupBy)">@option</option>
+                }
+            </select>
+        </div>
+        @if (Model.CanPickUser)
+        {
+            <div class="rp-field">
+                <label class="rp-field__label" for="userId">Person</label>
+                <select class="rp-input" id="userId" name="userId">
+                    <option value="">Everyone</option>
+                    @foreach (var user in Model.Users)
+                    {
+                        <option value="@user.Id" selected="@(user.Id == Model.UserId)">@user.Name</option>
+                    }
+                </select>
+            </div>
+        }
+        <button class="app-button" type="submit">Show report</button>
+    </form>
+
+    @if (Model.Report != null)
+    {
+        var report = Model.Report;
+        <p class="rp-detail__summary">
+            <strong>@Hm(report.TotalHours)</strong> in @report.Entries entr@(report.Entries == 1 ? "y" : "ies"),
+            <strong>@Hm(report.BillableHours)</strong> billable, @report.From.ToString("d MMM yyyy", culture) to @report.To.ToString("d MMM yyyy", culture).
+        </p>
+
+        @if (report.Rows.Count == 0)
+        {
+            <p class="rp-empty">No time was logged in this period.</p>
+        }
+        else
+        {
+            <table class="rp-table">
+                <caption class="app-sr-only">Hours grouped by @Model.GroupBy</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">@Model.GroupBy</th>
+                        <th scope="col" class="rp-num">Hours</th>
+                        <th scope="col" class="rp-num">Billable</th>
+                        <th scope="col" class="rp-num">Entries</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in report.Rows)
+                    {
+                        <tr>
+                            <th scope="row">@row.Label</th>
+                            <td class="rp-num">@Hm(row.Hours)</td>
+                            <td class="rp-num">@Hm(row.BillableHours)</td>
+                            <td class="rp-num">@row.Entries</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</section>
