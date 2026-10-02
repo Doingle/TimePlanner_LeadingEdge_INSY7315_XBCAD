@@ -27,7 +27,6 @@ static string ConnectionString(IServiceProvider services) =>
 builder.Services.AddControllersWithViews();
 
 //sqlite locally and in tests while azure sets SqlServer
-//sqlite locally and in tests while azure sets SqlServer
 var useSqlServer = string.Equals(builder.Configuration["Database:Provider"], "SqlServer", StringComparison.OrdinalIgnoreCase);
 
 //each provider keeps its own context types and migrations
@@ -45,11 +44,6 @@ else
         options.UseSqlite(ConnectionString(services), s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
 }
 builder.AddTimePlannerSecurity();
-builder.Services.AddTimePlannerCore(ConnectionString);
-
-// Identity lives in its own context and migration history so it never collides with AppDbContext migrations.
-builder.Services.AddDbContext<AuthDbContext>((services, options) =>
-    options.UseSqlite(ConnectionString(services), s => s.MigrationsHistoryTable("__AuthMigrationHistory")));
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(o =>
 {
