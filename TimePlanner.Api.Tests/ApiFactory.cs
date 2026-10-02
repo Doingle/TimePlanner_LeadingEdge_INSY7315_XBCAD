@@ -203,7 +203,12 @@ namespace TimePlanner.Api.Tests
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
-            SqliteConnection.ClearAllPools();
+            //only this host's database is released
+            //clearing every pool closed connections other test hosts were using
+            using (var own = new SqliteConnection($"Data Source={_dbPath}"))
+            {
+                SqliteConnection.ClearPool(own);
+            }
             foreach (var file in new[] { _dbPath, _dbPath + "-shm", _dbPath + "-wal" })
             {
                 try { File.Delete(file); } catch (IOException) { }
