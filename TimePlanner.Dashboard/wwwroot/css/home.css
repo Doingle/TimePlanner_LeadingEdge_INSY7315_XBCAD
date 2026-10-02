@@ -1,0 +1,447 @@
+/* Home page
+
+   Today's timeline and where the time went (Views/Home/Index.cshtml). Builds on the
+   colours in app.css. Inline styles are blocked by the content security policy, so
+   positions, widths and data colours are set by home.js from data attributes */
+
+:root {
+    --home-track: #f2f4f7;
+    --home-success: #067647;
+    --home-warning: #b54708;
+    --home-alert-bg: #fffaeb;
+    --home-alert-border: #fedf89;
+    --home-billable: #344054;
+    --home-non-billable: #98a2b3;
+    --home-hatch: #d0d5dd;
+    --home-toggle-border: #e4e7ec;
+    --home-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+    --home-icon-clock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+    --home-icon-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 7.5v5M12 16.5h.01'/%3E%3C/svg%3E");
+}
+
+/* An icon drawn in the element's text colour, picked with --home-icon */
+.home-status__item::before,
+.home-alert::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    background-color: currentColor;
+    -webkit-mask: var(--home-icon) center / contain no-repeat;
+    mask: var(--home-icon) center / contain no-repeat;
+}
+
+/* ---------- Page heading ---------- */
+
+.home-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+}
+
+.home-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 22px;
+    margin: 6px 0 0;
+    padding: 0;
+    font-size: 13px;
+    color: var(--app-muted);
+    list-style: none;
+}
+
+.home-status__item {
+    position: relative;
+    padding-left: 21px;
+}
+
+    .home-status__item::before {
+        top: calc((1.45em - 13px) / 2);
+        width: 13px;
+        height: 13px;
+    }
+
+    .home-status__item strong {
+        font-weight: 600;
+        color: var(--app-text);
+    }
+
+.home-status__item--done::before {
+    --home-icon: var(--home-icon-check);
+    color: var(--home-success);
+}
+
+.home-status__item--pending::before {
+    --home-icon: var(--home-icon-clock);
+    color: var(--home-warning);
+}
+
+/* ---------- Cards ---------- */
+
+.home-card {
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius);
+}
+
+/* ---------- Today's timeline ---------- */
+
+.home-timeline {
+    margin-top: 20px;
+    padding: 24px 22px 22px;
+}
+
+/* the gap under the header leaves room for the now marker's label */
+.home-timeline__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 16px;
+    margin-bottom: 38px;
+}
+
+.home-timeline__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.home-timeline__range {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--app-muted);
+}
+
+.home-timeline__summary {
+    margin: 0;
+    font-size: 14px;
+    color: var(--app-muted);
+}
+
+    .home-timeline__summary strong {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--app-text);
+    }
+
+/* the margin under the track is the row the block labels sit in */
+.home-track {
+    position: relative;
+    height: 42px;
+    margin-bottom: 29px;
+    background: var(--home-track);
+}
+
+.home-track__empty {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    margin: 0;
+    padding: 0 38px;
+    font-size: 13px;
+    color: var(--app-muted);
+}
+
+/* one logged entry, coloured with its category. The white edge keeps neighbours apart */
+.home-block {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: var(--app-muted);
+    border-right: 2px solid var(--app-surface);
+}
+
+.home-block__label {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 11.5px;
+    line-height: 1.2;
+    color: var(--app-text);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* time nobody logged, hatched so it reads as missing rather than as a category */
+.home-block--unlogged {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: repeating-linear-gradient(135deg, var(--app-surface) 0 6px, var(--home-hatch) 6px 7.5px);
+    border: 1px dashed var(--home-non-billable);
+}
+
+.home-block__text {
+    max-width: 100%;
+    overflow: hidden;
+    padding: 2px 7px;
+    font-size: 12px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    background: var(--app-surface);
+}
+
+.home-now {
+    position: absolute;
+    top: -5px;
+    bottom: -5px;
+    z-index: 1;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--app-text);
+    pointer-events: none;
+}
+
+.home-now__label {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    padding: 2px 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 15px;
+    color: #ffffff;
+    white-space: nowrap;
+    background: var(--app-text);
+    border-radius: 1px;
+    transform: translateX(-50%);
+}
+
+/* The hour labels are zero width and spread evenly, so each one centres on its hour.
+   The first and last are pulled inside the card instead */
+.home-axis {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 8px;
+    font-size: 11.5px;
+    line-height: 1.2;
+    color: var(--app-muted);
+    border-top: 1px solid var(--home-track);
+}
+
+.home-axis__tick {
+    width: 0;
+}
+
+.home-axis__label {
+    display: inline-block;
+    white-space: nowrap;
+    transform: translateX(-50%);
+}
+
+.home-axis__tick:first-child .home-axis__label {
+    transform: none;
+}
+
+.home-axis__tick:last-child .home-axis__label {
+    transform: translateX(-100%);
+}
+
+.home-alert {
+    position: relative;
+    margin: 16px 0 0;
+    padding: 11px 14px 11px 40px;
+    font-size: 13.5px;
+    color: var(--app-text);
+    background: var(--home-alert-bg);
+    border: 1px solid var(--home-alert-border);
+    border-radius: var(--app-radius);
+}
+
+    .home-alert::before {
+        --home-icon: var(--home-icon-alert);
+        top: calc(11px + (1.45em - 16px) / 2);
+        left: 14px;
+        width: 16px;
+        height: 16px;
+        color: var(--home-warning);
+    }
+
+    .home-alert strong {
+        font-weight: 600;
+    }
+
+/* ---------- Where the time went ---------- */
+
+.home-split {
+    margin-top: 36px;
+}
+
+.home-split__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px 24px;
+    margin-bottom: 12px;
+}
+
+.home-split__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.home-split__subtitle {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: var(--app-muted);
+}
+
+.home-toggle {
+    display: inline-flex;
+    padding: 1px;
+    background: var(--app-surface);
+    border: 1px solid var(--home-toggle-border);
+    border-radius: var(--app-radius);
+}
+
+.home-toggle__option {
+    height: 31px;
+    padding: 0 12px;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--app-text);
+    background: none;
+    border: none;
+    border-radius: 1px;
+    cursor: pointer;
+}
+
+    .home-toggle__option[aria-pressed="true"] {
+        font-weight: 600;
+        color: #ffffff;
+        background: var(--app-purple);
+    }
+
+    .home-toggle__option:focus-visible {
+        outline: 2px solid var(--app-purple);
+        outline-offset: 2px;
+    }
+
+.home-split__cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+}
+
+.home-breakdown {
+    padding: 22px 22px 26px;
+}
+
+.home-breakdown__title {
+    margin: 0 0 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.home-breakdown__empty {
+    margin: 0 0 7px;
+    font-size: 13.5px;
+    color: var(--app-muted);
+}
+
+.home-breakdown__list {
+    display: grid;
+    gap: 14px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+    /* rows with a note under the name are taller, so they sit closer together */
+    .home-breakdown__list:has(.home-breakdown__note) {
+        gap: 7px;
+    }
+
+/* name, bar, then the time and share */
+.home-breakdown__row {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) 92px;
+    align-items: center;
+    column-gap: 14px;
+    font-size: 13.5px;
+}
+
+.home-breakdown__name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.home-breakdown__note {
+    display: block;
+    font-size: 11.5px;
+    line-height: 1.3;
+    color: var(--app-muted);
+}
+
+.home-breakdown__value {
+    color: var(--app-muted);
+    text-align: right;
+    white-space: nowrap;
+}
+
+    .home-breakdown__value strong {
+        font-weight: 700;
+        color: var(--app-text);
+    }
+
+.home-bar {
+    display: block;
+    height: 11px;
+    background: var(--home-track);
+}
+
+.home-bar__fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: var(--app-muted);
+}
+
+.home-bar__fill--billable {
+    background: var(--home-billable);
+}
+
+.home-bar__fill--non-billable {
+    background: var(--home-non-billable);
+}
+
+/* ---------- Narrow windows ---------- */
+
+@media (max-width: 859.98px) {
+    .home-split__cards {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 759.98px) {
+    .home-timeline,
+    .home-breakdown {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .home-track__empty {
+        padding: 0 16px;
+    }
+
+    /* every other hour, the labels do not fit side by side */
+    .home-axis__tick:nth-child(even) .home-axis__label {
+        visibility: hidden;
+    }
+
+    .home-breakdown__row {
+        grid-template-columns: 76px minmax(0, 1fr) 84px;
+        column-gap: 10px;
+    }
+}
