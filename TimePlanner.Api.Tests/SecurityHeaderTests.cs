@@ -158,6 +158,7 @@ namespace TimePlanner.Api.Tests
             {
                 await anonymous.GetStringAsync("/Account/Login"),
                 await browser.GetStringAsync("/"),
+                await browser.GetStringAsync("/Timesheet"),
                 await browser.GetStringAsync("/Home/Privacy"),
                 await browser.GetStringAsync("/CsvUpload"),
                 await browser.GetStringAsync("/Report"),

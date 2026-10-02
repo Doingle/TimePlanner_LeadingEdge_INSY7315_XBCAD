@@ -1,6 +1,6 @@
 //-----------------------------
-//lays out the home page. The content security policy blocks inline styles, so the page writes times, percentages and colours
-//as data attributes and this file turns them into positions, widths and colours
+//lays out the home page. The content security policy blocks inline styles, so the page writes times and percentages as data
+//attributes and this file turns them into positions and widths. Colours (data-colour) are applied by app.js
 (function () {
     //minutes since midnight for an "HH:mm" value, NaN for anything else
     function toMinutes(value) {
@@ -16,11 +16,6 @@
     document.querySelectorAll(".home-bar__fill[data-percent]").forEach(function (fill) {
         var percent = parseFloat(fill.dataset.percent);
         fill.style.width = Math.min(100, Math.max(0, percent || 0)) + "%";
-    });
-
-    //blocks and bars take their category's colour, data-colour="#0E7490"
-    document.querySelectorAll("[data-colour]").forEach(function (element) {
-        element.style.backgroundColor = element.dataset.colour;
     });
 
     var track = document.querySelector(".home-track");

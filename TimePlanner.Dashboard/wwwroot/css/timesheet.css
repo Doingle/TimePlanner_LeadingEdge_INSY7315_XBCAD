@@ -1,0 +1,269 @@
+/* Timesheet page
+
+   The week's entries grouped by day (Views/Timesheet/Index.cshtml). Builds on the
+   colours and buttons in app.css. Category dots are coloured by app.js from data-colour,
+   because the content security policy blocks inline styles */
+
+:root {
+    --ts-border: #e4e7ec;
+    --ts-divider: #f2f4f7;
+    --ts-head: #f7f8fa;
+    --ts-strong: #374151;
+    --ts-muted: #6b7280;
+    --ts-faint: #9ca3af;
+    --ts-icon: #b7becb;
+    --ts-radius: 10px;
+    /* category, company, description, time, total. Shared by the column headings and every entry */
+    --ts-columns: 124px 143px minmax(0, 1fr) 150px 74px;
+    --ts-icon-voice: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z'/%3E%3Cpath d='M19 10v2a7 7 0 0 1-14 0v-2'/%3E%3Cpath d='M12 19v3'/%3E%3C/svg%3E");
+}
+
+/* ---------- Page heading ---------- */
+
+.ts-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px 24px;
+    margin-top: 13px;
+}
+
+.ts-title {
+    margin: 0;
+    font-size: 22.5px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+}
+
+.ts-subtitle {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: var(--ts-muted);
+}
+
+.ts-week {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 2px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ts-strong);
+}
+
+/* the chevron's own padding is pulled back so it lines up with the title */
+.ts-week__step {
+    display: flex;
+    margin-left: -3px;
+    color: var(--ts-muted);
+}
+
+    .ts-week__step + .ts-week__range + .ts-week__step {
+        margin-left: 0;
+    }
+
+    .ts-week__step svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    .ts-week__step[href]:hover {
+        color: var(--ts-strong);
+    }
+
+.ts-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 1px;
+}
+
+/* ---------- Column headings ---------- */
+
+/* the extra pixel each side matches the day cards' border */
+.ts-columns {
+    display: grid;
+    grid-template-columns: var(--ts-columns);
+    margin: 24px 0 8px;
+    padding: 0 21px;
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 15px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ts-faint);
+}
+
+.ts-columns__end {
+    text-align: right;
+}
+
+/* ---------- Day cards ---------- */
+
+.ts-day {
+    overflow: hidden;
+    background: var(--app-surface);
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius);
+}
+
+    .ts-day + .ts-day {
+        margin-top: 16px;
+    }
+
+.ts-day__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 37px;
+    padding: 0 20px;
+    background: var(--ts-head);
+}
+
+.ts-day__date {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ts-strong);
+}
+
+.ts-day__total {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--ts-muted);
+}
+
+    .ts-day__total strong {
+        font-size: 13.5px;
+        font-weight: 700;
+        color: var(--app-text);
+    }
+
+.ts-day__entries {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ts-empty {
+    margin: 0;
+    padding: 20px;
+    font-size: 14px;
+    color: var(--ts-muted);
+}
+
+/* ---------- Entries ---------- */
+
+.ts-entry {
+    display: grid;
+    grid-template-columns: var(--ts-columns);
+    grid-template-areas: "category company description time total";
+    align-items: center;
+    padding: 9.5px 20px;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+    .ts-entry + .ts-entry {
+        border-top: 1px solid var(--ts-divider);
+    }
+
+.ts-entry__category {
+    display: flex;
+    grid-area: category;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    padding-right: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ts-strong);
+}
+
+.ts-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ts-muted);
+}
+
+.ts-entry__company {
+    grid-area: company;
+    min-width: 0;
+    padding-right: 12px;
+    font-size: 13px;
+    color: var(--ts-muted);
+    overflow-wrap: anywhere;
+}
+
+.ts-entry__description {
+    grid-area: description;
+    min-width: 0;
+    padding-right: 16px;
+    color: var(--app-text);
+    overflow-wrap: anywhere;
+}
+
+.ts-entry__voice {
+    position: relative;
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    margin-left: 9px;
+    vertical-align: -2px;
+    background-color: var(--ts-icon);
+    -webkit-mask: var(--ts-icon-voice) center / contain no-repeat;
+    mask: var(--ts-icon-voice) center / contain no-repeat;
+}
+
+.ts-entry__time {
+    grid-area: time;
+    font-size: 12px;
+    color: var(--ts-faint);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.ts-entry__total {
+    grid-area: total;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--app-text);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Narrow windows ----------
+   The columns no longer fit, so each entry stacks: category and total, then the
+   description, then company and time. The column headings are dropped */
+
+@media (max-width: 759.98px) {
+    .ts-columns {
+        display: none;
+    }
+
+    .ts-header {
+        margin-bottom: 20px;
+    }
+
+    .ts-day__head {
+        padding: 0 16px;
+    }
+
+    .ts-entry {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "category total"
+            "description description"
+            "company time";
+        row-gap: 2px;
+        padding: 10px 16px;
+    }
+
+    .ts-entry__description {
+        padding-right: 0;
+    }
+}

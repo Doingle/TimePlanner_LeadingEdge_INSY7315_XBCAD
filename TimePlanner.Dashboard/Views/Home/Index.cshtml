@@ -30,7 +30,7 @@
     </div>
 
     <div class="home-track" data-day-start="@dayStart.ToString("HH:mm", CultureInfo.InvariantCulture)" data-day-end="@dayEnd.ToString("HH:mm", CultureInfo.InvariantCulture)">
-        @* one block per entry. home.js places it from data-start and data-end and colours it with data-colour (inline styles are blocked by the CSP):
+        @* one block per entry. home.js places it from data-start and data-end, app.js colours it with data-colour (inline styles are blocked by the CSP):
            <div class="home-block" data-start="08:30" data-end="09:00" data-colour="#D97706"><span class="home-block__label">Email</span></div>
            time nobody logged:
            <div class="home-block home-block--unlogged" data-start="14:00" data-end="15:30"><span class="home-block__text">Not logged · 14:00–15:30</span></div>
@@ -68,7 +68,7 @@
     <div class="home-split__cards">
         <section class="home-card home-breakdown" aria-labelledby="category-title">
             <h3 class="home-breakdown__title" id="category-title">By category</h3>
-            @* one row per category, largest first. home.js sets the bar width from data-percent and its colour from data-colour:
+            @* one row per category, largest first. home.js sets the bar width from data-percent, app.js its colour from data-colour:
                <ul class="home-breakdown__list">
                    <li class="home-breakdown__row">
                        <span class="home-breakdown__name">Coding</span>

@@ -2,7 +2,7 @@
 
    Today's timeline and where the time went (Views/Home/Index.cshtml). Builds on the
    colours in app.css. Inline styles are blocked by the content security policy, so
-   positions, widths and data colours are set by home.js from data attributes */
+   positions and widths are set by home.js and data colours by app.js, from data attributes */
 
 :root {
     --home-track: #f2f4f7;

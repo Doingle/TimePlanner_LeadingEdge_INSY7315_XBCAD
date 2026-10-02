@@ -1,0 +1,69 @@
+@using System.Globalization
+@{
+    ViewData["Title"] = "Timesheet";
+    ViewData["Nav"] = "Timesheet";
+    Layout = "_AppLayout";
+
+    //the week shown, Monday to Sunday
+    var weekStart = DateTime.Today.AddDays(-(((int)DateTime.Today.DayOfWeek + 6) % 7));
+    var weekEnd = weekStart.AddDays(6);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/timesheet.css" asp-append-version="true" />
+}
+
+<div class="ts-header">
+    <div>
+        <h1 class="ts-title">Timesheet</h1>
+        <p class="ts-subtitle">Every check-in you logged this week, grouped by day</p>
+
+        @* the arrows become links to the previous and next week *@
+        <div class="ts-week">
+            <a class="ts-week__step">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+                <span class="app-sr-only">Previous week</span>
+            </a>
+            <span class="ts-week__range">@weekStart.ToString("MMM d", CultureInfo.InvariantCulture) – @weekEnd.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)</span>
+            <a class="ts-week__step">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                <span class="app-sr-only">Next week</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="ts-actions">
+        <a class="app-button">Export week</a>
+        <button class="app-button app-button--primary" type="button">+ Add Entry</button>
+    </div>
+</div>
+
+<div class="ts-columns" aria-hidden="true">
+    <span>Category</span>
+    <span>Company</span>
+    <span>Description</span>
+    <span class="ts-columns__end">Time</span>
+    <span class="ts-columns__end">Total</span>
+</div>
+
+@* one card per day that has entries, newest day first, and its entries newest first. app.js colours the dot from data-colour
+   (inline styles are blocked by the CSP), and ts-entry__voice marks an entry that came from a voice note:
+   <section class="ts-day">
+       <header class="ts-day__head">
+           <h2 class="ts-day__date">Friday, Jul 31</h2>
+           <p class="ts-day__total">Total: <strong>5:30</strong></p>
+       </header>
+       <ol class="ts-day__entries">
+           <li class="ts-entry">
+               <span class="ts-entry__category"><span class="ts-dot" data-colour="#6B7280"></span>Admin</span>
+               <span class="ts-entry__company">Internal</span>
+               <span class="ts-entry__description">Wrote up the week's summary<span class="ts-entry__voice"><span class="app-sr-only">Voice note</span></span></span>
+               <span class="ts-entry__time">1:30 PM – 2:00 PM</span>
+               <span class="ts-entry__total">0:30</span>
+           </li>
+       </ol>
+   </section>
+   the days replace the empty message below *@
+<div class="ts-day">
+    <p class="ts-empty">Nothing logged this week. Each check-in you answer in the widget appears here, grouped by day.</p>
+</div>

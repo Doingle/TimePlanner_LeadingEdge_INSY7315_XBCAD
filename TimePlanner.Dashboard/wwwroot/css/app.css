@@ -32,6 +32,19 @@ html {
     display: none !important;
 }
 
+/* read out by screen readers, not shown */
+.app-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    border: 0;
+    clip-path: inset(50%);
+}
+
 body.app-body {
     min-height: 100vh;
     margin: 0;
@@ -204,6 +217,53 @@ body.app-body {
     .app-user__item:focus-visible {
         background: #f2f4f7;
         outline: none;
+    }
+
+/* ---------- Buttons ----------
+   For a button or a link. A link without an href is a placeholder and does not react to the mouse */
+
+.app-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 15px;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #374151;
+    text-decoration: none;
+    white-space: nowrap;
+    background: var(--app-surface);
+    border: 1px solid #e4e7ec;
+    border-radius: 8px;
+}
+
+    button.app-button,
+    a.app-button[href] {
+        cursor: pointer;
+    }
+
+        button.app-button:hover,
+        a.app-button[href]:hover {
+            background: #f9fafb;
+        }
+
+    .app-button:focus-visible {
+        outline: 2px solid var(--app-purple);
+        outline-offset: 2px;
+    }
+
+.app-button--primary {
+    color: #ffffff;
+    background: #8b5cf6;
+    border-color: #8b5cf6;
+}
+
+    button.app-button--primary:hover,
+    a.app-button--primary[href]:hover {
+        background: #7c3aed;
+        border-color: #7c3aed;
     }
 
 /* ---------- Page frame ---------- */
