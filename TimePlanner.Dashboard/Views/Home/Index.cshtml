@@ -1,41 +1,84 @@
 @using System.Globalization
+@using TimePlanner.Dashboard.Services.Overview
+@using TimePlanner.Dashboard.Services.Reports
+@model MyOverview?
 @{
     ViewData["Title"] = "Home";
     ViewData["Nav"] = "Home";
     Layout = "_AppLayout";
 
-    //the hours the timeline covers
-    var dayStart = new TimeOnly(8, 0);
-    var dayEnd = new TimeOnly(17, 0);
+    var culture = CultureInfo.InvariantCulture;
+
+    //minutes as H:MM, the way the design shows them
+    string Hm(int minutes) => $"{minutes / 60}:{(minutes % 60).ToString("00", culture)}";
+    //a share as a whole percent
+    string Pct(double percent) => Math.Round(percent, 0).ToString("0", culture) + "%";
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
 }
 
-<h1 class="home-title">Today, @DateTime.Today.ToString("ddd d MMM", CultureInfo.InvariantCulture)</h1>
+@if (Model == null)
+{
+    <h1 class="home-title">Home</h1>
+    <p class="home-alert" role="alert"><strong>Your account is not linked to a time tracking profile.</strong> Ask an administrator to link it, then sign in again.</p>
+    return;
+}
+
+@{
+    var dayStart = TimeOnly.ParseExact(Model.DayStart, "HH:mm", culture);
+    var dayEnd = TimeOnly.ParseExact(Model.DayEnd, "HH:mm", culture);
+    var unloggedMinutes = Model.Unlogged.Sum(g => g.Minutes);
+    var breakdown = Model.Breakdown;
+    var shownMinutes = Model.Period == "week" ? Model.WeekMinutes : Model.TodayMinutes;
+}
+
+<h1 class="home-title">Today, @Model.Today.ToString("ddd d MMM", culture)</h1>
 
 @* home-status__item--done shows a green tick, home-status__item--pending an orange clock *@
 <ul class="home-status">
-    <li class="home-status__item home-status__item--done">Last submission: <strong>—</strong></li>
-    <li class="home-status__item home-status__item--pending">Today isn't submitted yet. Submit it from the widget at the end of your day.</li>
+    @if (Model.LastSubmission != null)
+    {
+        <li class="home-status__item home-status__item--done">Last submission: <strong>@Model.LastSubmission.Date.ToString("ddd d MMM", culture), submitted @Model.LastSubmission.SubmittedAt.ToString("HH:mm", culture)</strong></li>
+    }
+    else
+    {
+        <li class="home-status__item home-status__item--pending">Last submission: <strong>—</strong></li>
+    }
+
+    @if (Model.SubmittedToday)
+    {
+        <li class="home-status__item home-status__item--done">Today is submitted.</li>
+    }
+    else
+    {
+        <li class="home-status__item home-status__item--pending">Today isn't submitted yet. Submit it from the widget at the end of your day.</li>
+    }
 </ul>
 
 <section class="home-card home-timeline" aria-labelledby="timeline-title">
     <div class="home-timeline__header">
         <h2 class="home-timeline__title" id="timeline-title">
-            Today's timeline <span class="home-timeline__range">@dayStart.ToString("HH:mm", CultureInfo.InvariantCulture)–@dayEnd.ToString("HH:mm", CultureInfo.InvariantCulture)</span>
+            Today's timeline <span class="home-timeline__range">@dayStart.ToString("HH:mm", culture)–@dayEnd.ToString("HH:mm", culture)</span>
         </h2>
-        <p class="home-timeline__summary"><strong>0:00</strong> logged, next check-in at —</p>
+        <p class="home-timeline__summary"><strong>@Hm(Model.TodayMinutes)</strong> logged (@Pct(Model.GoalProgressPercent) of your @Model.GoalHours.ToString("0.##", culture) h goal), next check-in at —</p>
     </div>
 
-    <div class="home-track" data-day-start="@dayStart.ToString("HH:mm", CultureInfo.InvariantCulture)" data-day-end="@dayEnd.ToString("HH:mm", CultureInfo.InvariantCulture)">
-        @* one block per entry. home.js places it from data-start and data-end and colours it with data-colour (inline styles are blocked by the CSP):
-           <div class="home-block" data-start="08:30" data-end="09:00" data-colour="#D97706"><span class="home-block__label">Email</span></div>
-           time nobody logged:
-           <div class="home-block home-block--unlogged" data-start="14:00" data-end="15:30"><span class="home-block__text">Not logged · 14:00–15:30</span></div>
-           the blocks replace the empty message below *@
-        <p class="home-track__empty">Nothing logged yet. Each answer you give the widget appears here as a block.</p>
+    @* one block per entry. home.js places it from data-start and data-end and colours it with data-colour (inline styles are blocked by the CSP) *@
+    <div class="home-track" data-day-start="@dayStart.ToString("HH:mm", culture)" data-day-end="@dayEnd.ToString("HH:mm", culture)">
+        @foreach (var block in Model.Timeline)
+        {
+            <div class="home-block" data-start="@block.Start" data-end="@block.End" data-colour="@block.Colour" title="@block.Title"><span class="home-block__label">@block.Label</span></div>
+        }
+        @foreach (var gap in Model.Unlogged)
+        {
+            <div class="home-block home-block--unlogged" data-start="@gap.Start" data-end="@gap.End"><span class="home-block__text">Not logged · @gap.Start–@gap.End</span></div>
+        }
+        @if (Model.Timeline.Count == 0)
+        {
+            <p class="home-track__empty">Nothing logged yet. Each answer you give the widget appears here as a block.</p>
+        }
 
         @* follows the device clock, see home.js *@
         <div class="home-now" hidden><span class="home-now__label">Now</span></div>
@@ -44,51 +87,73 @@
     <div class="home-axis" aria-hidden="true">
         @for (var hour = dayStart.Hour; hour <= dayEnd.Hour; hour++)
         {
-            <span class="home-axis__tick"><span class="home-axis__label">@hour.ToString("00", CultureInfo.InvariantCulture):00</span></span>
+            <span class="home-axis__tick"><span class="home-axis__label">@hour.ToString("00", culture):00</span></span>
         }
     </div>
 
-    @* shown when part of the day is not logged:
-       <p class="home-alert" role="alert"><strong>1:30 isn't logged, 14:00–15:30.</strong> The 15:30 check-in was skipped. Add this time in the widget before you submit today.</p> *@
+    @if (Model.Unlogged.Count > 0)
+    {
+        <p class="home-alert" role="alert"><strong>@Hm(unloggedMinutes) isn't logged, @string.Join(", ", Model.Unlogged.Select(g => $"{g.Start}–{g.End}")).</strong> Add this time in the widget before you submit today.</p>
+    }
 </section>
 
 <section class="home-split" aria-labelledby="split-title">
     <div class="home-split__header">
         <div>
             <h2 class="home-split__title" id="split-title">Where the time went</h2>
-            <p class="home-split__subtitle">Nothing logged today yet</p>
+            <p class="home-split__subtitle">@(shownMinutes == 0 ? (Model.Period == "week" ? "Nothing logged this week yet" : "Nothing logged today yet") : $"{Hm(shownMinutes)} logged {(Model.Period == "week" ? "this week" : "today")}")</p>
         </div>
 
-        <div class="home-toggle" role="group" aria-label="Period">
-            <button class="home-toggle__option" type="button" aria-pressed="true">Today</button>
-            <button class="home-toggle__option" type="button" aria-pressed="false">This week</button>
-        </div>
+        @* a form, so the choice works without scripts: each button reloads the page with ?period= *@
+        <form method="get" asp-controller="Home" asp-action="Index">
+            <div class="home-toggle" role="group" aria-label="Period">
+                <button class="home-toggle__option" type="submit" name="period" value="today" aria-pressed="@(Model.Period == "today" ? "true" : "false")">Today</button>
+                <button class="home-toggle__option" type="submit" name="period" value="week" aria-pressed="@(Model.Period == "week" ? "true" : "false")">This week</button>
+            </div>
+        </form>
     </div>
 
     <div class="home-split__cards">
         <section class="home-card home-breakdown" aria-labelledby="category-title">
             <h3 class="home-breakdown__title" id="category-title">By category</h3>
-            @* one row per category, largest first. home.js sets the bar width from data-percent and its colour from data-colour:
-               <ul class="home-breakdown__list">
-                   <li class="home-breakdown__row">
-                       <span class="home-breakdown__name">Coding</span>
-                       <span class="home-bar" aria-hidden="true"><span class="home-bar__fill" data-percent="55" data-colour="#0E7490"></span></span>
-                       <span class="home-breakdown__value"><strong>3:00</strong> · 55%</span>
-                   </li>
-               </ul>
-               the list replaces the empty message below *@
-            <p class="home-breakdown__empty">Categories appear here, largest first, once something is logged.</p>
+            @if (breakdown.ByCategory.Count == 0)
+            {
+                <p class="home-breakdown__empty">Categories appear here, largest first, once something is logged.</p>
+            }
+            else
+            {
+                <ul class="home-breakdown__list">
+                    @foreach (var row in breakdown.ByCategory)
+                    {
+                        <li class="home-breakdown__row">
+                            <span class="home-breakdown__name">@row.Label</span>
+                            <span class="home-bar" aria-hidden="true"><span class="home-bar__fill" data-percent="@row.Percent.ToString("0.#", culture)" data-colour="@row.Colour"></span></span>
+                            <span class="home-breakdown__value"><strong>@Hm(row.Minutes)</strong> · @Pct(row.Percent)</span>
+                        </li>
+                    }
+                </ul>
+            }
         </section>
 
         <section class="home-card home-breakdown" aria-labelledby="project-title">
             <h3 class="home-breakdown__title" id="project-title">By project</h3>
-            @* same rows as By category, with a note under the name and the bar shaded by home-bar__fill--billable or home-bar__fill--non-billable:
-               <li class="home-breakdown__row">
-                   <span class="home-breakdown__name">Project X <small class="home-breakdown__note">Billable</small></span>
-                   <span class="home-bar" aria-hidden="true"><span class="home-bar__fill home-bar__fill--billable" data-percent="55"></span></span>
-                   <span class="home-breakdown__value"><strong>3:00</strong> · 55%</span>
-               </li> *@
-            <p class="home-breakdown__empty">Projects appear here, largest first, once something is logged.</p>
+            @if (breakdown.ByProject.Count == 0)
+            {
+                <p class="home-breakdown__empty">Projects appear here, largest first, once something is logged.</p>
+            }
+            else
+            {
+                <ul class="home-breakdown__list">
+                    @foreach (var row in breakdown.ByProject)
+                    {
+                        <li class="home-breakdown__row">
+                            <span class="home-breakdown__name">@row.Label <small class="home-breakdown__note">@(row.Billable == true ? "Billable" : "Non-billable")</small></span>
+                            <span class="home-bar" aria-hidden="true"><span class="home-bar__fill @(row.Billable == true ? "home-bar__fill--billable" : "home-bar__fill--non-billable")" data-percent="@row.Percent.ToString("0.#", culture)"></span></span>
+                            <span class="home-breakdown__value"><strong>@Hm(row.Minutes)</strong> · @Pct(row.Percent)</span>
+                        </li>
+                    }
+                </ul>
+            }
         </section>
     </div>
 </section>

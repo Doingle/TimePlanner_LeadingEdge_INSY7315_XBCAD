@@ -48,7 +48,7 @@ namespace TimePlanner.Dashboard.Services.Reports
         }
 
         //-----------------------------
-        //developers may only see their own time, admin and billing may see anyone's. Returns false when the request asks for someone else's
+        //developers may only see their own time, an admin may see anyone's. Returns false when the request asks for someone else's
         //and sets filter to the user to restrict the query to, null meaning everyone
         public static bool TryScope(int? requestedUserId, int callerUserId, bool privileged, out int? filter)
         {
@@ -75,10 +75,13 @@ namespace TimePlanner.Dashboard.Services.Reports
             return null;
         }
 
-        //an entry with everything the reports need, read in one query
-        private record RawEntry(int UserId, string UserName, string Company, string Project, int CategoryId, DateTime Start, DateTime End, string? Note);
+        //-----------------------------
+        //a time entry with everything the screens and reports need, read in one query
+        public record ReportEntry(int UserId, string UserName, string Company, string Project, int CategoryId, DateTime Start, DateTime End, string? Note);
 
-        private async Task<List<RawEntry>> LoadAsync(DateTime from, DateTime to, int? userId, int? companyId)
+        //-----------------------------
+        //the entries starting on any of the days from..to (both included), oldest first, optionally for one person and/or one company
+        public async Task<List<ReportEntry>> LoadEntriesAsync(DateTime from, DateTime to, int? userId, int? companyId)
         {
             //whole days: from the start of the first day to the end of the last
             var start = from.Date;
@@ -92,7 +95,7 @@ namespace TimePlanner.Dashboard.Services.Reports
 
             return await query
                 .OrderBy(e => e.StartTime)
-                .Select(e => new RawEntry(e.UserId, e.User!.Name, e.Task!.Project!.Company!.Name, e.Task.Project.Name,
+                .Select(e => new ReportEntry(e.UserId, e.User!.Name, e.Task!.Project!.Company!.Name, e.Task.Project.Name,
                     e.Task.CategoryId, e.StartTime, e.EndTime, e.Note))
                 .ToListAsync();
         }
@@ -109,8 +112,8 @@ namespace TimePlanner.Dashboard.Services.Reports
         //ponytail: grouped in memory after one query, fine for a few thousand entries (the range is capped at a year). Past that, sum julianday(End)-julianday(Start) in SQL
         public async Task<HoursReport> GetHoursAsync(DateTime from, DateTime to, ReportGrouping groupBy, int? userId, int? companyId)
         {
-            var entries = await LoadAsync(from, to, userId, companyId);
-            var activities = new ActivityLookup(await _db.Categories.AsNoTracking().ToListAsync());
+            var entries = await LoadEntriesAsync(from, to, userId, companyId);
+            var activities = await ActivityLookup.LoadAsync(_db);
 
             var rows = entries
                 .GroupBy(e => Label(e, groupBy, activities))
@@ -131,12 +134,53 @@ namespace TimePlanner.Dashboard.Services.Reports
         }
 
         //-----------------------------
+        //total, billable and non-billable time plus the breakdowns by category, project and person, for one person (userId) or everyone (null).
+        //category means the top level activity, so sub activities add up under their parent
+        public async Task<ReportSummary> GetSummaryAsync(DateTime from, DateTime to, int? userId)
+        {
+            var entries = await LoadEntriesAsync(from, to, userId, null);
+            var activities = await ActivityLookup.LoadAsync(_db);
+            return Summarise(from, to, entries, activities);
+        }
+
+        //-----------------------------
+        //builds a summary from entries already loaded, so a screen that needs several views of the same period reads the database once
+        public static ReportSummary Summarise(DateTime from, DateTime to, IReadOnlyList<ReportEntry> entries, ActivityLookup activities)
+        {
+            var totalMinutes = entries.Sum(e => (e.End - e.Start).TotalMinutes);
+            var billableMinutes = entries.Where(IsBillable).Sum(e => (e.End - e.Start).TotalMinutes);
+
+            return new ReportSummary(from.Date, to.Date, Round(totalMinutes / 60), (int)Math.Round(totalMinutes),
+                Round(billableMinutes / 60), Round((totalMinutes - billableMinutes) / 60), entries.Count,
+                Breakdown(entries, totalMinutes, e => activities.RootName(e.CategoryId), (_, e) => (activities.RootColour(e.CategoryId), null)),
+                Breakdown(entries, totalMinutes, e => $"{e.Company} / {e.Project}", (_, e) => (null, IsBillable(e))),
+                Breakdown(entries, totalMinutes, e => e.UserName, (_, _) => (null, null), personKey: e => e.UserId));
+        }
+
+        //one row per group, largest first. The first entry of a group decides its colour or billable flag, which are the same for every entry in it
+        private static List<BreakdownRow> Breakdown(IReadOnlyList<ReportEntry> entries, double totalMinutes, Func<ReportEntry, string> label,
+            Func<string, ReportEntry, (string? Colour, bool? Billable)> style, Func<ReportEntry, int>? personKey = null) =>
+            entries
+                .GroupBy(e => personKey == null ? (object)label(e) : personKey(e))
+                .Select(g =>
+                {
+                    var first = g.First();
+                    var minutes = g.Sum(e => (e.End - e.Start).TotalMinutes);
+                    var (colour, billable) = style(label(first), first);
+                    return new BreakdownRow(label(first), Round(minutes / 60), (int)Math.Round(minutes),
+                        totalMinutes <= 0 ? 0 : Math.Round(minutes / totalMinutes * 100, 1), colour, billable, g.Count());
+                })
+                .OrderByDescending(r => r.Minutes)
+                .ThenBy(r => r.Label, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+        //-----------------------------
         //one person's entries in the company's timesheet layout, as csv bytes with a byte order mark so Excel reads the characters correctly.
         //text that could be run as a formula is neutralised by CsvHelper's escape option
         public async Task<byte[]> ExportTimesheetCsvAsync(int userId, DateTime from, DateTime to)
         {
-            var entries = await LoadAsync(from, to, userId, null);
-            var activities = new ActivityLookup(await _db.Categories.AsNoTracking().ToListAsync());
+            var entries = await LoadEntriesAsync(from, to, userId, null);
+            var activities = await ActivityLookup.LoadAsync(_db);
             await _audit.LogAsync(AuditActions.TimesheetExported, $"profile {userId}, {from:yyyy-MM-dd} to {to:yyyy-MM-dd}, {entries.Count} entries");
 
             using var memory = new MemoryStream();
@@ -165,19 +209,19 @@ namespace TimePlanner.Dashboard.Services.Reports
             return memory.ToArray();
         }
 
-        private static double Hours(RawEntry e) => (e.End - e.Start).TotalHours;
+        public static double Hours(ReportEntry e) => (e.End - e.Start).TotalHours;
 
         private static double Round(double hours) => Math.Round(hours, 2);
 
-        private static bool IsInternal(RawEntry e) => e.Company == LocalSetupService.InternalCompanyName;
+        public static bool IsInternal(ReportEntry e) => e.Company == LocalSetupService.InternalCompanyName;
 
         //the rule agreed with the client: work for the internal company is not billable, work for any other company is
-        private static bool IsBillable(RawEntry e) => !IsInternal(e);
+        public static bool IsBillable(ReportEntry e) => !IsInternal(e);
 
         //the company's own sheet writes "Internal" for the work that is not billed
-        private static string BillableLabel(RawEntry e) => IsInternal(e) ? "Internal" : "Yes";
+        private static string BillableLabel(ReportEntry e) => IsInternal(e) ? "Internal" : "Yes";
 
-        private static string Label(RawEntry e, ReportGrouping groupBy, ActivityLookup activities) => groupBy switch
+        private static string Label(ReportEntry e, ReportGrouping groupBy, ActivityLookup activities) => groupBy switch
         {
             ReportGrouping.Company => e.Company,
             ReportGrouping.User => e.UserName,
@@ -185,35 +229,6 @@ namespace TimePlanner.Dashboard.Services.Reports
             ReportGrouping.Activity => activities.RootName(e.CategoryId),
             _ => $"{e.Company} / {e.Project}"
         };
-
-        //-----------------------------
-        //answers questions about the activity tree from one read of the categories
-        private class ActivityLookup
-        {
-            private readonly Dictionary<int, Category> _byId;
-
-            public ActivityLookup(List<Category> all) => _byId = all.ToDictionary(c => c.CategoryId);
-
-            public string Path(int id)
-            {
-                var names = new List<string>();
-                for (var c = Find(id); c != null; c = c.ParentCategoryId == null ? null : Find(c.ParentCategoryId.Value))
-                    names.Insert(0, c.Name);
-                return string.Join(" > ", names);
-            }
-
-            public string RootName(int id) => Root(id)?.Name ?? "Unknown";
-
-            private Category? Find(int id) => _byId.GetValueOrDefault(id);
-
-            private Category? Root(int id)
-            {
-                var c = Find(id);
-                while (c?.ParentCategoryId != null)
-                    c = Find(c.ParentCategoryId.Value);
-                return c;
-            }
-        }
     }
 }
 //------------------------------EOF-----------------------------\\

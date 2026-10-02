@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TimePlanner.Dashboard.Security;
 
 namespace TimePlanner.Dashboard.Controllers.Api
 {
@@ -13,7 +14,7 @@ namespace TimePlanner.Dashboard.Controllers.Api
     public abstract class ApiControllerBase : ControllerBase
     {
         //the time tracking profile of the caller, null for a login that is not linked to one
-        protected int? CurrentAppUserId => int.TryParse(User.FindFirst("uid")?.Value, out var id) ? id : null;
+        protected int? CurrentAppUserId => User.ProfileId();
 
         //admins may read other people's time data, developers only their own
         protected bool IsPrivileged => User.IsInRole("Admin");

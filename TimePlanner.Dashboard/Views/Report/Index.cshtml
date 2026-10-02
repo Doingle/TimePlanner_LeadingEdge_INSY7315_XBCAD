@@ -3,9 +3,27 @@
 @model ReportPageModel
 @{
     ViewData["Title"] = "Hours report";
+    ViewData["Nav"] = "Reports";
+    Layout = "_AppLayout";
+    var culture = CultureInfo.InvariantCulture;
 }
 
 <h1 class="h3 mb-3">Hours report</h1>
+
+@* quick periods: a whole week or month, with the previous and next one *@
+<nav class="mb-3" aria-label="Period">
+    <a asp-action="Index" asp-route-view="week" asp-route-groupBy="@Model.GroupBy" asp-route-userId="@Model.UserId" aria-current="@(Model.View == "week" ? "true" : null)">This week</a>
+    |
+    <a asp-action="Index" asp-route-view="month" asp-route-groupBy="@Model.GroupBy" asp-route-userId="@Model.UserId" aria-current="@(Model.View == "month" ? "true" : null)">This month</a>
+    @if (Model.View != null && Model.Previous != null && Model.Next != null)
+    {
+        <span class="ms-3">
+            <a asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.Previous.Value.ToString("yyyy-MM-dd", culture)" asp-route-groupBy="@Model.GroupBy" asp-route-userId="@Model.UserId">Previous</a>
+            <strong class="mx-2">@Model.PeriodLabel</strong>
+            <a asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.Next.Value.ToString("yyyy-MM-dd", culture)" asp-route-groupBy="@Model.GroupBy" asp-route-userId="@Model.UserId">Next</a>
+        </span>
+    }
+</nav>
 
 <form method="get" asp-action="Index" class="row g-3 mb-4">
     <div class="col-sm-6 col-md-3">
@@ -54,6 +72,62 @@ else if (Model.Report != null)
         <strong>@report.TotalHours.ToString("0.00", CultureInfo.InvariantCulture) hours</strong> in @report.Entries entr@(report.Entries == 1 ? "y" : "ies"),
         @report.BillableHours.ToString("0.00", CultureInfo.InvariantCulture) billable, from @report.From.ToString("yyyy-MM-dd") to @report.To.ToString("yyyy-MM-dd").
     </p>
+
+    @if (Model.Summary != null)
+    {
+        var summary = Model.Summary;
+        <section aria-labelledby="summary-title" class="mb-4">
+            <h2 class="h5" id="summary-title">Billable and non-billable</h2>
+            <p>
+                Billable <strong>@summary.BillableHours.ToString("0.00", culture)</strong> h,
+                non-billable <strong>@summary.NonBillableHours.ToString("0.00", culture)</strong> h,
+                total <strong>@summary.TotalHours.ToString("0.00", culture)</strong> h.
+            </p>
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <h3 class="h6">By category</h3>
+                    @if (summary.ByCategory.Count == 0)
+                    {
+                        <p class="text-muted">Nothing logged.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm">
+                            <caption class="visually-hidden">Hours by category</caption>
+                            <thead><tr><th scope="col">Category</th><th scope="col" class="text-end">Hours</th><th scope="col" class="text-end">Share</th></tr></thead>
+                            <tbody>
+                                @foreach (var row in summary.ByCategory)
+                                {
+                                    <tr><th scope="row" class="fw-normal">@row.Label</th><td class="text-end">@row.Hours.ToString("0.00", culture)</td><td class="text-end">@row.Percent.ToString("0.#", culture)%</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+                <div class="col-md-6">
+                    <h3 class="h6">By project</h3>
+                    @if (summary.ByProject.Count == 0)
+                    {
+                        <p class="text-muted">Nothing logged.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm">
+                            <caption class="visually-hidden">Hours by project</caption>
+                            <thead><tr><th scope="col">Project</th><th scope="col" class="text-end">Hours</th><th scope="col" class="text-end">Share</th><th scope="col">Billing</th></tr></thead>
+                            <tbody>
+                                @foreach (var row in summary.ByProject)
+                                {
+                                    <tr><th scope="row" class="fw-normal">@row.Label</th><td class="text-end">@row.Hours.ToString("0.00", culture)</td><td class="text-end">@row.Percent.ToString("0.#", culture)%</td><td>@(row.Billable == true ? "Billable" : "Non-billable")</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </section>
+    }
 
     @if (report.Rows.Count == 0)
     {

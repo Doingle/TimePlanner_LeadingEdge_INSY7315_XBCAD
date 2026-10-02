@@ -1,0 +1,83 @@
+@using System.Globalization
+@using TimePlanner.Dashboard.Services.Overview
+@model TimesheetPageModel
+@{
+    ViewData["Title"] = "My Timesheet";
+    ViewData["Nav"] = "Timesheet";
+    Layout = "_AppLayout";
+    var culture = CultureInfo.InvariantCulture;
+
+    //how each status reads on the page. The status itself is also written as a class, timesheet-day--submitted and so on, for styling
+    string Describe(TimesheetDay day) => day.Status switch
+    {
+        TimesheetViewService.Submitted => day.SubmittedAt == null ? "Submitted" : $"Submitted at {day.SubmittedAt.Value.ToString("HH:mm", culture)}",
+        TimesheetViewService.Pending => "Not submitted yet",
+        TimesheetViewService.Missing => "Missing",
+        TimesheetViewService.NotDue => "Not due yet",
+        _ => "Weekend"
+    };
+}
+
+<h1 class="h3 mb-3">My Timesheet</h1>
+
+@if (Model.NoProfile)
+{
+    <p class="alert alert-warning" role="alert"><strong>Your account is not linked to a time tracking profile.</strong> Ask an administrator to link it, then sign in again.</p>
+    return;
+}
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+@{
+    var data = Model.Data!;
+}
+
+<partial name="_PeriodNav" model="@("Timesheet", "Index", data.View, data.Label, Model.Previous, Model.Next)" />
+
+<p>
+    <strong>@data.TotalHours.ToString("0.00", culture) hours</strong> logged,
+    @data.SubmittedDays day@(data.SubmittedDays == 1 ? "" : "s") submitted,
+    @data.MissingDays missing.
+    This page is read only: corrections are made in the widget and submitted again.
+</p>
+
+<table class="table table-sm align-middle timesheet">
+    <caption class="visually-hidden">Days of @data.Label</caption>
+    <thead>
+        <tr>
+            <th scope="col">Day</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="text-end">Hours</th>
+            <th scope="col" class="text-end">Entries</th>
+            <th scope="col">What was logged</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var day in data.Days)
+        {
+            <tr class="timesheet-day timesheet-day--@day.Status.ToLowerInvariant()">
+                <th scope="row" class="fw-normal">@day.Weekday @day.Date.ToString("d MMM", culture)</th>
+                <td>@Describe(day)</td>
+                <td class="text-end">@(day.Entries == 0 ? "" : day.Hours.ToString("0.00", culture))</td>
+                <td class="text-end">@(day.Entries == 0 ? "" : day.Entries.ToString(culture))</td>
+                <td>
+                    @if (day.Items.Count > 0)
+                    {
+                        <details>
+                            <summary>Show @day.Items.Count</summary>
+                            <ul class="list-unstyled mb-0">
+                                @foreach (var item in day.Items)
+                                {
+                                    <li>@item.Start–@item.End, @item.Hours.ToString("0.00", culture) h, @item.Company / @item.Project, @item.Activity@(string.IsNullOrWhiteSpace(item.Note) ? "" : ": " + item.Note) <small>(@(item.Billable ? "Billable" : "Non-billable"))</small></li>
+                                }
+                            </ul>
+                        </details>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
