@@ -37,6 +37,16 @@ namespace TimePlanner.Core.Repositories.SQLite
         public Task<WorkTask?> FindAsync(int projectId, int categoryId, int assignedUserId) =>
             _db.Tasks.AsNoTracking().FirstOrDefaultAsync(t =>
                 t.ProjectID == projectId && t.CategoryId == categoryId && t.AssignedUserID == assignedUserId);
+
+        //-----------------------------
+        //true when any task uses the project
+        public Task<bool> AnyForProjectAsync(int projectId) =>
+            _db.Tasks.AnyAsync(t => t.ProjectID == projectId);
+
+        //-----------------------------
+        //true when any task uses the activity
+        public Task<bool> AnyForCategoryAsync(int categoryId) =>
+            _db.Tasks.AnyAsync(t => t.CategoryId == categoryId);
     }
 }
 //------------------------------EOF-----------------------------\\

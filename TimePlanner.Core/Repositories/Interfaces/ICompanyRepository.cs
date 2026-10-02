@@ -9,6 +9,9 @@ namespace TimePlanner.Core.Repositories.Interfaces
         Task<Company?> GetByIdAsync(int id);
         Task<List<Company>> GetAllAsync();
         Task AddAsync(Company company);
+
+        //deletes a company by id
+        Task DeleteAsync(int id);
     }
 }
 //------------------------------EOF-----------------------------\\

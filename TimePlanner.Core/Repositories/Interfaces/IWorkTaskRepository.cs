@@ -15,6 +15,12 @@ namespace TimePlanner.Core.Repositories.Interfaces
 
         //the task for one project activity and user
         Task<WorkTask?> FindAsync(int projectId, int categoryId, int assignedUserId);
+
+        //true when any task uses the project
+        Task<bool> AnyForProjectAsync(int projectId);
+
+        //true when any task uses the activity
+        Task<bool> AnyForCategoryAsync(int categoryId);
     }
 }
 //------------------------------EOF-----------------------------\\
