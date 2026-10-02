@@ -3,10 +3,9 @@ name: Deploy Dashboard
 
 on:
   push:
-    branches: [ development ]
+    branches: [ main ]
   workflow_dispatch:
 
-# one deploy at a time and none cancelled midway
 concurrency:
   group: deploy-dashboard
   cancel-in-progress: false
@@ -40,7 +39,6 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: publish/dashboard
 
-      # waits for the site and its database to answer
       - name: Check the site is healthy
         run: |
           for i in $(seq 1 20); do
