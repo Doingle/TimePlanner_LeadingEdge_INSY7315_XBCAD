@@ -13,7 +13,6 @@
     --login-wave-mid: #a98bf3;
     --login-wave-front: #c9b8f8;
     --login-line: #e5dcfc;
-
     --login-fit: min(100vw / 1000, 100vh / 596);
     /* How strongly the page follows the window size: 1 = grows with it fully,
      0 = always stays at the design size. */
@@ -339,6 +338,25 @@ body.login-body {
     border: max(1px, var(--u)) solid #fecdca;
     border-radius: calc(8 * var(--u));
 }
+
+    /* the validation summary renders its messages as a list */
+    .login-error ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+/* a field's own message, e.g. a missing or badly formed email */
+.login-field-error {
+    display: block;
+    margin-top: calc(6 * var(--u));
+    font-size: calc(13 * var(--u));
+    color: #b42318;
+}
+
+    .login-field-error:empty {
+        display: none;
+    }
 
 /* ---------- Portrait, narrow or very short windows ----------
    Side by side no longer fits, so the panels stack. The stacked layout is

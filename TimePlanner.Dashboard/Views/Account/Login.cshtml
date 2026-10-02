@@ -1,3 +1,4 @@
+@model LoginViewModel
 @{
     ViewData["Title"] = "Log in";
     Layout = null;
@@ -50,16 +51,19 @@
                 <h2 class="login-title">Log in</h2>
                 <p class="login-subtitle">Use the email address your admin set up for you.</p>
 
-                <form class="login-form" method="post" asp-controller="Account" asp-action="Index" novalidate>
+                <form class="login-form" asp-action="Login" method="post" novalidate>
+                    <input type="hidden" asp-for="ReturnUrl" />
+
                     <div class="login-field">
-                        <label class="login-label" for="Email">Email</label>
-                        <input class="login-input" id="Email" name="Email" type="email" autocomplete="email" required />
+                        <label class="login-label" asp-for="Email"></label>
+                        <input class="login-input" asp-for="Email" autocomplete="username" autofocus />
+                        <span class="login-field-error" asp-validation-for="Email"></span>
                     </div>
 
                     <div class="login-field">
-                        <label class="login-label" for="Password">Password</label>
+                        <label class="login-label" asp-for="Password"></label>
                         <div class="login-input-wrap">
-                            <input class="login-input login-input--password" id="Password" name="Password" type="password" autocomplete="current-password" required />
+                            <input class="login-input login-input--password" asp-for="Password" autocomplete="current-password" />
                             <button class="login-toggle" type="button" id="togglePassword" aria-label="Show password" aria-pressed="false">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
@@ -67,12 +71,10 @@
                                 </svg>
                             </button>
                         </div>
+                        <span class="login-field-error" asp-validation-for="Password"></span>
                     </div>
 
-                    @if (ViewData["LoginError"] is string loginError)
-                    {
-                        <p class="login-error" role="alert">@loginError</p>
-                    }
+                    <div asp-validation-summary="ModelOnly" class="login-error" role="alert"></div>
 
                     <button class="login-submit" type="submit">Log in</button>
                 </form>
@@ -82,17 +84,6 @@
         </main>
     </div>
 
-    <script>
-            (function () {
-                var toggle = document.getElementById("togglePassword");
-                var input = document.getElementById("Password");
-                toggle.addEventListener("click", function () {
-                    var show = input.type === "password";
-                    input.type = show ? "text" : "password";
-                    toggle.setAttribute("aria-pressed", show);
-                    toggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
-                });
-            })();
-    </script>
+    <script src="~/js/login.js" asp-append-version="true"></script>
 </body>
 </html>
