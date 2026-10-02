@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -7,9 +7,11 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using TimePlanner.Core.Services;
 using TimePlanner.Widget.Models;
+
 namespace TimePlanner.Widget.Controls
 {
-
+    //-----------------------------
+    //breadcrumb tree picker for activities companies and projects
     public partial class ActivityPicker : UserControl
     {
         private const string Chevron = "›";  
@@ -30,11 +32,56 @@ namespace TimePlanner.Widget.Controls
             RenderValue();
         }
 
+        //-----------------------------
+        //what one item is called in messages
+        public string FieldName { get; set; } = "Activity";
+
+        //-----------------------------
+        //text shown when nothing is chosen
+        public string Placeholder { get; set; } = "Choose an activity";
+
+        //-----------------------------
+        //deepest level the picker shows
+        public int MaxDepth { get; set; } = ActivityService.MaxDepth;
+
+        //-----------------------------
+        //how deep a choice must be to count
+        public int RequiredDepth { get; set; } = 1;
+
+        //-----------------------------
+        //whether new top level items may be typed
+        public bool AllowRootAdd { get; set; }
+
+        //-----------------------------
+        //opens the child add field after adding a top level item
+        public bool GuidedChildAdd { get; set; }
+
+        //-----------------------------
+        //longest name the add field accepts
+        public int MaxNameLength { get; set; } = InputLimits.ActivityName;
+
+        //-----------------------------
+        //tidies typed names before adding
+        public Func<string, string> CleanName { get; set; } = InputLimits.CleanActivityName;
+
+        //-----------------------------
+        //label for the add row at a path
+        public Func<IReadOnlyList<string>, string>? AddLabelFor { get; set; }
+
+        //-----------------------------
+        //which rows show a remove button
+        public Func<IReadOnlyList<string>, bool>? CanRemove { get; set; }
+
+        //-----------------------------
+        //raised when the user asks to remove a row
+        public event EventHandler<IReadOnlyList<string>>? RemoveRequested;
+
         public event EventHandler? SelectionChanged;
 
         public IReadOnlyList<string> SelectedPath => _selected;
 
-
+        //-----------------------------
+        //loads tree choices recent paths and selected item
         public void Load(List<ActivityNode> tree, List<IReadOnlyList<string>> recent, IReadOnlyList<string> selected)
         {
             _tree = tree;
@@ -43,20 +90,28 @@ namespace TimePlanner.Widget.Controls
             RenderValue();
         }
 
+        //-----------------------------
+        //checks selection meets required depth
         public bool Validate()
         {
-            if (_selected.Count > 0)
+            //selection must reach required depth
+            if (_selected.Count >= RequiredDepth)
                 return true;
 
             Field.SetIsInvalid(PickerButton, true);
+            var detail = Placeholder.Replace("Choose ", string.Empty).ToLowerInvariant();
+            ErrorText.Text = $"Choose {detail} to save this entry.";
             ErrorLine.Visibility = Visibility.Visible;
-            AutomationProperties.SetHelpText(PickerButton, "Choose an activity to save this entry.");
+            AutomationProperties.SetHelpText(PickerButton, $"Choose {detail} to save this entry.");
             return false;
         }
 
+        //-----------------------------
+        //moves keyboard focus to the select button
         public void FocusField() => PickerButton.Focus();
 
-
+        //-----------------------------
+        //opens the dropdown menu at a given path
         public void Open(IReadOnlyList<string>? expand = null, IReadOnlyList<string>? addingAt = null)
         {
             _addPath = addingAt;
@@ -65,21 +120,27 @@ namespace TimePlanner.Widget.Controls
             Field.SetIsOpen(PickerButton, true);
             _menu.IsOpen = true;
 
+            //expands paths for first display
             foreach (var path in new[] { expand, addingAt })
             {
+                //skips null expand paths
                 if (path == null) continue;
                 for (var depth = 1; depth <= path.Count; depth++)
+                    //opens submenus along path
                     if (_rows.TryGetValue(PathKey(path.Take(depth)), out var row))
                         row.IsSubmenuOpen = true;
             }
 
+            //focuses input box when adding
             if (_addInput != null)
                 FocusAddInput();
         }
 
-
+        //-----------------------------
+        //this method handles click on the picker button
         private void PickerButton_Click(object sender, RoutedEventArgs e)
         {
+            //toggles open menu closed
             if (_menu is { IsOpen: true })
             {
                 _menu.IsOpen = false;
@@ -88,20 +149,25 @@ namespace TimePlanner.Widget.Controls
             Open(expand: _selected.Count > 1 ? _selected.Take(_selected.Count - 1).ToList() : null);
         }
 
+        //-----------------------------
+        //renders the chosen path as breadcrumbs
         private void RenderValue()
         {
             PathPanel.Children.Clear();
+            //unselected state shows placeholder
             if (_selected.Count == 0)
             {
-                PathPanel.Children.Add(Text("Choose an activity", Res<double>("FontSizeBody"), Res<Brush>("TextTertiaryBrush")));
+                PathPanel.Children.Add(Text(Placeholder, Res<double>("FontSizeBody"), Res<Brush>("TextTertiaryBrush")));
                 PickerButton.ToolTip = null;
-                AutomationProperties.SetName(PickerButton, "Activity, Choose an activity");
+                AutomationProperties.SetName(PickerButton, $"{FieldName}, {Placeholder}");
                 return;
             }
 
+            //renders each segment of chosen path
             for (var i = 0; i < _selected.Count; i++)
             {
                 var last = i == _selected.Count - 1;
+                //inserts chevron between path parts
                 if (i > 0)
                 {
                     var sep = Text(Chevron, Res<double>("FontSizeCaption"), Res<Brush>("TextTertiaryBrush"));
@@ -118,9 +184,11 @@ namespace TimePlanner.Widget.Controls
 
             var spoken = string.Join($" {Chevron} ", _selected);
             PickerButton.ToolTip = spoken;
-            AutomationProperties.SetName(PickerButton, "Activity, " + spoken);
+            AutomationProperties.SetName(PickerButton, $"{FieldName}, " + spoken);
         }
 
+        //-----------------------------
+        //builds the dropdown context menu
         private ContextMenu BuildMenu()
         {
             _rows.Clear();
@@ -128,11 +196,13 @@ namespace TimePlanner.Widget.Controls
             _addInput = null;
 
             var menu = new ContextMenu { Style = Res<Style>("Menu.Dropdown"), PlacementTarget = PickerButton };
-            AutomationProperties.SetName(menu, "Activity");
+            AutomationProperties.SetName(menu, FieldName);
 
+            //adds recent section when recent choices exist
             if (_recent.Count > 0)
             {
                 menu.Items.Add(new Separator { Style = Res<Style>("Menu.Label"), Tag = "Recent" });
+                //adds recent rows
                 foreach (var path in _recent)
                     menu.Items.Add(RecentRow(path));
                 menu.Items.Add(new Separator { Style = Res<Style>("Menu.Separator") });
@@ -142,15 +212,49 @@ namespace TimePlanner.Widget.Controls
             return menu;
         }
 
+        //-----------------------------
+        //adds one tree level of items and an add row
         private void AddLevel(ItemCollection items, IReadOnlyList<string> path, List<ActivityNode> nodes)
         {
+            //adds menu items for each node
             foreach (var node in nodes)
             {
                 IReadOnlyList<string> nodePath = [.. path, node.Label];
+                UIElement headerContent = Label(node.Label);
+
+                //shows remove button on removable rows
+                if (CanRemove?.Invoke(nodePath) == true)
+                {
+                    var removeBtn = new Button
+                    {
+                        Style = Res<Style>("Button.Icon"),
+                        Content = new Icon { Kind = IconKind.Close, Size = Res<double>("SizeIconSm") },
+                        ToolTip = "Remove",
+                        Margin = new Thickness(8, 0, 0, 0)
+                    };
+                    AutomationProperties.SetName(removeBtn, $"Remove {node.Label}");
+                    removeBtn.Click += (s, e) =>
+                    {
+                        e.Handled = true;
+                        //closes menu before raising remove
+                        if (_menu != null)
+                        {
+                            _menu.IsOpen = false;
+                        }
+                        RemoveRequested?.Invoke(this, nodePath);
+                    };
+
+                    var panel = new DockPanel();
+                    DockPanel.SetDock(removeBtn, Dock.Right);
+                    panel.Children.Add(removeBtn);
+                    panel.Children.Add(headerContent);
+                    headerContent = panel;
+                }
+
                 var row = new MenuItem
                 {
                     Style = Res<Style>("Menu.Row"),
-                    Header = Label(node.Label),
+                    Header = headerContent,
                     IsChecked = Same(nodePath, _selected),
                     Tag = nodePath,
                 };
@@ -164,19 +268,29 @@ namespace TimePlanner.Widget.Controls
                 items.Add(row);
             }
 
-            // Core nests activities at most MaxDepth deep, so the deepest level offers no Add
-            if (path.Count >= ActivityService.MaxDepth)
+            //root level offers add row only when allowed
+            if (path.Count == 0 && !AllowRootAdd)
+            {
+                return;
+            }
+
+            //deepest allowed level offers no add row
+            if (path.Count >= MaxDepth)
                 return;
 
+            //separates items from add row
             if (nodes.Count > 0)
                 items.Add(new Separator { Style = Res<Style>("Menu.Separator") });
 
             items.Add(_addPath != null && Same(_addPath, path) ? AddField(path) : AddRow(path));
         }
 
+        //-----------------------------
+        //creates a menu item for a recent choice
         private MenuItem RecentRow(IReadOnlyList<string> path)
         {
             var text = Label(string.Empty);
+            //formats parent path breadcrumb
             if (path.Count > 1)
             {
                 var crumb = string.Join($" {Chevron} ", path.Take(path.Count - 1)) + $" {Chevron} ";
@@ -190,6 +304,8 @@ namespace TimePlanner.Widget.Controls
             return row;
         }
 
+        //-----------------------------
+        //creates the add row button
         private MenuItem AddRow(IReadOnlyList<string> path)
         {
             var row = new MenuItem
@@ -203,9 +319,11 @@ namespace TimePlanner.Widget.Controls
             return row;
         }
 
+        //-----------------------------
+        //creates the inline text field for adding an item
         private MenuItem AddField(IReadOnlyList<string> path)
         {
-            var input = new TextBox { Style = Res<Style>("Input"), Padding = new Thickness(6, 0, 6, 0), MaxLength = InputLimits.ActivityName };
+            var input = new TextBox { Style = Res<Style>("Input"), Padding = new Thickness(6, 0, 6, 0), MaxLength = MaxNameLength };
             Field.SetPlaceholder(input, "New item");
             AutomationProperties.SetName(input, AddLabel(path));
             input.PreviewKeyDown += (_, e) =>
@@ -300,7 +418,7 @@ namespace TimePlanner.Widget.Controls
 
         private void Commit(IReadOnlyList<string> path, string text)
         {
-            var name = InputLimits.CleanActivityName(text);
+            var name = CleanName(text);
             if (name.Length == 0)
                 return;
 
@@ -310,9 +428,25 @@ namespace TimePlanner.Widget.Controls
 
             var existing = level.FirstOrDefault(n => string.Equals(n.Label, name, StringComparison.OrdinalIgnoreCase));
             if (existing == null)
-                level.Add(new ActivityNode(name));
+            {
+                existing = new ActivityNode(name);
+                level.Add(existing);
+            }
 
-            Choose([.. path, existing?.Label ?? name]);
+            //guided child add opens child input for top level items
+            if (GuidedChildAdd && path.Count == 0)
+            {
+                //closes menu before opening child add
+                if (_menu != null)
+                {
+                    _menu.IsOpen = false;
+                }
+                Open(addingAt: [existing.Label]);
+            }
+            else
+            {
+                Choose([.. path, existing.Label]);
+            }
         }
 
         private void Choose(IReadOnlyList<string> path)
@@ -349,27 +483,77 @@ namespace TimePlanner.Widget.Controls
             if (sender is MenuItem { Tag: IReadOnlyList<string> path } row && OwningRow(e.OriginalSource as DependencyObject) == row)
             {
                 e.Handled = true;
+
+                //shallow choices expand their submenu instead of selecting
+                if (path.Count < RequiredDepth)
+                {
+                    row.IsSubmenuOpen = true;
+                    return;
+                }
+
                 Choose(path);
             }
         }
 
         private void Row_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter && ReferenceEquals(e.OriginalSource, sender) && sender is MenuItem { Tag: IReadOnlyList<string> path })
+            if (e.Key == Key.Enter && ReferenceEquals(e.OriginalSource, sender) && sender is MenuItem { Tag: IReadOnlyList<string> path } row)
             {
                 e.Handled = true;
+
+                if (path.Count < RequiredDepth)
+                {
+                    row.IsSubmenuOpen = true;
+                    return;
+                }
+
                 Choose(path);
             }
         }
 
+        //-----------------------------
+        //drops a removed row from the tree and recent list
+        public void RemoveNode(IReadOnlyList<string> path)
+        {
+            //top level path removes from root level
+            if (path.Count == 1)
+            {
+                _tree.RemoveAll(n => string.Equals(n.Label, path[0], StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                var parent = NodeAt(path.Take(path.Count - 1).ToList());
+                //removes child from parent node
+                if (parent != null)
+                {
+                    parent.Children.RemoveAll(n => string.Equals(n.Label, path[^1], StringComparison.OrdinalIgnoreCase));
+                }
+            }
 
+            //removes recent entries starting with path
+            _recent.RemoveAll(r => r.Count >= path.Count && Same(r.Take(path.Count).ToList(), path));
+
+            //clears selected path if it starts with path
+            if (_selected.Count >= path.Count && Same(_selected.Take(path.Count).ToList(), path))
+            {
+                _selected = Array.Empty<string>();
+            }
+
+            RenderValue();
+        }
+
+        //-----------------------------
+        //finds containing menu item for a visual node
         private static MenuItem? OwningRow(DependencyObject? d)
         {
+            //traverses visual or logical tree upward
             while (d != null && d is not MenuItem)
                 d = d is Visual ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
             return d as MenuItem;
         }
 
+        //-----------------------------
+        //finds node at path in tree
         private ActivityNode? NodeAt(IReadOnlyList<string> path)
         {
             ActivityNode? node = null;
@@ -384,7 +568,9 @@ namespace TimePlanner.Widget.Controls
             return node;
         }
 
-        private static string AddLabel(IReadOnlyList<string> path) => path.Count == 0 ? "Add an activity" : $"Add to {path[^1]}";
+        //-----------------------------
+        //generates add row label text
+        private string AddLabel(IReadOnlyList<string> path) => AddLabelFor != null ? AddLabelFor(path) : (path.Count == 0 ? "Add an activity" : $"Add to {path[^1]}");
 
         private static string PathKey(IEnumerable<string> path) => string.Join(">", path);
 
