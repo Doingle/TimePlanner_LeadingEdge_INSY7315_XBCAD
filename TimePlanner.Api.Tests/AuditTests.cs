@@ -129,11 +129,9 @@ namespace TimePlanner.Api.Tests
         {
             using var factory = new ApiFactory();
             var developer = await factory.CreateLinkedUserAsync("Developer");
-            var billing = await factory.CreateLinkedUserAsync("Billing");
 
             Assert.Equal(HttpStatusCode.Unauthorized, (await factory.NewClient().GetAsync("/api/v1/audit")).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await (await factory.LoginClientAsync(developer.Email, developer.Password)).GetAsync("/api/v1/audit")).StatusCode);
-            Assert.Equal(HttpStatusCode.Forbidden, (await (await factory.LoginClientAsync(billing.Email, billing.Password)).GetAsync("/api/v1/audit")).StatusCode);
             Assert.Equal(HttpStatusCode.OK, (await (await factory.LoginClientAsync(ApiFactory.AdminEmail, ApiFactory.AdminPassword)).GetAsync("/api/v1/audit")).StatusCode);
         }
 

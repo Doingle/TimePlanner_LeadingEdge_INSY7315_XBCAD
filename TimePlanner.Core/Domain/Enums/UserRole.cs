@@ -5,12 +5,12 @@ using System.Text;
 namespace TimePlanner.Core.Domain.Enums
 {
     //-----------------------------
-    //role based access is planned for hosted implementations, but we do not yet enforce within the MVP, this enum is a placeholder
+    //a developer sees and submits their own time, an admin manages accounts and sees everyone's. The dashboard enforces this per request.
+    //the stored numbers are Developer 0 and Admin 1, a retired third role used to be 2 and is not reused
     public enum UserRole
     {
-        Developer,
-        Admin,
-        Billing
+        Developer = 0,
+        Admin = 1
     }
 }
 //------------------------------EOF-----------------------------\\
