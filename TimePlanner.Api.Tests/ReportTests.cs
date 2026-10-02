@@ -102,17 +102,17 @@ namespace TimePlanner.Api.Tests
         }
 
         [Fact]
-        public async Task Hours_BillableExcludesNonBillableActivitiesAndInternalWork()
+        public async Task Hours_BillableMeansAnyCompanyExceptTheInternalOne()
         {
             var dev = await NewUserAsync();
             await _factory.AddEntryAsync(dev.UserId, "Acme " + Tag(), "Web", Coding, Day.AddHours(9), 60);
-            await _factory.AddEntryAsync(dev.UserId, "Acme " + Tag(), "Web", Learning, Day.AddHours(10), 60);
+            await _factory.AddEntryAsync(dev.UserId, "Acme " + Tag(), "Web", Learning, Day.AddHours(10), 60);          // the activity makes no difference
             await _factory.AddEntryAsync(dev.UserId, InternalCompany, "Internal", Coding, Day.AddHours(11), 60);
 
             var report = await ReportAsync(dev.Client, HoursUrl(Day, Day));
 
             Assert.Equal(3.0, report.GetProperty("totalHours").GetDouble());
-            Assert.Equal(1.0, report.GetProperty("billableHours").GetDouble());
+            Assert.Equal(2.0, report.GetProperty("billableHours").GetDouble());
         }
 
         [Fact]
@@ -189,14 +189,12 @@ namespace TimePlanner.Api.Tests
             Assert.Equal(HttpStatusCode.OK, (await alice.Client.GetAsync(HoursUrl(Day, Day, $"&userId={alice.UserId}"))).StatusCode);
         }
 
-        [Theory]
-        [InlineData("Admin")]
-        [InlineData("Billing")]
-        public async Task Hours_PrivilegedRolesSeeEveryoneOrOnePerson(string role)
+        [Fact]
+        public async Task Hours_AnAdminSeesEveryoneOrOnePerson()
         {
             var alice = await NewUserAsync();
             var bob = await NewUserAsync();
-            var viewer = await NewUserAsync(role);
+            var viewer = await NewUserAsync("Admin");
             var shared = "Shared " + Tag();
             var project = await _factory.AddEntryAsync(alice.UserId, shared, "Web", Coding, Day.AddHours(9), 60);
             await _factory.AddEntryAsync(bob.UserId, shared, "Web", Coding, Day.AddHours(9), 120);
@@ -248,13 +246,13 @@ namespace TimePlanner.Api.Tests
         {
             var dev = await NewUserAsync();
             var acme = "Acme " + Tag();
-            await _factory.AddEntryAsync(dev.UserId, acme, "Web", Learning, Day.AddHours(8), 60);                    // no note, non billable
+            await _factory.AddEntryAsync(dev.UserId, acme, "Web", Learning, Day.AddHours(8), 60);                    // no note
             await _factory.AddEntryAsync(dev.UserId, InternalCompany, "Internal", Meeting, Day.AddHours(9), 30, "Stand-up");  // internal
             await _factory.AddEntryAsync(dev.UserId, acme, acme, Coding, Day.AddHours(10), 60, "Same name");         // project named like the client
 
             var lines = await LinesAsync(await dev.Client.GetAsync(CsvUrl(Day, Day)));
 
-            Assert.Equal($"{D(Day)},Learning,{acme} / Web,08:00,09:00,1.00,Learning,No", lines[1]);
+            Assert.Equal($"{D(Day)},Learning,{acme} / Web,08:00,09:00,1.00,Learning,Yes", lines[1]);
             Assert.Equal($"{D(Day)},Stand-up,{InternalCompany},09:00,09:30,0.50,Meeting,Internal", lines[2]);
             Assert.Equal($"{D(Day)},Same name,{acme},10:00,11:00,1.00,Coding,Yes", lines[3]);
         }
@@ -322,17 +320,17 @@ namespace TimePlanner.Api.Tests
         }
 
         [Fact]
-        public async Task Csv_DeveloperCannotExportAnotherUser_ButPrivilegedRolesCan()
+        public async Task Csv_DeveloperCannotExportAnotherUser_ButAnAdminCan()
         {
             var alice = await NewUserAsync();
             var bob = await NewUserAsync();
-            var billing = await NewUserAsync("Billing");
+            var admin = await NewUserAsync("Admin");
             await _factory.AddEntryAsync(bob.UserId, "Acme " + Tag(), "Web", Coding, Day.AddHours(9), 60, "bobs work");
 
             Assert.Equal(HttpStatusCode.Forbidden, (await alice.Client.GetAsync(CsvUrl(Day, Day, bob.UserId))).StatusCode);
-            var asBilling = await billing.Client.GetAsync(CsvUrl(Day, Day, bob.UserId));
-            Assert.Equal(HttpStatusCode.OK, asBilling.StatusCode);
-            Assert.Contains("bobs work", await asBilling.Content.ReadAsStringAsync());
+            var asAdmin = await admin.Client.GetAsync(CsvUrl(Day, Day, bob.UserId));
+            Assert.Equal(HttpStatusCode.OK, asAdmin.StatusCode);
+            Assert.Contains("bobs work", await asAdmin.Content.ReadAsStringAsync());
         }
     }
 }

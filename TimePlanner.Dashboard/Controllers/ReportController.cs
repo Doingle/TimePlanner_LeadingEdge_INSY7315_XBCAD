@@ -17,7 +17,7 @@ namespace TimePlanner.Dashboard.Controllers
             _users = users;
         }
 
-        private bool IsPrivileged => User.IsInRole("Admin") || User.IsInRole("Billing");
+        private bool IsPrivileged => User.IsInRole("Admin");
 
         //-----------------------------
         //hours per project, company, user, day or activity. Developers only ever see their own, admin and billing may pick anyone

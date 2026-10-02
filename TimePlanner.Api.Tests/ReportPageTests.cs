@@ -79,12 +79,10 @@ namespace TimePlanner.Api.Tests
             Assert.NotEqual(HttpStatusCode.OK, export.StatusCode);
         }
 
-        [Theory]
-        [InlineData("Admin")]
-        [InlineData("Billing")]
-        public async Task ReportPage_PrivilegedUsersCanPickAPersonAndDownloadTheirTimesheet(string role)
+        [Fact]
+        public async Task ReportPage_AnAdminCanPickAPersonAndDownloadTheirTimesheet()
         {
-            var viewer = await SignedInAsync(role);
+            var viewer = await SignedInAsync("Admin");
             var dev = await _factory.CreateLinkedUserAsync();
             await _factory.AddEntryAsync(dev.AppUserId, "Acme " + Tag(), "Web", Coding, Day.AddHours(9), 60, "devs work");
 

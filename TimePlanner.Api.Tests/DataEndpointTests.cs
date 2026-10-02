@@ -163,11 +163,10 @@ namespace TimePlanner.Api.Tests
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
 
-        [Theory]
-        [InlineData("Admin")]
-        [InlineData("Billing")]
-        public async Task TimeEntries_PrivilegedRolesCanReadAnotherUser(string role)
+        [Fact]
+        public async Task TimeEntries_AnAdminCanReadAnotherUser()
         {
+            var role = "Admin";
             var bob = await _factory.CreateLinkedUserAsync();
             var bobWork = await _factory.SeedWorkAsync(bob.AppUserId, Day);
             var viewer = await _factory.CreateLinkedUserAsync(role);

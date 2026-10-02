@@ -105,7 +105,7 @@ namespace TimePlanner.Dashboard.Services.Reports
                 .ToList();
 
         //-----------------------------
-        //total and billable hours per group. Billable means the top level activity is billable and the work was not for the internal company
+        //total and billable hours per group. Billable means the work was for a company other than the internal one
         //ponytail: grouped in memory after one query, fine for a few thousand entries (the range is capped at a year). Past that, sum julianday(End)-julianday(Start) in SQL
         public async Task<HoursReport> GetHoursAsync(DateTime from, DateTime to, ReportGrouping groupBy, int? userId, int? companyId)
         {
@@ -117,7 +117,7 @@ namespace TimePlanner.Dashboard.Services.Reports
                 .Select(g => new ReportRow(
                     g.Key,
                     Round(g.Sum(Hours)),
-                    Round(g.Where(e => IsBillable(e, activities)).Sum(Hours)),
+                    Round(g.Where(IsBillable).Sum(Hours)),
                     g.Count()))
                 .ToList();
 
@@ -127,7 +127,7 @@ namespace TimePlanner.Dashboard.Services.Reports
                 : rows.OrderByDescending(r => r.Hours).ThenBy(r => r.Label, StringComparer.OrdinalIgnoreCase).ToList();
 
             return new HoursReport(from.Date, to.Date, groupBy.ToString(), rows,
-                Round(entries.Sum(Hours)), Round(entries.Where(e => IsBillable(e, activities)).Sum(Hours)), entries.Count);
+                Round(entries.Sum(Hours)), Round(entries.Where(IsBillable).Sum(Hours)), entries.Count);
         }
 
         //-----------------------------
@@ -157,7 +157,7 @@ namespace TimePlanner.Dashboard.Services.Reports
                     csv.WriteField(e.End.ToString("HH:mm", CultureInfo.InvariantCulture));
                     csv.WriteField(Hours(e).ToString("0.00", CultureInfo.InvariantCulture));
                     csv.WriteField(path);
-                    csv.WriteField(BillableLabel(e, activities));
+                    csv.WriteField(BillableLabel(e));
                     await csv.NextRecordAsync();
                 }
             }
@@ -171,11 +171,11 @@ namespace TimePlanner.Dashboard.Services.Reports
 
         private static bool IsInternal(RawEntry e) => e.Company == LocalSetupService.InternalCompanyName;
 
-        private static bool IsBillable(RawEntry e, ActivityLookup activities) => !IsInternal(e) && activities.RootIsBillable(e.CategoryId);
+        //the rule agreed with the client: work for the internal company is not billable, work for any other company is
+        private static bool IsBillable(RawEntry e) => !IsInternal(e);
 
-        //the company's sheet marks internal work "Internal" and otherwise Yes or No
-        private static string BillableLabel(RawEntry e, ActivityLookup activities) =>
-            IsInternal(e) ? "Internal" : activities.RootIsBillable(e.CategoryId) ? "Yes" : "No";
+        //the company's own sheet writes "Internal" for the work that is not billed
+        private static string BillableLabel(RawEntry e) => IsInternal(e) ? "Internal" : "Yes";
 
         private static string Label(RawEntry e, ReportGrouping groupBy, ActivityLookup activities) => groupBy switch
         {
@@ -203,8 +203,6 @@ namespace TimePlanner.Dashboard.Services.Reports
             }
 
             public string RootName(int id) => Root(id)?.Name ?? "Unknown";
-
-            public bool RootIsBillable(int id) => Root(id)?.IsBillable ?? false;
 
             private Category? Find(int id) => _byId.GetValueOrDefault(id);
 

@@ -15,8 +15,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //the time tracking profile of the caller, null for a login that is not linked to one
         protected int? CurrentAppUserId => int.TryParse(User.FindFirst("uid")?.Value, out var id) ? id : null;
 
-        //admins and billing users may read other people's time data, developers only their own
-        protected bool IsPrivileged => User.IsInRole("Admin") || User.IsInRole("Billing");
+        //admins may read other people's time data, developers only their own
+        protected bool IsPrivileged => User.IsInRole("Admin");
 
         protected ObjectResult NoProfile() =>
             Problem(title: "This account is not linked to a time tracking profile.", statusCode: StatusCodes.Status403Forbidden);
