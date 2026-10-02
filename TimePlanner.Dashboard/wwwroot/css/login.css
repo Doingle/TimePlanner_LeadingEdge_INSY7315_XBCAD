@@ -1,0 +1,402 @@
+﻿/* Login page
+
+   Every size is written as calc(N * var(--u)), where N is the size in px on the
+   1000x596 design. --u grows and shrinks with the browser window */
+
+:root {
+    --login-purple: #7747ea;
+    --login-purple-hover: #6836e0;
+    --login-text: #111827;
+    --login-muted: #4b5563;
+    --login-border: #c9ccd3;
+    --login-area: #8b62ef;
+    --login-wave-mid: #a98bf3;
+    --login-wave-front: #c9b8f8;
+    --login-line: #e5dcfc;
+    --login-fit: min(100vw / 1000, 100vh / 596);
+    /* How strongly the page follows the window size: 1 = grows with it fully,
+     0 = always stays at the design size. */
+    --login-grow: 0.5;
+    /* 1u = 1 design px, scaled by the window size */
+    --u: calc(1px + (var(--login-fit) - 1px) * var(--login-grow));
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body.login-body {
+    margin: 0;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--login-text);
+    background: #ffffff;
+    -webkit-font-smoothing: antialiased;
+}
+
+.login-page {
+    display: flex;
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* ---------- Left brand panel ---------- */
+
+.login-brand {
+    position: relative;
+    flex: 0 0 50%;
+    overflow: hidden;
+    background: var(--login-purple);
+    color: #ffffff;
+}
+
+.login-brand__content {
+    position: absolute;
+    top: calc(50% - 172 * var(--u));
+    left: 10.7%;
+    right: 8%;
+    z-index: 1;
+}
+
+.login-brand__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(44 * var(--u));
+    height: calc(44 * var(--u));
+    border-radius: 50%;
+    background: #ffffff;
+    color: var(--login-purple);
+}
+
+    .login-brand__icon svg {
+        width: calc(22 * var(--u));
+        height: calc(22 * var(--u));
+    }
+
+.login-brand__title {
+    margin: calc(26 * var(--u)) 0 0;
+    font-size: calc(36.5 * var(--u));
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+.login-brand__tagline {
+    max-width: calc(370 * var(--u));
+    margin: calc(15 * var(--u)) 0 0;
+    font-size: calc(16 * var(--u));
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+/* ---------- Timeline chart ----------
+   The waves stretch to fill the panel width, while the points and labels are
+   HTML on top of them, so the text never gets squashed or blown up. */
+
+.login-chart {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(160 * var(--u));
+}
+
+.login-chart__waves {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.login-chart__area {
+    fill: var(--login-area);
+}
+
+.login-chart__wave-mid {
+    fill: var(--login-wave-mid);
+}
+
+.login-chart__wave-front {
+    fill: var(--login-wave-front);
+}
+
+.login-chart__line {
+    fill: none;
+    stroke: var(--login-line);
+    stroke-width: calc(1.5 * var(--u));
+    vector-effect: non-scaling-stroke;
+}
+
+.login-chart__point {
+    position: absolute;
+    left: var(--x);
+    top: calc(var(--y) * var(--u));
+    width: calc(6.5 * var(--u));
+    height: calc(6.5 * var(--u));
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 0 calc(1.5 * var(--u)) var(--login-area);
+    transform: translate(-50%, -50%);
+}
+
+    /* Where each point sits on the line: x = % across the panel,
+   y = design px down from the top of the chart */
+    .login-chart__point:nth-of-type(1) {
+        --x: 7.4%;
+        --y: 84;
+    }
+
+    .login-chart__point:nth-of-type(2) {
+        --x: 21.5%;
+        --y: 60;
+    }
+
+    .login-chart__point:nth-of-type(3) {
+        --x: 35.6%;
+        --y: 68;
+    }
+
+    .login-chart__point:nth-of-type(4) {
+        --x: 49.7%;
+        --y: 42;
+    }
+
+    .login-chart__point:nth-of-type(5) {
+        --x: 63.8%;
+        --y: 56;
+    }
+
+    .login-chart__point:nth-of-type(6) {
+        --x: 77.9%;
+        --y: 34;
+    }
+
+    .login-chart__point:nth-of-type(7) {
+        --x: 92%;
+        --y: 48;
+    }
+
+.login-chart__label {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 9.2 * var(--u));
+    font-size: calc(11.25 * var(--u));
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    transform: translateX(-50%);
+}
+
+/* ---------- Right form panel ---------- */
+
+.login-main {
+    display: flex;
+    flex: 1 1 50%;
+    align-items: center;
+    justify-content: center;
+    padding: calc(46 * var(--u)) calc(9 * var(--u)) calc(40 * var(--u)) 0;
+    border-left: 1px solid #ececf1;
+}
+
+.login-form-wrap {
+    width: 100%;
+    max-width: calc(362 * var(--u));
+}
+
+.login-title {
+    margin: 0;
+    font-size: calc(28.5 * var(--u));
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--login-text);
+}
+
+.login-subtitle {
+    margin: calc(6 * var(--u)) 0 0;
+    font-size: calc(14 * var(--u));
+    line-height: 1.5;
+    color: var(--login-muted);
+}
+
+.login-form {
+    margin-top: calc(33 * var(--u));
+}
+
+.login-field + .login-field {
+    margin-top: calc(20 * var(--u));
+}
+
+.login-label {
+    display: block;
+    margin-bottom: calc(9 * var(--u));
+    font-size: calc(14 * var(--u));
+    font-weight: 500;
+    color: var(--login-text);
+}
+
+.login-input-wrap {
+    position: relative;
+}
+
+.login-input {
+    display: block;
+    width: 100%;
+    height: calc(44 * var(--u));
+    padding: 0 calc(14 * var(--u));
+    font: inherit;
+    font-size: calc(16 * var(--u));
+    color: var(--login-text);
+    background: #ffffff;
+    border: max(1px, var(--u)) solid var(--login-border);
+    border-radius: calc(8 * var(--u));
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.login-input--password {
+    padding-right: calc(48 * var(--u));
+}
+
+.login-input:focus {
+    border-color: var(--login-purple);
+    box-shadow: 0 0 0 calc(3 * var(--u)) rgba(119, 71, 234, 0.18);
+}
+
+.login-toggle {
+    position: absolute;
+    top: 50%;
+    right: calc(8 * var(--u));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(32 * var(--u));
+    height: calc(32 * var(--u));
+    padding: 0;
+    color: #374151;
+    background: none;
+    border: none;
+    border-radius: calc(6 * var(--u));
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+    .login-toggle svg {
+        width: calc(20 * var(--u));
+        height: calc(20 * var(--u));
+    }
+
+    .login-toggle:focus-visible {
+        outline: max(2px, calc(2 * var(--u))) solid var(--login-purple);
+        outline-offset: 1px;
+    }
+
+.login-submit {
+    display: block;
+    width: 100%;
+    height: calc(44 * var(--u));
+    margin-top: calc(24 * var(--u));
+    font: inherit;
+    font-size: calc(16 * var(--u));
+    font-weight: 600;
+    color: #ffffff;
+    background: var(--login-purple);
+    border: none;
+    border-radius: calc(8 * var(--u));
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+    .login-submit:hover {
+        background: var(--login-purple-hover);
+    }
+
+    .login-submit:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 calc(3 * var(--u)) rgba(119, 71, 234, 0.35);
+    }
+
+.login-help {
+    margin: calc(17 * var(--u)) 0 0;
+    font-size: calc(12.2 * var(--u));
+    text-align: center;
+    color: var(--login-muted);
+}
+
+.login-error {
+    margin: calc(20 * var(--u)) 0 0;
+    padding: calc(10 * var(--u)) calc(12 * var(--u));
+    font-size: calc(13.5 * var(--u));
+    color: #b42318;
+    background: #fef3f2;
+    border: max(1px, var(--u)) solid #fecdca;
+    border-radius: calc(8 * var(--u));
+}
+
+    /* the validation summary renders its messages as a list */
+    .login-error ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+/* a field's own message, e.g. a missing or badly formed email */
+.login-field-error {
+    display: block;
+    margin-top: calc(6 * var(--u));
+    font-size: calc(13 * var(--u));
+    color: #b42318;
+}
+
+    .login-field-error:empty {
+        display: none;
+    }
+
+/* ---------- Portrait, narrow or very short windows ----------
+   Side by side no longer fits, so the panels stack. The stacked layout is
+   about 420x840 design px, and never shrinks below its 1px design size. */
+
+@media (max-width: 767.98px), (max-height: 479.98px), (max-aspect-ratio: 1/1) {
+    :root {
+        --login-fit: max(1px, min(100vw / 420, 100vh / 840));
+    }
+
+    .login-page {
+        flex-direction: column;
+    }
+
+    .login-brand {
+        display: flex;
+        flex: none;
+        flex-direction: column;
+        min-height: 45vh;
+    }
+
+    .login-brand__content {
+        position: relative;
+        top: auto;
+        left: auto;
+        right: auto;
+        width: min(100% - 32px, calc(362 * var(--u)));
+        margin: 0 auto calc(28 * var(--u));
+        padding-top: calc(40 * var(--u));
+    }
+
+    .login-chart {
+        position: relative;
+        flex: none;
+        margin-top: auto;
+    }
+
+    .login-main {
+        flex: 1 0 auto;
+        padding: calc(40 * var(--u)) 16px;
+        border-left: none;
+    }
+}

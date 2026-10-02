@@ -1,30 +1,89 @@
 @model LoginViewModel
 @{
-    ViewData["Title"] = "Sign in";
+    ViewData["Title"] = "Log in";
+    Layout = null;
 }
-
-<div class="row justify-content-center">
-    <div class="col-md-5 col-lg-4">
-        <h1 class="h3 mb-3">Sign in</h1>
-
-        <form asp-action="Login" method="post" novalidate>
-            <input type="hidden" asp-for="ReturnUrl" />
-
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
-
-            <div class="mb-3">
-                <label asp-for="Email" class="form-label"></label>
-                <input asp-for="Email" class="form-control" autocomplete="username" autofocus />
-                <span asp-validation-for="Email" class="text-danger"></span>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Time Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
+</head>
+<body class="login-body">
+    <div class="login-page">
+        <aside class="login-brand">
+            <div class="login-brand__content">
+                <div class="login-brand__icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="10" y1="2" x2="14" y2="2" />
+                        <line x1="12" y1="14" x2="15" y2="11" />
+                        <circle cx="12" cy="14" r="8" />
+                    </svg>
+                </div>
+                <h1 class="login-brand__title">Time Tracker</h1>
+                <p class="login-brand__tagline">Track your working hours by category and project, and see exactly where your time goes.</p>
             </div>
 
-            <div class="mb-3">
-                <label asp-for="Password" class="form-label"></label>
-                <input asp-for="Password" class="form-control" autocomplete="current-password" />
-                <span asp-validation-for="Password" class="text-danger"></span>
+            <div class="login-chart" aria-hidden="true">
+                <svg class="login-chart__waves" viewBox="0 0 1000 320" preserveAspectRatio="none">
+                    <path class="login-chart__area" d="M0,183 C12.3,180.5 38.2,178.5 74,168 C109.8,157.5 168.0,125.3 215,120 C262.0,114.7 309.0,142.0 356,136 C403.0,130.0 450.0,88.0 497,84 C544.0,80.0 591.0,114.7 638,112 C685.0,109.3 732.0,70.7 779,68 C826.0,65.3 883.2,92.7 920,96 C956.8,99.3 986.7,89.3 1000,88 L1000,320 L0,320 Z" />
+                    <path class="login-chart__wave-mid" d="M0,232 C60,214 110,200 165,200 C230,200 280,228 340,228 C420,228 470,184 560,184 C640,184 700,216 770,216 C820,216 850,178 900,176 C940,174 975,186 1000,192 L1000,320 L0,320 Z" />
+                    <path class="login-chart__wave-front" d="M0,266 C80,254 130,252 190,258 C260,265 320,286 420,284 C500,282 560,258 650,252 C730,246 780,262 850,266 C910,270 960,262 1000,256 L1000,320 L0,320 Z" />
+                    <path class="login-chart__line" d="M0,183 C12.3,180.5 38.2,178.5 74,168 C109.8,157.5 168.0,125.3 215,120 C262.0,114.7 309.0,142.0 356,136 C403.0,130.0 450.0,88.0 497,84 C544.0,80.0 591.0,114.7 638,112 C685.0,109.3 732.0,70.7 779,68 C826.0,65.3 883.2,92.7 920,96 C956.8,99.3 986.7,89.3 1000,88" />
+                </svg>
+                <span class="login-chart__point"><span class="login-chart__label">08:00</span></span>
+                <span class="login-chart__point"><span class="login-chart__label">09:30</span></span>
+                <span class="login-chart__point"><span class="login-chart__label">11:00</span></span>
+                <span class="login-chart__point"><span class="login-chart__label">12:30</span></span>
+                <span class="login-chart__point"><span class="login-chart__label">14:00</span></span>
+                <span class="login-chart__point"><span class="login-chart__label">15:30</span></span>
+                <span class="login-chart__point"><span class="login-chart__label">17:00</span></span>
             </div>
+        </aside>
 
-            <button type="submit" class="btn btn-primary w-100">Sign in</button>
-        </form>
+        <main class="login-main">
+            <div class="login-form-wrap">
+                <h2 class="login-title">Log in</h2>
+                <p class="login-subtitle">Use the email address your admin set up for you.</p>
+
+                <form class="login-form" asp-action="Login" method="post" novalidate>
+                    <input type="hidden" asp-for="ReturnUrl" />
+
+                    <div class="login-field">
+                        <label class="login-label" asp-for="Email"></label>
+                        <input class="login-input" asp-for="Email" autocomplete="username" autofocus />
+                        <span class="login-field-error" asp-validation-for="Email"></span>
+                    </div>
+
+                    <div class="login-field">
+                        <label class="login-label" asp-for="Password"></label>
+                        <div class="login-input-wrap">
+                            <input class="login-input login-input--password" asp-for="Password" autocomplete="current-password" />
+                            <button class="login-toggle" type="button" id="togglePassword" aria-label="Show password" aria-pressed="false">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                            </button>
+                        </div>
+                        <span class="login-field-error" asp-validation-for="Password"></span>
+                    </div>
+
+                    <div asp-validation-summary="ModelOnly" class="login-error" role="alert"></div>
+
+                    <button class="login-submit" type="submit">Log in</button>
+                </form>
+
+                <p class="login-help">No account, or forgot your password? Ask your admin.</p>
+            </div>
+        </main>
     </div>
-</div>
+
+    <script src="~/js/login.js" asp-append-version="true"></script>
+</body>
+</html>
