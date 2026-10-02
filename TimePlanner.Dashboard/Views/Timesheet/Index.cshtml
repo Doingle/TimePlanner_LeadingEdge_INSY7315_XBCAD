@@ -76,6 +76,12 @@
     </div>
 
     <div class="ts-actions">
+        @* switching opens the current week or month, the same as the period picker on the admin pages *@
+        <form class="ts-toggle" method="get" asp-action="Index" role="group" aria-label="View">
+            <button class="ts-toggle__option" type="submit" name="view" value="week" aria-pressed="@(data.View == "week" ? "true" : "false")">Week</button>
+            <button class="ts-toggle__option" type="submit" name="view" value="month" aria-pressed="@(data.View == "month" ? "true" : "false")">Month</button>
+        </form>
+
         @* no export endpoint yet *@
         <a class="app-button">Export @unit</a>
     </div>

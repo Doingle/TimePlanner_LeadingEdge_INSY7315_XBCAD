@@ -1,3 +1,39 @@
+@using System.Globalization
+@using TimePlanner.Dashboard.Services.Overview
+@using TimePlanner.Dashboard.Services.Reports
+@model MyOverview?
+@{
+    ViewData["Title"] = "Home";
+    ViewData["Nav"] = "Home";
+    Layout = "_AppLayout";
+
+    var culture = CultureInfo.InvariantCulture;
+
+    //minutes as H:MM, the way the design shows them
+    string Hm(int minutes) => $"{minutes / 60}:{(minutes % 60).ToString("00", culture)}";
+    //a share as a whole percent
+    string Pct(double percent) => Math.Round(percent, 0).ToString("0", culture) + "%";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+}
+
+@if (Model == null)
+{
+    <h1 class="home-title">Home</h1>
+    <p class="home-alert" role="alert"><strong>Your account is not linked to a time tracking profile.</strong> Ask an administrator to link it, then sign in again.</p>
+    return;
+}
+
+@{
+    var dayStart = TimeOnly.ParseExact(Model.DayStart, "HH:mm", culture);
+    var dayEnd = TimeOnly.ParseExact(Model.DayEnd, "HH:mm", culture);
+    var unloggedMinutes = Model.Unlogged.Sum(g => g.Minutes);
+    var breakdown = Model.Breakdown;
+    var shownMinutes = Model.Period == "week" ? Model.WeekMinutes : Model.TodayMinutes;
+}
+
 <h1 class="home-title">Today, @Model.Today.ToString("ddd d MMM", culture)</h1>
 
 @* home-status__item--done shows a green tick, home-status__item--pending an orange clock *@
@@ -29,8 +65,8 @@
         <p class="home-timeline__summary"><strong>@Hm(Model.TodayMinutes)</strong> logged (@Pct(Model.GoalProgressPercent) of your @Model.GoalHours.ToString("0.##", culture) h goal), next check-in at —</p>
     </div>
 
-    @* one block per entry. home.js places it from data-start and data-end and colours it with data-colour (inline styles are blocked by the CSP) *@
-    <div class="home-track" data-day-start="@dayStart.ToString("HH:mm", CultureInfo.InvariantCulture)" data-day-end="@dayEnd.ToString("HH:mm", CultureInfo.InvariantCulture)">
+    @* one block per entry. home.js places it from data-start and data-end, app.js colours it with data-colour (inline styles are blocked by the CSP) *@
+    <div class="home-track" data-day-start="@dayStart.ToString("HH:mm", culture)" data-day-end="@dayEnd.ToString("HH:mm", culture)">
         @foreach (var block in Model.Timeline)
         {
             <div class="home-block" data-start="@block.Start" data-end="@block.End" data-colour="@block.Colour" title="@block.Title"><span class="home-block__label">@block.Label</span></div>
@@ -91,7 +127,7 @@
                     {
                         <li class="home-breakdown__row">
                             <span class="home-breakdown__name">@row.Label</span>
-                            <span class="home-bar" aria-hidden="true"><span class="home-bar__fill" data-percent="@row.Percent.ToString("0.#", CultureInfo.InvariantCulture)" data-colour="@row.Colour"></span></span>
+                            <span class="home-bar" aria-hidden="true"><span class="home-bar__fill" data-percent="@row.Percent.ToString("0.#", culture)" data-colour="@row.Colour"></span></span>
                             <span class="home-breakdown__value"><strong>@Hm(row.Minutes)</strong> · @Pct(row.Percent)</span>
                         </li>
                     }
@@ -112,7 +148,7 @@
                     {
                         <li class="home-breakdown__row">
                             <span class="home-breakdown__name">@row.Label <small class="home-breakdown__note">@(row.Billable == true ? "Billable" : "Non-billable")</small></span>
-                            <span class="home-bar" aria-hidden="true"><span class="home-bar__fill @(row.Billable == true ? "home-bar__fill--billable" : "home-bar__fill--non-billable")" data-percent="@row.Percent.ToString("0.#", CultureInfo.InvariantCulture)"></span></span>
+                            <span class="home-bar" aria-hidden="true"><span class="home-bar__fill @(row.Billable == true ? "home-bar__fill--billable" : "home-bar__fill--non-billable")" data-percent="@row.Percent.ToString("0.#", culture)"></span></span>
                             <span class="home-breakdown__value"><strong>@Hm(row.Minutes)</strong> · @Pct(row.Percent)</span>
                         </li>
                     }

@@ -79,6 +79,43 @@
     margin-top: 1px;
 }
 
+/* week or month, as tall as the buttons beside it */
+.ts-toggle {
+    display: inline-flex;
+    margin: 0;
+    padding: 2px;
+    background: var(--app-surface);
+    border: 1px solid var(--ts-border);
+    border-radius: 8px;
+}
+
+.ts-toggle__option {
+    height: 30px;
+    padding: 0 12px;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ts-strong);
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+    .ts-toggle__option:hover {
+        background: #f9fafb;
+    }
+
+    .ts-toggle__option[aria-pressed="true"] {
+        color: #ffffff;
+        background: #8b5cf6;
+    }
+
+    .ts-toggle__option:focus-visible {
+        outline: 2px solid var(--app-purple);
+        outline-offset: 2px;
+    }
+
 /* ---------- Column headings ---------- */
 
 /* the extra pixel each side matches the day cards' border */
@@ -127,6 +164,25 @@
     font-size: 12.5px;
     font-weight: 600;
     color: var(--ts-strong);
+}
+
+/* sits beside the date, coloured by the day's status class */
+.ts-day__status {
+    margin: 0 auto 0 0;
+    font-size: 12.5px;
+    color: var(--ts-muted);
+}
+
+.ts-day--submitted .ts-day__status {
+    color: #067647;
+}
+
+.ts-day--pending .ts-day__status {
+    color: #b54708;
+}
+
+.ts-day--missing .ts-day__status {
+    color: #b42318;
 }
 
 .ts-day__total {
@@ -197,6 +253,14 @@
     font-size: 13px;
     color: var(--ts-muted);
     overflow-wrap: anywhere;
+}
+
+/* the project and whether it is billable, under the company */
+.ts-entry__company small {
+    display: block;
+    font-size: 11.5px;
+    line-height: 1.3;
+    color: var(--ts-faint);
 }
 
 .ts-entry__description {

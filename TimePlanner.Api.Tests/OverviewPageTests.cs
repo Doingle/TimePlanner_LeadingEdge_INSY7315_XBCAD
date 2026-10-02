@@ -185,15 +185,18 @@ namespace TimePlanner.Api.Tests
             var html = await person.Browser.GetStringAsync("/Timesheet");
 
             Assert.Contains("14 Sep to 20 Sep 2026", html);
-            Assert.Contains("timesheet-day--submitted", html);
+            Assert.Contains("ts-day--submitted", html);
             Assert.Contains("Submitted at 17:05", html);
-            Assert.Contains("timesheet-day--missing", html);
-            Assert.Contains("timesheet-day--pending", html);
+            Assert.Contains("ts-day--missing", html);
+            Assert.Contains("ts-day--pending", html);
             Assert.Contains("Not submitted yet", html);
-            Assert.Contains("timesheet-day--notdue", html);
-            Assert.Contains("1.50 hours</strong> logged, 1 day submitted, 1 missing", Text(html));
-            Assert.Contains("09:00–10:30, 1.50 h, Acme / Web, Coding: login page", Text(html));
-            Assert.Contains("read only", html);
+            //days still to come with nothing logged are left out
+            Assert.DoesNotContain("ts-day--notdue", html);
+            Assert.Contains("1:30</strong> logged, 1 day submitted, 1 missing", Text(html));
+            //the entry is one row: activity, company with project, note, times and length
+            Assert.Matches(@"<span class=""ts-dot""></span>Coding</span>\s*<span class=""ts-entry__company"">Acme <small>Web · Billable</small></span>\s*" +
+                           @"<span class=""ts-entry__description"">login page</span>\s*<span class=""ts-entry__time"">09:00 – 10:30</span>\s*<span class=""ts-entry__total"">1:30</span>", html);
+            Assert.Contains("Read only", html);
             Assert.Contains("href=\"/Timesheet?view=week&amp;date=2026-09-07\"", html);
             Assert.Contains("href=\"/Timesheet?view=week&amp;date=2026-09-21\"", html);
         }
