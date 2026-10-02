@@ -1,4 +1,4 @@
-﻿// Design-review and test tooling: compiled into debug builds only, never into a release build.
+// Design-review and test tooling: compiled into debug builds only, never into a release build.
 #if DEBUG
 using System;
 using System.Collections.Generic;
@@ -6,6 +6,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Threading;
 using TimePlanner.Widget.Models;
+using TimePlanner.Core.Services;
 
 namespace TimePlanner.Widget
 {
@@ -102,9 +103,10 @@ namespace TimePlanner.Widget
             return s.Flow;
         }
 
-        // Answers the check-in with the last project and activity
         private static Task Answer(WidgetFlow flow) =>
-            flow.SaveEntryAsync(LogEntryMode.CheckIn, flow.GetLogPeriod(), flow.Session.ProjectId ?? 0, flow.Session.Activity, note: null);
+            flow.SaveEntryAsync(LogEntryMode.CheckIn, flow.GetLogPeriod(),
+                new[] { LocalSetupService.InternalCompanyName, LocalSetupService.InternalProjectName },
+                flow.Session.Activity, note: null);
 
         private static async Task Idle(PreviewSession s, IdleShape shape)
         {
