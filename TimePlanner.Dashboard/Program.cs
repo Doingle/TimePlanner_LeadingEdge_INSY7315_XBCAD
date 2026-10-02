@@ -13,7 +13,9 @@ using TimePlanner.Dashboard.Data;
 using TimePlanner.Dashboard.Data.SqlServer;
 using TimePlanner.Dashboard.Security;
 using TimePlanner.Dashboard.Services;
+using TimePlanner.Dashboard.Services.Overview;
 using TimePlanner.Dashboard.Services.Reports;
+using TimePlanner.Dashboard.Services.Submissions;
 using TimePlanner.Dashboard.Services.TimesheetImport;
 using TimePlanner.Dashboard.Services.Users;
 
@@ -82,6 +84,12 @@ builder.Services.ConfigureApplicationCookie(o =>
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddScoped<TimesheetImportService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<CompanyClock>();
+builder.Services.AddScoped<SubmissionService>();
+builder.Services.AddScoped<OverviewService>();
+builder.Services.AddScoped<TimesheetViewService>();
+builder.Services.AddScoped<AdminService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuditLogger>();
 builder.Services.AddScoped<UserAdminService>();

@@ -29,12 +29,21 @@ namespace TimePlanner.Dashboard.Data
         
         public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
+        public DbSet<DaySubmission> DaySubmissions => Set<DaySubmission>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
 
             //existing accounts stay active when the column is added
             builder.Entity<ApplicationUser>().Property(u => u.IsActive).HasDefaultValue(true);
+
+            //a person submits a day once, sending it again only updates the time
+            builder.Entity<DaySubmission>(e =>
+            {
+                e.HasIndex(x => new { x.AppUserId, x.Date }).IsUnique();
+                e.HasIndex(x => x.Date);
+            });
 
             builder.Entity<AuditEvent>(e =>
             {

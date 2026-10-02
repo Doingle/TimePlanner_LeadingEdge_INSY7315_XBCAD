@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using TimePlanner.Dashboard.Security;
+using TimePlanner.Dashboard.Services;
+using TimePlanner.Dashboard.Services.Overview;
+using TimePlanner.Dashboard.Services.Reports;
 using TimePlanner.Dashboard.Services.TimesheetImport;
 
 namespace TimePlanner.Dashboard.Controllers.Api
@@ -8,8 +11,31 @@ namespace TimePlanner.Dashboard.Controllers.Api
     public class TimesheetsController : ApiControllerBase
     {
         private readonly TimesheetImportService _import;
+        private readonly TimesheetViewService _view;
+        private readonly CompanyClock _clock;
 
-        public TimesheetsController(TimesheetImportService import) => _import = import;
+        public TimesheetsController(TimesheetImportService import, TimesheetViewService view, CompanyClock clock)
+        {
+            _import = import;
+            _view = view;
+            _clock = clock;
+        }
+
+        //-----------------------------
+        //a week or month laid out day by day with what was logged and whether each day was submitted. Read only.
+        //view is week (the default) or month and date is any day inside it. Developers see their own, an admin may ask for another person with userId
+        [HttpGet]
+        public async Task<ActionResult<TimesheetView>> Get([FromQuery] string? view, [FromQuery] DateTime? date, [FromQuery] int? userId)
+        {
+            if (!Period.TryResolve(view, date, _clock.Today, out var period))
+                return ValidationProblem(new ValidationProblemDetails { Title = Period.InvalidViewMessage });
+            if (CurrentAppUserId is not int me)
+                return NoProfile();
+            if (!ReportService.TryScope(userId, me, IsPrivileged, out var owner))
+                return NotAllowed();
+
+            return await _view.GetAsync(owner ?? me, period);
+        }
 
         public record ImportRequest(List<ImportEntry>? Entries);
 

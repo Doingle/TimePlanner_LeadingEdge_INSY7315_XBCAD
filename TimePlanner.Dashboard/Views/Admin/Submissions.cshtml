@@ -1,0 +1,80 @@
+@using System.Globalization
+@using TimePlanner.Dashboard.Services.Overview
+@model AdminPageModel
+@{
+    ViewData["Title"] = "Submissions";
+    ViewData["Nav"] = "Admin";
+    Layout = "_AppLayout";
+    var culture = CultureInfo.InvariantCulture;
+    var grid = Model.Grid!;
+
+    //a short mark for each cell, the full status is also written as a class (grid-cell--submitted and so on) and as the cell's title
+    string Mark(GridCell cell) => cell.Status switch
+    {
+        TimesheetViewService.Submitted => "✓",
+        TimesheetViewService.Missing => "✗",
+        TimesheetViewService.Pending => "…",
+        _ => "·"
+    };
+    string Words(GridCell cell) => cell.Status switch
+    {
+        TimesheetViewService.Submitted => cell.SubmittedAt == null ? "Submitted" : $"Submitted at {cell.SubmittedAt.Value.ToString("HH:mm", culture)}",
+        TimesheetViewService.Missing => "Missing",
+        TimesheetViewService.Pending => "Not submitted yet",
+        _ => "Not due yet"
+    };
+}
+
+<h1 class="h3 mb-3">Submissions</h1>
+
+<nav class="admin-nav mb-3" aria-label="Admin">
+    <a asp-controller="Admin" asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.From.ToString("yyyy-MM-dd", culture)">Overview</a> |
+    <a asp-controller="Admin" asp-action="Submissions" aria-current="page">Submissions</a> |
+    <a asp-controller="Admin" asp-action="Exports" asp-route-view="@Model.View" asp-route-date="@Model.From.ToString("yyyy-MM-dd", culture)">Exports</a> |
+    <a asp-controller="Users" asp-action="Index">Users</a>
+</nav>
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<partial name="_PeriodNav" model="@("Admin", "Submissions", Model.View, Model.Label, Model.Previous, Model.Next)" />
+
+<p>A record of which working days each person has submitted. Nothing here needs approving.</p>
+
+@if (grid.Rows.Count == 0)
+{
+    <p class="text-muted">There is nobody to show yet.</p>
+}
+else
+{
+    <table class="table table-sm submissions-grid">
+        <caption class="visually-hidden">Submissions per person and working day, @grid.Label</caption>
+        <thead>
+            <tr>
+                <th scope="col">Person</th>
+                @foreach (var day in grid.Days)
+                {
+                    <th scope="col" class="text-center">@day.ToString("ddd", culture)<br /><small>@day.ToString("d MMM", culture)</small></th>
+                }
+                <th scope="col" class="text-end">Sent</th>
+                <th scope="col" class="text-end">Missing</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in grid.Rows)
+            {
+                <tr>
+                    <th scope="row" class="fw-normal">@row.Name</th>
+                    @foreach (var cell in row.Cells)
+                    {
+                        <td class="text-center grid-cell grid-cell--@cell.Status.ToLowerInvariant()" title="@Words(cell)"><span aria-hidden="true">@Mark(cell)</span><span class="visually-hidden">@Words(cell)</span></td>
+                    }
+                    <td class="text-end">@row.Submitted</td>
+                    <td class="text-end">@row.Missing</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

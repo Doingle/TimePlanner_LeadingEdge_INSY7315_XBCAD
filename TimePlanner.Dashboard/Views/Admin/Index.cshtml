@@ -1,0 +1,73 @@
+@using System.Globalization
+@using TimePlanner.Dashboard.Services.Overview
+@using TimePlanner.Dashboard.Services.Reports
+@model AdminPageModel
+@{
+    ViewData["Title"] = "Team overview";
+    ViewData["Nav"] = "Admin";
+    Layout = "_AppLayout";
+    var culture = CultureInfo.InvariantCulture;
+    var o = Model.Overview!;
+    var summary = o.Summary;
+
+    string Rate(SubmissionRate rate) =>
+        rate.Percent == null ? "—" : $"{rate.Submitted} of {rate.Expected} ({rate.Percent.Value.ToString("0.#", culture)}%)";
+
+    //one breakdown table, the same shape for category, project and person
+    void Table(string title, IReadOnlyList<BreakdownRow> rows, bool billing = false)
+    {
+        <section class="mb-4">
+            <h3 class="h6">@title</h3>
+            @if (rows.Count == 0)
+            {
+                <p class="text-muted">Nothing logged.</p>
+            }
+            else
+            {
+                <table class="table table-sm">
+                    <caption class="visually-hidden">@title</caption>
+                    <thead><tr><th scope="col">Name</th><th scope="col" class="text-end">Hours</th><th scope="col" class="text-end">Share</th>@if (billing) { <th scope="col">Billing</th> }</tr></thead>
+                    <tbody>
+                        @foreach (var row in rows)
+                        {
+                            <tr>
+                                <th scope="row" class="fw-normal">@row.Label</th>
+                                <td class="text-end">@row.Hours.ToString("0.00", culture)</td>
+                                <td class="text-end">@row.Percent.ToString("0.#", culture)%</td>
+                                @if (billing) { <td>@(row.Billable == true ? "Billable" : "Non-billable")</td> }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    }
+}
+
+<h1 class="h3 mb-3">Team overview</h1>
+
+<nav class="admin-nav mb-3" aria-label="Admin">
+    <a asp-controller="Admin" asp-action="Index" aria-current="page">Overview</a> |
+    <a asp-controller="Admin" asp-action="Submissions" asp-route-view="@Model.View" asp-route-date="@Model.From.ToString("yyyy-MM-dd", culture)">Submissions</a> |
+    <a asp-controller="Admin" asp-action="Exports" asp-route-view="@Model.View" asp-route-date="@Model.From.ToString("yyyy-MM-dd", culture)">Exports</a> |
+    <a asp-controller="Users" asp-action="Index">Users</a>
+</nav>
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<partial name="_PeriodNav" model="@("Admin", "Index", Model.View, Model.Label, Model.Previous, Model.Next)" />
+
+<ul class="list-unstyled">
+    <li>Team hours: <strong>@summary.TotalHours.ToString("0.00", culture)</strong> (@summary.BillableHours.ToString("0.00", culture) billable, @summary.NonBillableHours.ToString("0.00", culture) non-billable, @summary.Entries entries)</li>
+    <li>Submitted today: <strong>@Rate(o.Today)</strong></li>
+    <li>Submitted @(Model.View == "month" ? "this month" : "this week"): <strong>@Rate(o.Period)</strong></li>
+</ul>
+
+<div class="row g-4">
+    <div class="col-md-4">@{ Table("By category", summary.ByCategory); }</div>
+    <div class="col-md-4">@{ Table("By project", summary.ByProject, billing: true); }</div>
+    <div class="col-md-4">@{ Table("By person", summary.ByPerson); }</div>
+</div>

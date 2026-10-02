@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using TimePlanner.Dashboard.Data;
 using TimePlanner.Dashboard.Models;
+using TimePlanner.Dashboard.Services;
 using TimePlanner.Dashboard.Services.Reports;
 
 namespace TimePlanner.Dashboard.Controllers
@@ -10,19 +11,23 @@ namespace TimePlanner.Dashboard.Controllers
     {
         private readonly ReportService _reports;
         private readonly UserManager<ApplicationUser> _users;
+        private readonly CompanyClock _clock;
 
-        public ReportController(ReportService reports, UserManager<ApplicationUser> users)
+        public ReportController(ReportService reports, UserManager<ApplicationUser> users, CompanyClock clock)
         {
             _reports = reports;
             _users = users;
+            _clock = clock;
         }
 
         private bool IsPrivileged => User.IsInRole("Admin");
 
         //-----------------------------
-        //hours per project, company, user, day or activity. Developers only ever see their own, admin and billing may pick anyone
+        //hours per project, company, user, day or activity, with a summary by category and project and the billable split.
+        //it opens on a whole week or month (?view=week|month and a date inside it) or on any from/to range. Developers only ever see their own, an admin may pick anyone
         [HttpGet]
-        public async Task<IActionResult> Index(DateTime? from, DateTime? to, ReportGrouping groupBy = ReportGrouping.Project, int? userId = null)
+        public async Task<IActionResult> Index(DateTime? from, DateTime? to, ReportGrouping groupBy = ReportGrouping.Project, int? userId = null,
+            string? view = null, DateTime? date = null)
         {
             //the first screen shows the month so far
             var today = DateTime.Today;
@@ -36,6 +41,22 @@ namespace TimePlanner.Dashboard.Controllers
             };
             if (model.CanPickUser)
                 model.Users = await _reports.GetUserOptionsAsync();
+
+            //a week or month shortcut sets the range, unless an explicit range was given
+            if (!string.IsNullOrWhiteSpace(view) && from == null && to == null)
+            {
+                if (!Period.TryResolve(view, date, _clock.Today, out var period))
+                {
+                    model.Error = Period.InvalidViewMessage;
+                    return View(model);
+                }
+                model.From = period.From;
+                model.To = period.To;
+                model.View = period.View;
+                model.PeriodLabel = period.Label;
+                model.Previous = period.View == "week" ? period.From.AddDays(-7) : period.From.AddMonths(-1);
+                model.Next = period.View == "week" ? period.From.AddDays(7) : period.From.AddMonths(1);
+            }
 
             var account = await _users.GetUserAsync(User);
             if (account?.AppUserId is not int me)
@@ -56,6 +77,7 @@ namespace TimePlanner.Dashboard.Controllers
             }
 
             model.Report = await _reports.GetHoursAsync(model.From, model.To, groupBy, filter, null);
+            model.Summary = await _reports.GetSummaryAsync(model.From, model.To, filter);
             return View(model);
         }
 

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TimePlanner.Dashboard.Data.SqlServer;
 
@@ -11,9 +12,11 @@ using TimePlanner.Dashboard.Data.SqlServer;
 namespace TimePlanner.Dashboard.Data.SqlServer.Migrations.Auth
 {
     [DbContext(typeof(SqlServerAuthDbContext))]
-    partial class SqlServerAuthDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261002121027_AddDaySubmissionsSqlServer")]
+    partial class AddDaySubmissionsSqlServer
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -23,7 +23,7 @@ namespace TimePlanner.Dashboard.Security
     }
 
     //-----------------------------
-    //adds a claim to the signed in user while they still have a temporary password, so the pages can send them to choose a new one
+    //adds the claims the pages rely on: the time tracking profile id, and a flag while the person still has a temporary password so they are sent to choose a new one
     public class AppClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole>
     {
         public const string MustChangePasswordClaim = "must_change_password";
@@ -36,6 +36,8 @@ namespace TimePlanner.Dashboard.Security
         protected override async Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user)
         {
             var identity = await base.GenerateClaimsAsync(user);
+            if (user.AppUserId != null)
+                identity.AddClaim(new Claim(ClaimsExtensions.ProfileClaim, user.AppUserId.Value.ToString()));
             if (user.MustChangePassword)
                 identity.AddClaim(new Claim(MustChangePasswordClaim, "1"));
             return identity;

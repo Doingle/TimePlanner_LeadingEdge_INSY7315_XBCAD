@@ -31,9 +31,13 @@
             </span>
 
             <nav class="app-nav" aria-label="Main">
-                <a class="app-nav__link" aria-current="@Current("Home")">Home</a>
-                <a class="app-nav__link" aria-current="@Current("Timesheet")">My Timesheet</a>
-                <a class="app-nav__link" aria-current="@Current("Reports")">My Reports</a>
+                <a class="app-nav__link" asp-controller="Home" asp-action="Index" aria-current="@Current("Home")">Home</a>
+                <a class="app-nav__link" asp-controller="Timesheet" asp-action="Index" aria-current="@Current("Timesheet")">My Timesheet</a>
+                <a class="app-nav__link" asp-controller="Report" asp-action="Index" asp-route-view="week" aria-current="@Current("Reports")">My Reports</a>
+                @if (User.IsInRole("Admin"))
+                {
+                    <a class="app-nav__link" asp-controller="Admin" asp-action="Index" aria-current="@Current("Admin")">Team</a>
+                }
             </nav>
 
             @if (User.Identity?.IsAuthenticated == true)
@@ -47,6 +51,7 @@
                         </svg>
                     </summary>
                     <div class="app-user__menu">
+                        <a class="app-user__item" asp-controller="Settings" asp-action="Index">Settings</a>
                         <form asp-controller="Account" asp-action="Logout" method="post">
                             <button class="app-user__item" type="submit">Sign out</button>
                         </form>
