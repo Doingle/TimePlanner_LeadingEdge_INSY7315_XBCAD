@@ -1,0 +1,251 @@
+/* App shell
+
+   The top bar and page frame shared by the signed in pages (Views/Shared/_AppLayout.cshtml).
+   Page styles such as home.css build on the colours defined here */
+
+:root {
+    --app-purple: #7747ee;
+    --app-text: #171b24;
+    --app-muted: #4b5563;
+    --app-page: #f8f9fb;
+    --app-surface: #ffffff;
+    --app-border: #ebedf1;
+    --app-radius: 2px;
+    --app-bar: #131417;
+    --app-bar-muted: #c3c7cf;
+    --app-avatar: #2b2e35;
+    --app-frame: 1440px;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+body.app-body {
+    min-height: 100vh;
+    margin: 0;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--app-text);
+    background: var(--app-page);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Top bar ---------- */
+
+.app-header {
+    color: #ffffff;
+    background: var(--app-bar);
+}
+
+.app-header__inner {
+    display: flex;
+    align-items: stretch;
+    max-width: var(--app-frame);
+    height: 52px;
+    margin: 0 auto;
+    padding: 0 32px;
+}
+
+.app-brand {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 11px;
+    margin-right: 28px;
+    font-size: 15.5px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+
+.app-brand__icon {
+    width: 19px;
+    height: 19px;
+}
+
+.app-nav {
+    display: flex;
+    align-items: stretch;
+}
+
+/* the 3px top border balances the underline so the text stays centred */
+.app-nav__link {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--app-bar-muted);
+    text-decoration: none;
+    white-space: nowrap;
+    border-top: 3px solid transparent;
+    border-bottom: 3px solid transparent;
+}
+
+    .app-nav__link[href]:hover {
+        color: #ffffff;
+    }
+
+    .app-nav__link[aria-current="page"] {
+        font-weight: 600;
+        color: #ffffff;
+        border-bottom-color: var(--app-purple);
+    }
+
+/* ---------- Account menu ----------
+   A details element, so it opens without script. app.js closes it on an outside click or Escape */
+
+.app-user {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+.app-user__toggle {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 4px 2px 4px 4px;
+    list-style: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+    .app-user__toggle::-webkit-details-marker {
+        display: none;
+    }
+
+    .app-user__toggle:focus-visible {
+        outline: 2px solid var(--app-purple);
+        outline-offset: 2px;
+    }
+
+.app-user__avatar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    font-size: 11.5px;
+    font-weight: 600;
+    border-radius: 50%;
+    background: var(--app-avatar);
+}
+
+.app-user__name {
+    max-width: 220px;
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.app-user__chevron {
+    flex: none;
+    width: 15px;
+    height: 15px;
+    margin-left: 4px;
+    color: var(--app-bar-muted);
+    transition: transform 0.15s ease;
+}
+
+.app-user[open] .app-user__chevron {
+    transform: rotate(180deg);
+}
+
+.app-user__menu {
+    position: absolute;
+    top: calc(100% - 4px);
+    right: 0;
+    z-index: 10;
+    min-width: 180px;
+    padding: 6px;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+}
+
+    .app-user__menu form {
+        margin: 0;
+    }
+
+.app-user__item {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    color: var(--app-text);
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+    .app-user__item:hover,
+    .app-user__item:focus-visible {
+        background: #f2f4f7;
+        outline: none;
+    }
+
+/* ---------- Page frame ---------- */
+
+.app-main {
+    max-width: var(--app-frame);
+    margin: 0 auto;
+    padding: 22px 32px 48px;
+}
+
+/* ---------- Narrow windows ----------
+   The tabs move to their own row under the brand and scroll sideways if they still do not fit */
+
+@media (max-width: 759.98px) {
+    .app-header__inner {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 0 16px;
+    }
+
+    .app-brand {
+        height: 52px;
+    }
+
+    .app-nav {
+        order: 3;
+        width: calc(100% + 24px);
+        height: 44px;
+        margin: 0 -12px;
+        overflow-x: auto;
+    }
+
+    /* hidden from view, still read out as the menu's name */
+    .app-user__name {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+    }
+
+    .app-main {
+        padding: 20px 16px 40px;
+    }
+}

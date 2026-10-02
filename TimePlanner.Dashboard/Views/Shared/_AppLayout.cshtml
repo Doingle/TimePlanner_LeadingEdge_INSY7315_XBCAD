@@ -1,0 +1,66 @@
+@{
+    //the account menu shows the login name and its initials
+    var userName = User.Identity?.Name ?? string.Empty;
+    var initials = string.Concat(userName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(word => char.ToUpperInvariant(word[0])));
+
+    //each page names its tab with ViewData["Nav"], that tab is marked as the current page
+    string? Current(string tab) => ViewData["Nav"] as string == tab ? "page" : null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Time Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="app-body">
+    <header class="app-header">
+        <div class="app-header__inner">
+            <span class="app-brand">
+                <svg class="app-brand__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="10" y1="2" x2="14" y2="2" />
+                    <line x1="12" y1="14" x2="15" y2="11" />
+                    <circle cx="12" cy="14" r="8" />
+                </svg>
+                Time Tracker
+            </span>
+
+            <nav class="app-nav" aria-label="Main">
+                <a class="app-nav__link" aria-current="@Current("Home")">Home</a>
+                <a class="app-nav__link" aria-current="@Current("Timesheet")">My Timesheet</a>
+                <a class="app-nav__link" aria-current="@Current("Reports")">My Reports</a>
+            </nav>
+
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <details class="app-user">
+                    <summary class="app-user__toggle">
+                        <span class="app-user__avatar" aria-hidden="true">@initials</span>
+                        <span class="app-user__name">@userName</span>
+                        <svg class="app-user__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m6 9 6 6 6-6" />
+                        </svg>
+                    </summary>
+                    <div class="app-user__menu">
+                        <form asp-controller="Account" asp-action="Logout" method="post">
+                            <button class="app-user__item" type="submit">Sign out</button>
+                        </form>
+                    </div>
+                </details>
+            }
+        </div>
+    </header>
+
+    <main class="app-main">
+        @RenderBody()
+    </main>
+
+    <script src="~/js/app.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

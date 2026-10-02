@@ -1,8 +1,98 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@using System.Globalization
+@{
+    ViewData["Title"] = "Home";
+    ViewData["Nav"] = "Home";
+    Layout = "_AppLayout";
+
+    //the hours the timeline covers
+    var dayStart = new TimeOnly(8, 0);
+    var dayEnd = new TimeOnly(17, 0);
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+}
+
+<h1 class="home-title">Today, @DateTime.Today.ToString("ddd d MMM", CultureInfo.InvariantCulture)</h1>
+
+@* home-status__item--done shows a green tick, home-status__item--pending an orange clock *@
+<ul class="home-status">
+    <li class="home-status__item home-status__item--done">Last submission: <strong>—</strong></li>
+    <li class="home-status__item home-status__item--pending">Today isn't submitted yet. Submit it from the widget at the end of your day.</li>
+</ul>
+
+<section class="home-card home-timeline" aria-labelledby="timeline-title">
+    <div class="home-timeline__header">
+        <h2 class="home-timeline__title" id="timeline-title">
+            Today's timeline <span class="home-timeline__range">@dayStart.ToString("HH:mm", CultureInfo.InvariantCulture)–@dayEnd.ToString("HH:mm", CultureInfo.InvariantCulture)</span>
+        </h2>
+        <p class="home-timeline__summary"><strong>0:00</strong> logged, next check-in at —</p>
+    </div>
+
+    <div class="home-track" data-day-start="@dayStart.ToString("HH:mm", CultureInfo.InvariantCulture)" data-day-end="@dayEnd.ToString("HH:mm", CultureInfo.InvariantCulture)">
+        @* one block per entry. home.js places it from data-start and data-end and colours it with data-colour (inline styles are blocked by the CSP):
+           <div class="home-block" data-start="08:30" data-end="09:00" data-colour="#D97706"><span class="home-block__label">Email</span></div>
+           time nobody logged:
+           <div class="home-block home-block--unlogged" data-start="14:00" data-end="15:30"><span class="home-block__text">Not logged · 14:00–15:30</span></div>
+           the blocks replace the empty message below *@
+        <p class="home-track__empty">Nothing logged yet. Each answer you give the widget appears here as a block.</p>
+
+        @* follows the device clock, see home.js *@
+        <div class="home-now" hidden><span class="home-now__label">Now</span></div>
+    </div>
+
+    <div class="home-axis" aria-hidden="true">
+        @for (var hour = dayStart.Hour; hour <= dayEnd.Hour; hour++)
+        {
+            <span class="home-axis__tick"><span class="home-axis__label">@hour.ToString("00", CultureInfo.InvariantCulture):00</span></span>
+        }
+    </div>
+
+    @* shown when part of the day is not logged:
+       <p class="home-alert" role="alert"><strong>1:30 isn't logged, 14:00–15:30.</strong> The 15:30 check-in was skipped. Add this time in the widget before you submit today.</p> *@
+</section>
+
+<section class="home-split" aria-labelledby="split-title">
+    <div class="home-split__header">
+        <div>
+            <h2 class="home-split__title" id="split-title">Where the time went</h2>
+            <p class="home-split__subtitle">Nothing logged today yet</p>
+        </div>
+
+        <div class="home-toggle" role="group" aria-label="Period">
+            <button class="home-toggle__option" type="button" aria-pressed="true">Today</button>
+            <button class="home-toggle__option" type="button" aria-pressed="false">This week</button>
+        </div>
+    </div>
+
+    <div class="home-split__cards">
+        <section class="home-card home-breakdown" aria-labelledby="category-title">
+            <h3 class="home-breakdown__title" id="category-title">By category</h3>
+            @* one row per category, largest first. home.js sets the bar width from data-percent and its colour from data-colour:
+               <ul class="home-breakdown__list">
+                   <li class="home-breakdown__row">
+                       <span class="home-breakdown__name">Coding</span>
+                       <span class="home-bar" aria-hidden="true"><span class="home-bar__fill" data-percent="55" data-colour="#0E7490"></span></span>
+                       <span class="home-breakdown__value"><strong>3:00</strong> · 55%</span>
+                   </li>
+               </ul>
+               the list replaces the empty message below *@
+            <p class="home-breakdown__empty">Categories appear here, largest first, once something is logged.</p>
+        </section>
+
+        <section class="home-card home-breakdown" aria-labelledby="project-title">
+            <h3 class="home-breakdown__title" id="project-title">By project</h3>
+            @* same rows as By category, with a note under the name and the bar shaded by home-bar__fill--billable or home-bar__fill--non-billable:
+               <li class="home-breakdown__row">
+                   <span class="home-breakdown__name">Project X <small class="home-breakdown__note">Billable</small></span>
+                   <span class="home-bar" aria-hidden="true"><span class="home-bar__fill home-bar__fill--billable" data-percent="55"></span></span>
+                   <span class="home-breakdown__value"><strong>3:00</strong> · 55%</span>
+               </li> *@
+            <p class="home-breakdown__empty">Projects appear here, largest first, once something is logged.</p>
+        </section>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/js/home.js" asp-append-version="true"></script>
+}
