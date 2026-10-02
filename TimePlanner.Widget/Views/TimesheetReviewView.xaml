@@ -24,11 +24,11 @@
             </DockPanel>
 
             <Grid x:Name="UndoBar" Visibility="Collapsed" Margin="0,4,0,0">
-                <Border Background="{StaticResource PrimaryBrush}" CornerRadius="{StaticResource RadiusSm}" Padding="8,4">
+                <Border Background="{StaticResource ActionBrush}" CornerRadius="{StaticResource RadiusControl}" Padding="8,4">
                     <DockPanel>
-                        <Button Style="{StaticResource Button.Text}" Content="Undo" Foreground="White" FontWeight="Bold"
+                        <Button Style="{StaticResource Button.Text}" Content="Undo" Foreground="{StaticResource TextOnActionBrush}" FontWeight="Bold"
                                 DockPanel.Dock="Right" Click="Undo_Click" />
-                        <TextBlock x:Name="UndoText" Style="{StaticResource Text.Caption}" Foreground="White" VerticalAlignment="Center" />
+                        <TextBlock x:Name="UndoText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextOnActionBrush}" VerticalAlignment="Center" />
                     </DockPanel>
                 </Border>
             </Grid>

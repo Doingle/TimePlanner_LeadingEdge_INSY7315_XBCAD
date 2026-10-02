@@ -489,6 +489,12 @@ namespace TimePlanner.Widget.Controls
 
         private void Row_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            //remove buttons get the click instead of the row
+            if (IsInsideButton(e.OriginalSource as DependencyObject))
+            {
+                return;
+            }
+
             if (sender is MenuItem { Tag: IReadOnlyList<string> path } row && OwningRow(e.OriginalSource as DependencyObject) == row)
             {
                 e.Handled = true;
@@ -561,6 +567,25 @@ namespace TimePlanner.Widget.Controls
             while (d != null && d is not MenuItem)
                 d = d is Visual ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
             return d as MenuItem;
+        }
+
+        //-----------------------------
+        //true when the click landed on a button inside a row
+        private static bool IsInsideButton(DependencyObject? d)
+        {
+            //walk up until the row itself
+            while (d != null && d is not MenuItem)
+            {
+                //a button such as remove handles its own click
+                if (d is System.Windows.Controls.Primitives.ButtonBase)
+                {
+                    return true;
+                }
+
+                d = d is Visual ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
+            }
+
+            return false;
         }
 
         //-----------------------------
