@@ -27,7 +27,6 @@ static string ConnectionString(IServiceProvider services) =>
 builder.Services.AddControllersWithViews();
 
 //sqlite locally and in tests while azure sets SqlServer
-//sqlite locally and in tests while azure sets SqlServer
 var useSqlServer = string.Equals(builder.Configuration["Database:Provider"], "SqlServer", StringComparison.OrdinalIgnoreCase);
 
 //each provider keeps its own context types and migrations
