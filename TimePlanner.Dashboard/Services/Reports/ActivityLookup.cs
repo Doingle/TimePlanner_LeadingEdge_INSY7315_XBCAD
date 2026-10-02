@@ -27,6 +27,8 @@ namespace TimePlanner.Dashboard.Services.Reports
 
         public string? RootColour(int id) => Root(id)?.Colour;
 
+        public bool RootIsBillable(int id) => Root(id)?.IsBillable ?? true;
+
         private Category? Find(int id) => _byId.GetValueOrDefault(id);
 
         private Category? Root(int id)
