@@ -24,7 +24,14 @@ namespace TimePlanner.Dashboard.Data
         public const string LoginSucceeded = "LoginSucceeded";
         public const string LoginFailed = "LoginFailed";
         public const string LoginLockedOut = "LoginLockedOut";
+        public const string LoginBlocked = "LoginBlocked";
         public const string Logout = "Logout";
+        public const string UserCreated = "UserCreated";
+        public const string PasswordReset = "PasswordReset";
+        public const string UserDeactivated = "UserDeactivated";
+        public const string UserReactivated = "UserReactivated";
+        public const string PasswordChanged = "PasswordChanged";
+        public const string ProfileUpdated = "ProfileUpdated";
         public const string TimesheetImported = "TimesheetImported";
         public const string TimesheetImportRejected = "TimesheetImportRejected";
         public const string TimesheetExported = "TimesheetExported";

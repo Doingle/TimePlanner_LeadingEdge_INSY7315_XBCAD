@@ -15,6 +15,7 @@ using TimePlanner.Dashboard.Security;
 using TimePlanner.Dashboard.Services;
 using TimePlanner.Dashboard.Services.Reports;
 using TimePlanner.Dashboard.Services.TimesheetImport;
+using TimePlanner.Dashboard.Services.Users;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,7 +58,13 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(o =>
     o.User.RequireUniqueEmail = true;
 })
 .AddEntityFrameworkStores<AuthDbContext>()
+.AddSignInManager<AppSignInManager>()
+.AddClaimsPrincipalFactory<AppClaimsPrincipalFactory>()
 .AddDefaultTokenProviders();
+
+// A cookie is checked against the account on every request instead of every 30 minutes, so deactivating a person or changing their password
+// ends their open sessions at once.
+builder.Services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.Zero);
 
 builder.Services.ConfigureApplicationCookie(o =>
 {
@@ -77,6 +84,8 @@ builder.Services.AddScoped<TimesheetImportService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuditLogger>();
+builder.Services.AddScoped<UserAdminService>();
+builder.Services.AddScoped<AccountService>();
 builder.Services.AddAuthentication().AddJwtBearer(o =>
 {
     // keep the short claim names ("email", "role") instead of renaming them to long schema urls
@@ -93,6 +102,19 @@ builder.Services.AddAuthentication().AddJwtBearer(o =>
         ClockSkew = TimeSpan.FromSeconds(30),
         NameClaimType = "email",
         RoleClaimType = "role"
+    };
+
+    // An api token is only good while its account is: deactivating a person, or changing their password (which replaces their security stamp),
+    // ends their tokens at once instead of when they expire.
+    o.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var users = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await users.FindByIdAsync(context.Principal?.FindFirst("sub")?.Value ?? string.Empty);
+            if (user == null || !user.IsActive || user.SecurityStamp != context.Principal?.FindFirst("stamp")?.Value)
+                context.Fail("The account is no longer valid.");
+        }
     };
 });
 
@@ -177,6 +199,20 @@ app.UseWhen(ctx => ctx.Request.Path.StartsWithSegments("/api"), api => api.Use(a
         ctx.User = result.Principal;
     await next();
 }));
+
+// Someone still on a temporary password can only reach the settings page (to choose a new one), sign out, or the health check.
+app.Use(async (ctx, next) =>
+{
+    if (ctx.User.HasClaim(AppClaimsPrincipalFactory.MustChangePasswordClaim, "1")
+        && !ctx.Request.Path.StartsWithSegments("/Settings", StringComparison.OrdinalIgnoreCase)
+        && !ctx.Request.Path.StartsWithSegments("/Account", StringComparison.OrdinalIgnoreCase)
+        && !ctx.Request.Path.StartsWithSegments("/health"))
+    {
+        ctx.Response.Redirect("/Settings");
+        return;
+    }
+    await next();
+});
 
 app.UseRateLimiter();
 app.UseAuthorization();

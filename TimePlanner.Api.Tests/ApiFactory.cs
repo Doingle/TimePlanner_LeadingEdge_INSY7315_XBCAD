@@ -145,6 +145,27 @@ namespace TimePlanner.Api.Tests
             return await scope.ServiceProvider.GetRequiredService<AuthDbContext>().AuditEvents.AsNoTracking().OrderBy(e => e.Id).ToListAsync();
         }
 
+        //-----------------------------
+        //the account's id and current security stamp, which a token must carry to be accepted
+        public async Task<(string Id, string Stamp)> AccountStampAsync(string email)
+        {
+            using var scope = Services.CreateScope();
+            var user = (await scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>().FindByEmailAsync(email))!;
+            return (user.Id, user.SecurityStamp!);
+        }
+
+        //-----------------------------
+        //gives an account a password of the test's choosing and clears its temporary flag, standing in for the person having signed in and changed it
+        public async Task SetPasswordAsync(string email, string password)
+        {
+            using var scope = Services.CreateScope();
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = (await users.FindByEmailAsync(email))!;
+            Assert.True((await users.ResetPasswordAsync(user, await users.GeneratePasswordResetTokenAsync(user), password)).Succeeded);
+            user.MustChangePassword = false;
+            await users.UpdateAsync(user);
+        }
+
         public async Task<bool> IsLockedOutAsync(string email)
         {
             using var scope = Services.CreateScope();

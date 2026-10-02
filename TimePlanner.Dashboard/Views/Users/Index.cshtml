@@ -1,0 +1,96 @@
+@model UsersPageModel
+@{
+    ViewData["Title"] = "Users";
+}
+
+<h1 class="h3 mb-3">Users</h1>
+
+@if (Model.Message != null)
+{
+    <div class="alert alert-success" role="status">@Model.Message</div>
+}
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+@if (Model.TemporaryPassword != null)
+{
+    <div class="alert alert-warning" role="alert">
+        <p class="mb-1">Temporary password for <strong>@Model.TemporaryFor</strong>. It is shown only now, so pass it on securely.
+            They must choose their own password the first time they sign in.</p>
+        <code>@Model.TemporaryPassword</code>
+    </div>
+}
+
+<h2 class="h5">Create an account</h2>
+<form method="post" asp-action="Create" class="row g-3 mb-4">
+    <div class="col-md-4">
+        <label for="name" class="form-label">Name</label>
+        <input id="name" name="name" class="form-control" maxlength="100" required />
+    </div>
+    <div class="col-md-4">
+        <label for="email" class="form-label">Email</label>
+        <input id="email" name="email" type="email" class="form-control" maxlength="256" required autocomplete="off" />
+    </div>
+    <div class="col-md-2">
+        <label for="role" class="form-label">Role</label>
+        <select id="role" name="role" class="form-select">
+            <option value="Developer">Developer</option>
+            <option value="Admin">Admin</option>
+        </select>
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary w-100">Create</button>
+    </div>
+</form>
+
+<h2 class="h5">Everyone</h2>
+<table class="table table-sm align-middle">
+    <caption class="visually-hidden">All accounts</caption>
+    <thead>
+        <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Email</th>
+            <th scope="col">Role</th>
+            <th scope="col">Status</th>
+            <th scope="col">Last sign in</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in Model.Users)
+        {
+            <tr>
+                <th scope="row" class="fw-normal">@user.Name</th>
+                <td>@user.Email</td>
+                <td>@user.Role</td>
+                <td>
+                    @(user.IsActive ? "Active" : "Deactivated")
+                    @if (user.MustChangePassword) { <span>, temporary password</span> }
+                    @if (user.LockedOut) { <span>, locked out</span> }
+                </td>
+                <td>@(user.LastLoginUtc?.ToString("yyyy-MM-dd HH:mm") ?? "never") @(user.LastLoginUtc != null ? "UTC" : "")</td>
+                <td class="text-end">
+                    <form method="post" asp-action="ResetPassword" class="d-inline">
+                        <input type="hidden" name="id" value="@user.Id" />
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Reset password</button>
+                    </form>
+                    @if (user.IsActive)
+                    {
+                        <form method="post" asp-action="Deactivate" class="d-inline">
+                            <input type="hidden" name="id" value="@user.Id" />
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Deactivate</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form method="post" asp-action="Reactivate" class="d-inline">
+                            <input type="hidden" name="id" value="@user.Id" />
+                            <button type="submit" class="btn btn-outline-success btn-sm">Reactivate</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

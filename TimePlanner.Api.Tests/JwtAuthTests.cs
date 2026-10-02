@@ -39,10 +39,10 @@ namespace TimePlanner.Api.Tests
 
         //-----------------------------
         //builds a token the way the server does, so a test can make it expired or sign it with the wrong key
-        private static string MakeToken(string signingKey, DateTime notBefore, DateTime expires) =>
+        private static string MakeToken(string signingKey, DateTime notBefore, DateTime expires, params Claim[] account) =>
             new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[] { new Claim("email", ApiFactory.AdminEmail), new Claim("role", "Admin") }),
+                Subject = new ClaimsIdentity(new[] { new Claim("email", ApiFactory.AdminEmail), new Claim("role", "Admin") }.Concat(account)),
                 Issuer = "TimePlanner.Dashboard",
                 Audience = "TimePlanner.Clients",
                 NotBefore = notBefore,
@@ -140,9 +140,26 @@ namespace TimePlanner.Api.Tests
         [Fact]
         public async Task ValidTokenForSameKey_IsAccepted()
         {
-            var valid = MakeToken(ApiFactory.JwtKey, DateTime.UtcNow, DateTime.UtcNow.AddHours(1));
+            var (id, stamp) = await _factory.AccountStampAsync(ApiFactory.AdminEmail);
+            var valid = MakeToken(ApiFactory.JwtKey, DateTime.UtcNow, DateTime.UtcNow.AddHours(1), new Claim("sub", id), new Claim("stamp", stamp));
 
             Assert.Equal(HttpStatusCode.OK, (await MeAsync(valid)).StatusCode);
+        }
+
+        //-----------------------------
+        //a token that is correctly signed but does not match the account's current security stamp, or names no account, is refused
+        [Fact]
+        public async Task ASignedTokenThatDoesNotMatchTheAccount_IsRefused()
+        {
+            var (id, stamp) = await _factory.AccountStampAsync(ApiFactory.AdminEmail);
+
+            var noAccount = MakeToken(ApiFactory.JwtKey, DateTime.UtcNow, DateTime.UtcNow.AddHours(1));
+            var staleStamp = MakeToken(ApiFactory.JwtKey, DateTime.UtcNow, DateTime.UtcNow.AddHours(1), new Claim("sub", id), new Claim("stamp", "an-old-stamp"));
+            var noStamp = MakeToken(ApiFactory.JwtKey, DateTime.UtcNow, DateTime.UtcNow.AddHours(1), new Claim("sub", id));
+            var unknownAccount = MakeToken(ApiFactory.JwtKey, DateTime.UtcNow, DateTime.UtcNow.AddHours(1), new Claim("sub", Guid.NewGuid().ToString()), new Claim("stamp", stamp));
+
+            foreach (var token in new[] { noAccount, staleStamp, noStamp, unknownAccount })
+                Assert.Equal(HttpStatusCode.Unauthorized, (await MeAsync(token)).StatusCode);
         }
     }
 }
