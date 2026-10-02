@@ -53,12 +53,16 @@ namespace TimePlanner.Dashboard.Controllers
             if (result.Succeeded)
             {
                 await _audit.LogAsync(AuditActions.LoginSucceeded, "website", model.Email, user!.Id);
+                //a temporary password must be replaced before anything else
+                if (user.MustChangePassword)
+                    return RedirectToAction("Index", "Settings");
+
                 //only local urls are followed, an open redirect would let an attacker bounce users to another site
                 return Url.IsLocalUrl(model.ReturnUrl) ? LocalRedirect(model.ReturnUrl!) : RedirectToAction("Index", "Home");
             }
 
             _logger.LogWarning("Failed login attempt (locked out: {LockedOut})", result.IsLockedOut);
-            await _audit.LogAsync(result.IsLockedOut ? AuditActions.LoginLockedOut : AuditActions.LoginFailed, "website", model.Email);
+            await _audit.LogAsync(result.IsLockedOut ? AuditActions.LoginLockedOut : result.IsNotAllowed ? AuditActions.LoginBlocked : AuditActions.LoginFailed, "website", model.Email);
             ModelState.AddModelError(string.Empty, "Invalid email or password.");
             model.Password = string.Empty;
             return View(model);

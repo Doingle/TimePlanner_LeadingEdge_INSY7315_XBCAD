@@ -1,0 +1,54 @@
+@model SettingsPageModel
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<h1 class="h3 mb-3">Settings</h1>
+
+@if (Model.Account.MustChangePassword)
+{
+    <div class="alert alert-warning" role="alert">You are using a temporary password. Choose your own below to continue.</div>
+}
+@if (Model.Message != null)
+{
+    <div class="alert alert-success" role="status">@Model.Message</div>
+}
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<p class="text-muted">Signed in as @Model.Account.Email (@Model.Account.Role). Tracking settings are in the widget.</p>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <h2 class="h5">Your name</h2>
+        <form method="post" asp-action="Name">
+            <div class="mb-3">
+                <label for="name" class="form-label">Name</label>
+                <input id="name" name="name" class="form-control" maxlength="100" value="@Model.Account.Name" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Save name</button>
+        </form>
+    </div>
+
+    <div class="col-md-6">
+        <h2 class="h5">Change password</h2>
+        <form method="post" asp-action="Password">
+            <div class="mb-3">
+                <label for="currentPassword" class="form-label">Current password</label>
+                <input id="currentPassword" name="currentPassword" type="password" class="form-control" autocomplete="current-password" required />
+            </div>
+            <div class="mb-3">
+                <label for="newPassword" class="form-label">New password</label>
+                <input id="newPassword" name="newPassword" type="password" class="form-control" autocomplete="new-password" required />
+                <div class="form-text">At least 12 characters with upper and lower case letters, a digit and a symbol.</div>
+            </div>
+            <div class="mb-3">
+                <label for="confirmPassword" class="form-label">Confirm new password</label>
+                <input id="confirmPassword" name="confirmPassword" type="password" class="form-control" autocomplete="new-password" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Change password</button>
+        </form>
+    </div>
+</div>
