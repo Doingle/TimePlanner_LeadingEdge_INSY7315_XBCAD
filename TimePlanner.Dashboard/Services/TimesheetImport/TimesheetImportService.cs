@@ -6,6 +6,7 @@ using TimePlanner.Core.Repositories.Interfaces;
 using TimePlanner.Core.Services;
 using TimePlanner.Dashboard.Data;
 using TimePlanner.Dashboard.Services;
+using TimePlanner.Dashboard.Services.Submissions;
 
 namespace TimePlanner.Dashboard.Services.TimesheetImport
 {
@@ -34,11 +35,13 @@ namespace TimePlanner.Dashboard.Services.TimesheetImport
         private readonly ITimeEntryRepository _timeEntries;
         private readonly TimeEntryFactory _factory;
         private readonly AuditLogger _audit;
+        private readonly SubmissionService _submissions;
 
         public TimesheetImportService(AppDbContext db, EntryService entries, ActivityService activities, ICategoryRepository categories,
-            IProjectRepository projects, ITimeEntryRepository timeEntries, TimeEntryFactory factory, AuditLogger audit)
+            IProjectRepository projects, ITimeEntryRepository timeEntries, TimeEntryFactory factory, AuditLogger audit, SubmissionService submissions)
         {
             _audit = audit;
+            _submissions = submissions;
             _db = db;
             _entries = entries;
             _activities = activities;
@@ -91,6 +94,9 @@ namespace TimePlanner.Dashboard.Services.TimesheetImport
             }
 
             var stored = await StoreAsync(userId, valid);
+
+            //every accepted import marks its days as submitted, even when each entry was already stored, so a retry after a failure still records them
+            await _submissions.RecordAsync(userId, valid.Select(v => v.Start.Date));
             await _audit.LogAsync(AuditActions.TimesheetImported, $"profile {userId}, created {stored.Created}, skipped {stored.Skipped}");
             return stored;
         }

@@ -42,7 +42,9 @@ namespace TimePlanner.Dashboard.Services
             {
                 new("sub", user.Id),
                 new("email", user.Email ?? string.Empty),
-                new("jti", Guid.NewGuid().ToString())
+                new("jti", Guid.NewGuid().ToString()),
+                //the security stamp changes when the account is deactivated or the password changes, which is how such a token is recognised as stale
+                new("stamp", user.SecurityStamp ?? string.Empty)
             };
             //uid links the login to the time tracking profile, so endpoints can scope data to its owner without a lookup
             if (user.AppUserId != null)

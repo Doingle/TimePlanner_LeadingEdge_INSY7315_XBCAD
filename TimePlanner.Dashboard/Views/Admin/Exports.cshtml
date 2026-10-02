@@ -1,0 +1,45 @@
+@using System.Globalization
+@model AdminPageModel
+@{
+    ViewData["Title"] = "Exports";
+    ViewData["Nav"] = "Admin";
+    Layout = "_AppLayout";
+    var culture = CultureInfo.InvariantCulture;
+}
+
+<h1 class="h3 mb-3">Exports</h1>
+
+<nav class="admin-nav mb-3" aria-label="Admin">
+    <a asp-controller="Admin" asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.From.ToString("yyyy-MM-dd", culture)">Overview</a> |
+    <a asp-controller="Admin" asp-action="Submissions" asp-route-view="@Model.View" asp-route-date="@Model.From.ToString("yyyy-MM-dd", culture)">Submissions</a> |
+    <a asp-controller="Admin" asp-action="Exports" aria-current="page">Exports</a> |
+    <a asp-controller="Users" asp-action="Index">Users</a>
+</nav>
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<partial name="_PeriodNav" model="@("Admin", "Exports", Model.View, Model.Label, Model.Previous, Model.Next)" />
+
+<p>Download the timesheet for @Model.Label in the company's layout. Choose a person for one file, or everyone for a zip with one file per person who logged time.</p>
+
+@* a plain get form: the download is a file, so there is nothing to submit and nothing is changed *@
+<form method="get" asp-controller="Admin" asp-action="Export" class="row g-3">
+    <input type="hidden" name="view" value="@Model.View" />
+    <input type="hidden" name="date" value="@Model.From.ToString("yyyy-MM-dd", culture)" />
+    <div class="col-md-6">
+        <label for="userId" class="form-label">Person</label>
+        <select id="userId" name="userId" class="form-select">
+            <option value="">Everyone (one file each, in a zip)</option>
+            @foreach (var person in Model.People)
+            {
+                <option value="@person.Id">@person.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-6 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary">Download</button>
+    </div>
+</form>

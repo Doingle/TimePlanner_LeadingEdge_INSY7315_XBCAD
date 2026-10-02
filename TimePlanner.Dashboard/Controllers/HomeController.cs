@@ -2,14 +2,27 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TimePlanner.Dashboard.Models;
+using TimePlanner.Dashboard.Security;
+using TimePlanner.Dashboard.Services.Overview;
 
 namespace TimePlanner.Dashboard.Controllers
 {
     public class HomeController : Controller
     {
-        public IActionResult Index()
+        private readonly OverviewService _overview;
+
+        public HomeController(OverviewService overview) => _overview = overview;
+
+        //-----------------------------
+        //the signed in person's home: today's timeline, last submission, and where the time went today (the default) or this week (?period=week).
+        //a login without a time tracking profile gets the page with no overview, which says why
+        [HttpGet]
+        public async Task<IActionResult> Index(string? period)
         {
-            return View();
+            if (User.ProfileId() is not int me)
+                return View((MyOverview?)null);
+
+            return View(await _overview.GetAsync(me, period));
         }
 
         [AllowAnonymous]

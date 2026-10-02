@@ -57,11 +57,18 @@ namespace TimePlanner.Dashboard.Controllers.Api
             if (!result.Succeeded)
             {
                 _logger.LogWarning("Failed api login attempt (locked out: {LockedOut})", result.IsLockedOut);
-                await _audit.LogAsync(result.IsLockedOut ? AuditActions.LoginLockedOut : AuditActions.LoginFailed, "api", request.Email);
+                await _audit.LogAsync(result.IsLockedOut ? AuditActions.LoginLockedOut : result.IsNotAllowed ? AuditActions.LoginBlocked : AuditActions.LoginFailed, "api", request.Email);
                 return Problem(title: "Invalid email or password.", statusCode: StatusCodes.Status401Unauthorized);
             }
 
-            await _audit.LogAsync(AuditActions.LoginSucceeded, "api", request.Email, user!.Id);
+            //a temporary password is only good for choosing a real one on the dashboard
+            if (user!.MustChangePassword)
+            {
+                await _audit.LogAsync(AuditActions.LoginBlocked, "api, password change required", request.Email, user.Id);
+                return Problem(title: "Choose a new password on the dashboard before using the api.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            await _audit.LogAsync(AuditActions.LoginSucceeded, "api", request.Email, user.Id);
             var (token, expires) = _tokens.Create(user!, await _users.GetRolesAsync(user!));
             return Ok(new TokenResponse(token, "Bearer", expires));
         }

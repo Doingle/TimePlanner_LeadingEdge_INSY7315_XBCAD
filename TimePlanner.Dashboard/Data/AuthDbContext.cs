@@ -9,6 +9,12 @@ namespace TimePlanner.Dashboard.Data
     public class ApplicationUser : IdentityUser
     {
         public int? AppUserId { get; set; }
+
+        //a deactivated account keeps its history but can no longer sign in, on the website or the api
+        public bool IsActive { get; set; } = true;
+
+        //true while the password is a temporary one an administrator handed out, the person must choose their own before doing anything else
+        public bool MustChangePassword { get; set; }
     }
 
     //-----------------------------
@@ -23,9 +29,21 @@ namespace TimePlanner.Dashboard.Data
         
         public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
+        public DbSet<DaySubmission> DaySubmissions => Set<DaySubmission>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            //existing accounts stay active when the column is added
+            builder.Entity<ApplicationUser>().Property(u => u.IsActive).HasDefaultValue(true);
+
+            //a person submits a day once, sending it again only updates the time
+            builder.Entity<DaySubmission>(e =>
+            {
+                e.HasIndex(x => new { x.AppUserId, x.Date }).IsUnique();
+                e.HasIndex(x => x.Date);
+            });
 
             builder.Entity<AuditEvent>(e =>
             {

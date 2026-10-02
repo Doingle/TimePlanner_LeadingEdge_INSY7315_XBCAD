@@ -1,40 +1,83 @@
 @using System.Globalization
+@using TimePlanner.Dashboard.Services.Overview
+@model TimesheetPageModel
 @{
-    ViewData["Title"] = "Timesheet";
+    ViewData["Title"] = "My Timesheet";
     ViewData["Nav"] = "Timesheet";
     Layout = "_AppLayout";
+    var culture = CultureInfo.InvariantCulture;
 
-    //the week shown, Monday to Sunday
-    var weekStart = DateTime.Today.AddDays(-(((int)DateTime.Today.DayOfWeek + 6) % 7));
-    var weekEnd = weekStart.AddDays(6);
+    //how each status reads on the page. The status itself is also written as a class, ts-day--submitted and so on, for styling
+    string Describe(TimesheetDay day) => day.Status switch
+    {
+        TimesheetViewService.Submitted => day.SubmittedAt == null ? "Submitted" : $"Submitted at {day.SubmittedAt.Value.ToString("HH:mm", culture)}",
+        TimesheetViewService.Pending => "Not submitted yet",
+        TimesheetViewService.Missing => "Missing",
+        TimesheetViewService.NotDue => "Not due yet",
+        _ => "Weekend"
+    };
+
+    //hours as h:mm, the way the design shows totals
+    string Hm(double hours)
+    {
+        var minutes = (int)Math.Round(hours * 60);
+        return $"{minutes / 60}:{minutes % 60:00}";
+    }
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/timesheet.css" asp-append-version="true" />
 }
 
+@if (Model.NoProfile)
+{
+    <h1 class="ts-title">My Timesheet</h1>
+    <p class="alert alert-warning" role="alert"><strong>Your account is not linked to a time tracking profile.</strong> Ask an administrator to link it, then sign in again.</p>
+    return;
+}
+
+@{
+    var data = Model.Data!;
+    var unit = data.View == "week" ? "week" : "month";
+
+    //days with entries, plus days that still need submitting, newest first. Future and weekend days with nothing logged are left out
+    var days = data.Days
+        .Where(d => d.Entries > 0 || d.Status == TimesheetViewService.Missing || d.Status == TimesheetViewService.Pending)
+        .OrderByDescending(d => d.Date)
+        .ToList();
+}
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
 <div class="ts-header">
     <div>
-        <h1 class="ts-title">Timesheet</h1>
-        <p class="ts-subtitle">Every check-in you logged this week, grouped by day</p>
+        <h1 class="ts-title">My Timesheet</h1>
+        <p class="ts-subtitle">
+            <strong>@Hm((double)data.TotalHours)</strong> logged,
+            @data.SubmittedDays day@(data.SubmittedDays == 1 ? "" : "s") submitted,
+            @data.MissingDays missing.
+            Read only: corrections are made in the widget and submitted again.
+        </p>
 
-        @* the arrows become links to the previous and next week *@
         <div class="ts-week">
-            <a class="ts-week__step">
+            <a class="ts-week__step" asp-action="Index" asp-route-view="@data.View" asp-route-date="@string.Format(culture, "{0:yyyy-MM-dd}", Model.Previous)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-                <span class="app-sr-only">Previous week</span>
+                <span class="app-sr-only">Previous @unit</span>
             </a>
-            <span class="ts-week__range">@weekStart.ToString("MMM d", CultureInfo.InvariantCulture) – @weekEnd.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)</span>
-            <a class="ts-week__step">
+            <span class="ts-week__range">@data.Label</span>
+            <a class="ts-week__step" asp-action="Index" asp-route-view="@data.View" asp-route-date="@string.Format(culture, "{0:yyyy-MM-dd}", Model.Next)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-                <span class="app-sr-only">Next week</span>
+                <span class="app-sr-only">Next @unit</span>
             </a>
         </div>
     </div>
 
     <div class="ts-actions">
-        <a class="app-button">Export week</a>
-        <button class="app-button app-button--primary" type="button">+ Add Entry</button>
+        @* no export endpoint yet *@
+        <a class="app-button">Export @unit</a>
     </div>
 </div>
 
@@ -46,24 +89,40 @@
     <span class="ts-columns__end">Total</span>
 </div>
 
-@* one card per day that has entries, newest day first, and its entries newest first. app.js colours the dot from data-colour
-   (inline styles are blocked by the CSP), and ts-entry__voice marks an entry that came from a voice note:
-   <section class="ts-day">
-       <header class="ts-day__head">
-           <h2 class="ts-day__date">Friday, Jul 31</h2>
-           <p class="ts-day__total">Total: <strong>5:30</strong></p>
-       </header>
-       <ol class="ts-day__entries">
-           <li class="ts-entry">
-               <span class="ts-entry__category"><span class="ts-dot" data-colour="#6B7280"></span>Admin</span>
-               <span class="ts-entry__company">Internal</span>
-               <span class="ts-entry__description">Wrote up the week's summary<span class="ts-entry__voice"><span class="app-sr-only">Voice note</span></span></span>
-               <span class="ts-entry__time">1:30 PM – 2:00 PM</span>
-               <span class="ts-entry__total">0:30</span>
-           </li>
-       </ol>
-   </section>
-   the days replace the empty message below *@
-<div class="ts-day">
-    <p class="ts-empty">Nothing logged this week. Each check-in you answer in the widget appears here, grouped by day.</p>
-</div>
+@if (days.Count == 0)
+{
+    <div class="ts-day">
+        <p class="ts-empty">Nothing logged this @unit. Each check-in you answer in the widget appears here, grouped by day.</p>
+    </div>
+}
+
+@foreach (var day in days)
+{
+    <section class="ts-day ts-day--@day.Status.ToLowerInvariant()">
+        <header class="ts-day__head">
+            <h2 class="ts-day__date">@day.Date.ToString("dddd, MMM d", culture)</h2>
+            <p class="ts-day__status">@Describe(day)</p>
+            <p class="ts-day__total">Total: <strong>@Hm((double)day.Hours)</strong></p>
+        </header>
+
+        @if (day.Items.Count > 0)
+        {
+            <ol class="ts-day__entries">
+                @foreach (var item in day.Items.OrderByDescending(i => i.Start))
+                {
+                    <li class="ts-entry">
+                        <span class="ts-entry__category"><span class="ts-dot"></span>@item.Activity</span>
+                        <span class="ts-entry__company">@item.Company <small>@item.Project · @(item.Billable ? "Billable" : "Non-billable")</small></span>
+                        <span class="ts-entry__description">@item.Note</span>
+                        <span class="ts-entry__time">@item.Start – @item.End</span>
+                        <span class="ts-entry__total">@Hm((double)item.Hours)</span>
+                    </li>
+                }
+            </ol>
+        }
+        else
+        {
+            <p class="ts-empty">Nothing logged.</p>
+        }
+    </section>
+}

@@ -14,6 +14,15 @@ namespace TimePlanner.Dashboard.Models
         public bool CanPickUser { get; set; }
         public List<(int Id, string Name)> Users { get; set; } = new();
 
+        //set when the page was opened for a whole week or month (?view=week|month&date=), null for a custom range
+        public string? View { get; set; }
+        public string? PeriodLabel { get; set; }
+        public DateTime? Previous { get; set; }
+        public DateTime? Next { get; set; }
+
+        //totals, billable against non-billable, and the breakdowns by category and project for the same range
+        public ReportSummary? Summary { get; set; }
+
         //null when the filter was not valid, Error then says why
         public HoursReport? Report { get; set; }
         public string? Error { get; set; }
