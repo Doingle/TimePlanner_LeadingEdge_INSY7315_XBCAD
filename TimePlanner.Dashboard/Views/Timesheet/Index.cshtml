@@ -7,7 +7,7 @@
     Layout = "_AppLayout";
     var culture = CultureInfo.InvariantCulture;
 
-    //how each status reads on the page. The status itself is also written as a class, timesheet-day--submitted and so on, for styling
+    //how each status reads on the page. The status itself is also written as a class, ts-day--submitted and so on, for styling
     string Describe(TimesheetDay day) => day.Status switch
     {
         TimesheetViewService.Submitted => day.SubmittedAt == null ? "Submitted" : $"Submitted at {day.SubmittedAt.Value.ToString("HH:mm", culture)}",
@@ -16,14 +16,35 @@
         TimesheetViewService.NotDue => "Not due yet",
         _ => "Weekend"
     };
+
+    //hours as h:mm, the way the design shows totals
+    string Hm(double hours)
+    {
+        var minutes = (int)Math.Round(hours * 60);
+        return $"{minutes / 60}:{minutes % 60:00}";
+    }
 }
 
-<h1 class="h3 mb-3">My Timesheet</h1>
+@section Styles {
+    <link rel="stylesheet" href="~/css/timesheet.css" asp-append-version="true" />
+}
 
 @if (Model.NoProfile)
 {
+    <h1 class="ts-title">My Timesheet</h1>
     <p class="alert alert-warning" role="alert"><strong>Your account is not linked to a time tracking profile.</strong> Ask an administrator to link it, then sign in again.</p>
     return;
+}
+
+@{
+    var data = Model.Data!;
+    var unit = data.View == "week" ? "week" : "month";
+
+    //days with entries, plus days that still need submitting, newest first. Future and weekend days with nothing logged are left out
+    var days = data.Days
+        .Where(d => d.Entries > 0 || d.Status == TimesheetViewService.Missing || d.Status == TimesheetViewService.Pending)
+        .OrderByDescending(d => d.Date)
+        .ToList();
 }
 
 @if (Model.Error != null)
@@ -31,53 +52,83 @@
     <div class="alert alert-danger" role="alert">@Model.Error</div>
 }
 
-@{
-    var data = Model.Data!;
+<div class="ts-header">
+    <div>
+        <h1 class="ts-title">My Timesheet</h1>
+        <p class="ts-subtitle">
+            <strong>@Hm((double)data.TotalHours)</strong> logged,
+            @data.SubmittedDays day@(data.SubmittedDays == 1 ? "" : "s") submitted,
+            @data.MissingDays missing.
+            Read only: corrections are made in the widget and submitted again.
+        </p>
+
+        <div class="ts-week">
+            <a class="ts-week__step" asp-action="Index" asp-route-view="@data.View" asp-route-date="@string.Format(culture, "{0:yyyy-MM-dd}", Model.Previous)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+                <span class="app-sr-only">Previous @unit</span>
+            </a>
+            <span class="ts-week__range">@data.Label</span>
+            <a class="ts-week__step" asp-action="Index" asp-route-view="@data.View" asp-route-date="@string.Format(culture, "{0:yyyy-MM-dd}", Model.Next)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                <span class="app-sr-only">Next @unit</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="ts-actions">
+        @* switching opens the current week or month, the same as the period picker on the admin pages *@
+        <form class="ts-toggle" method="get" asp-action="Index" role="group" aria-label="View">
+            <button class="ts-toggle__option" type="submit" name="view" value="week" aria-pressed="@(data.View == "week" ? "true" : "false")">Week</button>
+            <button class="ts-toggle__option" type="submit" name="view" value="month" aria-pressed="@(data.View == "month" ? "true" : "false")">Month</button>
+        </form>
+
+        @* no export endpoint yet *@
+        <a class="app-button">Export @unit</a>
+    </div>
+</div>
+
+<div class="ts-columns" aria-hidden="true">
+    <span>Category</span>
+    <span>Company</span>
+    <span>Description</span>
+    <span class="ts-columns__end">Time</span>
+    <span class="ts-columns__end">Total</span>
+</div>
+
+@if (days.Count == 0)
+{
+    <div class="ts-day">
+        <p class="ts-empty">Nothing logged this @unit. Each check-in you answer in the widget appears here, grouped by day.</p>
+    </div>
 }
 
-<partial name="_PeriodNav" model="@("Timesheet", "Index", data.View, data.Label, Model.Previous, Model.Next)" />
+@foreach (var day in days)
+{
+    <section class="ts-day ts-day--@day.Status.ToLowerInvariant()">
+        <header class="ts-day__head">
+            <h2 class="ts-day__date">@day.Date.ToString("dddd, MMM d", culture)</h2>
+            <p class="ts-day__status">@Describe(day)</p>
+            <p class="ts-day__total">Total: <strong>@Hm((double)day.Hours)</strong></p>
+        </header>
 
-<p>
-    <strong>@data.TotalHours.ToString("0.00", culture) hours</strong> logged,
-    @data.SubmittedDays day@(data.SubmittedDays == 1 ? "" : "s") submitted,
-    @data.MissingDays missing.
-    This page is read only: corrections are made in the widget and submitted again.
-</p>
-
-<table class="table table-sm align-middle timesheet">
-    <caption class="visually-hidden">Days of @data.Label</caption>
-    <thead>
-        <tr>
-            <th scope="col">Day</th>
-            <th scope="col">Status</th>
-            <th scope="col" class="text-end">Hours</th>
-            <th scope="col" class="text-end">Entries</th>
-            <th scope="col">What was logged</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var day in data.Days)
+        @if (day.Items.Count > 0)
         {
-            <tr class="timesheet-day timesheet-day--@day.Status.ToLowerInvariant()">
-                <th scope="row" class="fw-normal">@day.Weekday @day.Date.ToString("d MMM", culture)</th>
-                <td>@Describe(day)</td>
-                <td class="text-end">@(day.Entries == 0 ? "" : day.Hours.ToString("0.00", culture))</td>
-                <td class="text-end">@(day.Entries == 0 ? "" : day.Entries.ToString(culture))</td>
-                <td>
-                    @if (day.Items.Count > 0)
-                    {
-                        <details>
-                            <summary>Show @day.Items.Count</summary>
-                            <ul class="list-unstyled mb-0">
-                                @foreach (var item in day.Items)
-                                {
-                                    <li>@item.Start–@item.End, @item.Hours.ToString("0.00", culture) h, @item.Company / @item.Project, @item.Activity@(string.IsNullOrWhiteSpace(item.Note) ? "" : ": " + item.Note) <small>(@(item.Billable ? "Billable" : "Non-billable"))</small></li>
-                                }
-                            </ul>
-                        </details>
-                    }
-                </td>
-            </tr>
+            <ol class="ts-day__entries">
+                @foreach (var item in day.Items.OrderByDescending(i => i.Start))
+                {
+                    <li class="ts-entry">
+                        <span class="ts-entry__category"><span class="ts-dot"></span>@item.Activity</span>
+                        <span class="ts-entry__company">@item.Company <small>@item.Project · @(item.Billable ? "Billable" : "Non-billable")</small></span>
+                        <span class="ts-entry__description">@item.Note</span>
+                        <span class="ts-entry__time">@item.Start – @item.End</span>
+                        <span class="ts-entry__total">@Hm((double)item.Hours)</span>
+                    </li>
+                }
+            </ol>
         }
-    </tbody>
-</table>
+        else
+        {
+            <p class="ts-empty">Nothing logged.</p>
+        }
+    </section>
+}

@@ -65,7 +65,7 @@
         <p class="home-timeline__summary"><strong>@Hm(Model.TodayMinutes)</strong> logged (@Pct(Model.GoalProgressPercent) of your @Model.GoalHours.ToString("0.##", culture) h goal), next check-in at —</p>
     </div>
 
-    @* one block per entry. home.js places it from data-start and data-end and colours it with data-colour (inline styles are blocked by the CSP) *@
+    @* one block per entry. home.js places it from data-start and data-end, app.js colours it with data-colour (inline styles are blocked by the CSP) *@
     <div class="home-track" data-day-start="@dayStart.ToString("HH:mm", culture)" data-day-end="@dayEnd.ToString("HH:mm", culture)">
         @foreach (var block in Model.Timeline)
         {

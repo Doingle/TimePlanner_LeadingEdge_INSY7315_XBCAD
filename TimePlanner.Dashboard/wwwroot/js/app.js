@@ -1,6 +1,12 @@
 //-----------------------------
-//closes the account menu in the top bar when the user clicks elsewhere or presses Escape. It lives in a file because the content security policy blocks inline scripts
+//shared behaviour for the pages in the signed in layout. It lives in a file because the content security policy blocks inline scripts
 (function () {
+    //inline styles are blocked too, so anything coloured by the data (a category dot, a timeline block, a bar) carries it as data-colour="#0E7490"
+    document.querySelectorAll("[data-colour]").forEach(function (element) {
+        element.style.backgroundColor = element.dataset.colour;
+    });
+
+    //the account menu in the top bar closes when the user clicks elsewhere or presses Escape
     var menu = document.querySelector(".app-user");
     if (!menu)
         return;
