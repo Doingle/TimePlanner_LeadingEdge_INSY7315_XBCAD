@@ -128,7 +128,10 @@ namespace TimePlanner.Widget.Controls
                 for (var depth = 1; depth <= path.Count; depth++)
                     //opens submenus along path
                     if (_rows.TryGetValue(PathKey(path.Take(depth)), out var row))
+                    {
                         row.IsSubmenuOpen = true;
+                        CloseSiblings(row);
+                    }
             }
 
             //focuses input box when adding
@@ -263,6 +266,12 @@ namespace TimePlanner.Widget.Controls
                 row.PreviewMouseLeftButtonUp += Row_PreviewMouseLeftButtonUp;
                 row.PreviewKeyDown += Row_PreviewKeyDown;
                 AddLevel(row.Items, nodePath, node.Children);
+
+                //watches row for mouse hover and focus leave
+                if (row.Items.Count > 0)
+                {
+                    WatchBranch(row);
+                }
 
                 _rows[PathKey(nodePath)] = row;
                 items.Add(row);
@@ -488,6 +497,7 @@ namespace TimePlanner.Widget.Controls
                 if (path.Count < RequiredDepth)
                 {
                     row.IsSubmenuOpen = true;
+                    CloseSiblings(row);
                     return;
                 }
 
@@ -504,6 +514,7 @@ namespace TimePlanner.Widget.Controls
                 if (path.Count < RequiredDepth)
                 {
                     row.IsSubmenuOpen = true;
+                    CloseSiblings(row);
                     return;
                 }
 
@@ -599,7 +610,55 @@ namespace TimePlanner.Widget.Controls
             LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
             VerticalAlignment = VerticalAlignment.Center,
         };
+
+        //grace before an unused submenu closes
+        private static readonly TimeSpan CloseDelay = TimeSpan.FromMilliseconds(400);
+
+        //-----------------------------
+        //wires hover rules onto a branch row
+        private void WatchBranch(MenuItem row)
+        {
+            row.MouseEnter += (_, _) => CloseSiblings(row);
+            row.MouseLeave += (_, _) => ScheduleClose(row);
+            row.LostKeyboardFocus += (_, _) => ScheduleClose(row);
+        }
+
+        //-----------------------------
+        //closes other open branches at the same level
+        private static void CloseSiblings(MenuItem row)
+        {
+            //only rows inside a menu have siblings
+            if (ItemsControl.ItemsControlFromItemContainer(row) is not { } parent)
+            {
+                return;
+            }
+
+            //every other open branch at this level closes
+            foreach (var sibling in parent.Items.OfType<MenuItem>().Where(s => s != row && s.IsSubmenuOpen))
+            {
+                sibling.IsSubmenuOpen = false;
+            }
+        }
+
+        //-----------------------------
+        //closes a branch soon after mouse and focus leave it
+        private void ScheduleClose(MenuItem row)
+        {
+            var timer = new DispatcherTimer { Interval = CloseDelay };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+
+                //hovered or typed in branches stay open
+                if (!row.IsMouseOver && !row.IsKeyboardFocusWithin)
+                {
+                    row.IsSubmenuOpen = false;
+                }
+            };
+            timer.Start();
+        }
     }
 }
+//------------------------------EOF-----------------------------\\
 
 
