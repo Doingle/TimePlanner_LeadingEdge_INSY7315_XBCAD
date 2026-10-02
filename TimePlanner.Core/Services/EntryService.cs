@@ -58,6 +58,12 @@ namespace TimePlanner.Core.Services
                 throw new ArgumentException("Company and project names are required.");
             }
 
+            //names follow the import rules so a day can be sent later
+            if (!NameRules.IsValidCompanyOrProjectName(cleanCompany) || !NameRules.IsValidCompanyOrProjectName(cleanProject))
+            {
+                throw new ArgumentException("Names must be 1 to 100 characters and cannot start with = + - or @.");
+            }
+
             var company = (await _companies.GetAllAsync())
                 .FirstOrDefault(c => string.Equals(c.Name, cleanCompany, StringComparison.OrdinalIgnoreCase));
 
@@ -74,6 +80,13 @@ namespace TimePlanner.Core.Services
             //a same named project is reused
             if (project != null)
             {
+                //a hidden project comes back when typed again
+                if (project.Status == ProjectStatus.Closed)
+                {
+                    project.Status = ProjectStatus.Active;
+                    await _projects.UpdateAsync(project);
+                }
+
                 return project;
             }
 

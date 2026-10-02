@@ -112,7 +112,7 @@ namespace TimePlanner.Api.Tests
             var report = await ReportAsync(dev.Client, HoursUrl(Day, Day));
 
             Assert.Equal(3.0, report.GetProperty("totalHours").GetDouble());
-            Assert.Equal(2.0, report.GetProperty("billableHours").GetDouble());
+            Assert.Equal(1.0, report.GetProperty("billableHours").GetDouble());
         }
 
         [Fact]
@@ -252,7 +252,7 @@ namespace TimePlanner.Api.Tests
 
             var lines = await LinesAsync(await dev.Client.GetAsync(CsvUrl(Day, Day)));
 
-            Assert.Equal($"{D(Day)},Learning,{acme} / Web,08:00,09:00,1.00,Learning,Yes", lines[1]);
+            Assert.Equal($"{D(Day)},Learning,{acme} / Web,08:00,09:00,1.00,Learning,No", lines[1]);
             Assert.Equal($"{D(Day)},Stand-up,{InternalCompany},09:00,09:30,0.50,Meeting,Internal", lines[2]);
             Assert.Equal($"{D(Day)},Same name,{acme},10:00,11:00,1.00,Coding,Yes", lines[3]);
         }

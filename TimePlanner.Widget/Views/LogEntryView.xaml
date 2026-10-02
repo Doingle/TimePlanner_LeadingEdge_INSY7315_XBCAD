@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="TimePlanner.Widget.Views.LogEntryView"
+<UserControl x:Class="TimePlanner.Widget.Views.LogEntryView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
@@ -19,13 +19,8 @@
             </StackPanel>
 
             <StackPanel Margin="{StaticResource GapSection}">
-                <TextBlock x:Name="ProjectLabel" Style="{StaticResource Text.Label}" Text="Project" />
-                <ComboBox x:Name="ProjectSelect" Style="{StaticResource Select}" DisplayMemberPath="Name"
-                          AutomationProperties.LabeledBy="{Binding ElementName=ProjectLabel}"
-                          SelectionChanged="Project_SelectionChanged" />
-                
-                <TextBlock x:Name="NoProjectsHelp" Style="{StaticResource Text.Help}" Visibility="Collapsed"
-                           Text="No projects yet. Projects are added on the dashboard." />
+                <TextBlock x:Name="ProjectLabel" Style="{StaticResource Text.Label}" Text="Client › Project" />
+                <controls:ActivityPicker x:Name="ProjectPicker" SelectionChanged="Project_SelectionChanged" />
             </StackPanel>
 
             <StackPanel Margin="{StaticResource GapFieldToField}">

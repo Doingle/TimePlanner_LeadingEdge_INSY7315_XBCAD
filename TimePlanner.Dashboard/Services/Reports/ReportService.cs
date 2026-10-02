@@ -120,7 +120,7 @@ namespace TimePlanner.Dashboard.Services.Reports
                 .Select(g => new ReportRow(
                     g.Key,
                     Round(g.Sum(Hours)),
-                    Round(g.Where(IsBillable).Sum(Hours)),
+                    Round(g.Where(e => IsBillable(e, activities)).Sum(Hours)),
                     g.Count()))
                 .ToList();
 
@@ -130,7 +130,7 @@ namespace TimePlanner.Dashboard.Services.Reports
                 : rows.OrderByDescending(r => r.Hours).ThenBy(r => r.Label, StringComparer.OrdinalIgnoreCase).ToList();
 
             return new HoursReport(from.Date, to.Date, groupBy.ToString(), rows,
-                Round(entries.Sum(Hours)), Round(entries.Where(IsBillable).Sum(Hours)), entries.Count);
+                Round(entries.Sum(Hours)), Round(entries.Where(e => IsBillable(e, activities)).Sum(Hours)), entries.Count);
         }
 
         //-----------------------------
@@ -148,12 +148,12 @@ namespace TimePlanner.Dashboard.Services.Reports
         public static ReportSummary Summarise(DateTime from, DateTime to, IReadOnlyList<ReportEntry> entries, ActivityLookup activities)
         {
             var totalMinutes = entries.Sum(e => (e.End - e.Start).TotalMinutes);
-            var billableMinutes = entries.Where(IsBillable).Sum(e => (e.End - e.Start).TotalMinutes);
+            var billableMinutes = entries.Where(e => IsBillable(e, activities)).Sum(e => (e.End - e.Start).TotalMinutes);
 
             return new ReportSummary(from.Date, to.Date, Round(totalMinutes / 60), (int)Math.Round(totalMinutes),
                 Round(billableMinutes / 60), Round((totalMinutes - billableMinutes) / 60), entries.Count,
                 Breakdown(entries, totalMinutes, e => activities.RootName(e.CategoryId), (_, e) => (activities.RootColour(e.CategoryId), null)),
-                Breakdown(entries, totalMinutes, e => $"{e.Company} / {e.Project}", (_, e) => (null, IsBillable(e))),
+                Breakdown(entries, totalMinutes, e => $"{e.Company} / {e.Project}", (_, e) => (null, IsBillable(e, activities))),
                 Breakdown(entries, totalMinutes, e => e.UserName, (_, _) => (null, null), personKey: e => e.UserId));
         }
 
@@ -201,7 +201,7 @@ namespace TimePlanner.Dashboard.Services.Reports
                     csv.WriteField(e.End.ToString("HH:mm", CultureInfo.InvariantCulture));
                     csv.WriteField(Hours(e).ToString("0.00", CultureInfo.InvariantCulture));
                     csv.WriteField(path);
-                    csv.WriteField(BillableLabel(e));
+                    csv.WriteField(BillableLabel(e, activities));
                     await csv.NextRecordAsync();
                 }
             }
@@ -213,13 +213,13 @@ namespace TimePlanner.Dashboard.Services.Reports
 
         private static double Round(double hours) => Math.Round(hours, 2);
 
-        public static bool IsInternal(ReportEntry e) => e.Company == LocalSetupService.InternalCompanyName;
+        public static bool IsInternal(ReportEntry e) => BillingRules.IsInternal(e.Company);
 
-        //the rule agreed with the client: work for the internal company is not billable, work for any other company is
-        public static bool IsBillable(ReportEntry e) => !IsInternal(e);
+        //billable unless internal work or a non billable activity
+        public static bool IsBillable(ReportEntry e, ActivityLookup activities) => BillingRules.IsBillable(e.Company, activities.RootIsBillable(e.CategoryId));
 
         //the company's own sheet writes "Internal" for the work that is not billed
-        private static string BillableLabel(ReportEntry e) => IsInternal(e) ? "Internal" : "Yes";
+        private static string BillableLabel(ReportEntry e, ActivityLookup activities) => IsInternal(e) ? "Internal" : IsBillable(e, activities) ? "Yes" : "No";
 
         private static string Label(ReportEntry e, ReportGrouping groupBy, ActivityLookup activities) => groupBy switch
         {

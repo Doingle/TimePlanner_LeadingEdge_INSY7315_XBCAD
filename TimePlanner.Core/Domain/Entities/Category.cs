@@ -17,6 +17,9 @@ namespace TimePlanner.Core.Domain.Entities
         public int SortOrder { get; set; }
 
         public bool IsBillable { get; set; } = true;
+
+        //hidden from pickers but kept because time was logged to it
+        public bool IsArchived { get; set; }
     }
 }
 //------------------------------EOF-----------------------------\\

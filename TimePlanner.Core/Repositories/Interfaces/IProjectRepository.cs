@@ -13,6 +13,12 @@ namespace TimePlanner.Core.Repositories.Interfaces
 
         //active projects with their company
         Task<List<Project>> GetActiveAsync();
+
+        //saves a changed project
+        Task UpdateAsync(Project project);
+
+        //deletes a project by id
+        Task DeleteAsync(int id);
     }
 }
 //------------------------------EOF-----------------------------\\

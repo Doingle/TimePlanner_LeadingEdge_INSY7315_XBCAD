@@ -24,6 +24,20 @@ namespace TimePlanner.Core.Repositories.SQLite
             _db.Companies.Add(company);
             await _db.SaveChangesAsync();
         }
+
+        //-----------------------------
+        //deletes a company by id
+        public async Task DeleteAsync(int id)
+        {
+            var item = await _db.Companies.FindAsync(id);
+
+            //removes the company when found
+            if (item != null)
+            {
+                _db.Companies.Remove(item);
+                await _db.SaveChangesAsync();
+            }
+        }
     }
 }
 //------------------------------EOF-----------------------------\\

@@ -37,6 +37,29 @@ namespace TimePlanner.Core.Repositories.SQLite
                 .Where(p => p.Status == ProjectStatus.Active)
                 .OrderBy(p => p.Company!.Name).ThenBy(p => p.Name)
                 .ToListAsync();
+
+        //-----------------------------
+        //saves a changed project
+        public async Task UpdateAsync(Project project)
+        {
+            _db.ChangeTracker.Clear();
+            _db.Entry(project).State = EntityState.Modified;
+            await _db.SaveChangesAsync();
+        }
+
+        //-----------------------------
+        //deletes a project by id
+        public async Task DeleteAsync(int id)
+        {
+            var item = await _db.Projects.FindAsync(id);
+
+            //removes the project when found
+            if (item != null)
+            {
+                _db.Projects.Remove(item);
+                await _db.SaveChangesAsync();
+            }
+        }
     }
 }
 //------------------------------EOF-----------------------------\\

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Media;
@@ -6,6 +6,7 @@ using System.Text;
 using System.Windows;
 using Microsoft.Win32;
 using TimePlanner.Core.Domain.Enums;
+using TimePlanner.Core.Services.Models;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
 using TimePlanner.Widget.Views;
@@ -156,7 +157,7 @@ namespace TimePlanner.Widget
             var period = GetLogPeriod();
             var projects = await _log.GetProjectsAsync();
             var project = projects.FirstOrDefault(p => p.ProjectID == Session.ProjectId) ?? projects.FirstOrDefault();
-            var activities = project != null ? await GetActivitiesAsync(project.ProjectID) : ActivityChoices.Empty();
+            var activities = project != null ? await GetActivitiesAsync(project.ProjectID) : await _log.GetActivityTreeAsync();
 
             var view = new LogEntryView(this, mode, period, projects, project, activities);
             Present(Screen.LogEntry, view);
@@ -164,6 +165,10 @@ namespace TimePlanner.Widget
         }
 
         public Task<ActivityChoices> GetActivitiesAsync(int projectId) => _log.GetActivitiesAsync(Session.User.UserId, projectId);
+
+        //-----------------------------
+        //the activity tree with no recent list
+        public Task<ActivityChoices> GetActivityTreeAsync() => _log.GetActivityTreeAsync();
 
         public void CancelLogEntry(LogEntryMode mode)
         {
@@ -173,11 +178,11 @@ namespace TimePlanner.Widget
                 ShowTimer(activate: true);
         }
 
-        public async Task SaveEntryAsync(LogEntryMode mode, LogPeriod period, int projectId, IReadOnlyList<string> activity, string? note)
+        public async Task SaveEntryAsync(LogEntryMode mode, LogPeriod period, IReadOnlyList<string> projectPath, IReadOnlyList<string> activity, string? note)
         {
             var end = Scheduler.Now;
             var method = mode == LogEntryMode.CheckIn ? EntryMethod.AutoPrompted : EntryMethod.Manual;
-            await _log.SaveAsync(Session.User.UserId, projectId, activity, period.Start, end, note, method,
+            var projectId = await _log.SaveAsync(Session.User.UserId, projectPath, activity, period.Start, end, note, method,
                 Scheduler.BreaksBetween(period.Start, end));
 
             await Scheduler.LoggedAsync();
@@ -189,6 +194,18 @@ namespace TimePlanner.Widget
             else
                 Present(Screen.EntrySaved, new EntrySavedView(this));
         }
+
+        //-----------------------------
+        //removes a company by name
+        public Task<RemoveOutcome> RemoveCompanyAsync(string company) => _log.RemoveCompanyAsync(company);
+
+        //-----------------------------
+        //removes a project by company and project name
+        public Task<RemoveOutcome> RemoveProjectAsync(string company, string project) => _log.RemoveProjectAsync(company, project);
+
+        //-----------------------------
+        //removes an activity at a given path
+        public Task<RemoveOutcome> RemoveActivityAsync(IReadOnlyList<string> path) => _log.RemoveActivityAsync(path);
 
         public void KeepTracking() => ShowIdle();
 

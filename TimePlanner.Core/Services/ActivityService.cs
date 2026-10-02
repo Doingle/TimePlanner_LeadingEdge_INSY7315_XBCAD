@@ -29,7 +29,7 @@ namespace TimePlanner.Core.Services
         {
             var all = await _categories.GetAllAsync();
             var roots = all
-                .Where(c => c.ParentCategoryId == null)
+                .Where(c => c.ParentCategoryId == null && !c.IsArchived)
                 .OrderBy(c => c.SortOrder)
                 .ThenBy(c => c.Name);
 
@@ -42,7 +42,7 @@ namespace TimePlanner.Core.Services
         {
             var path = parentPath.Append(category.Name).ToList();
             var children = all
-                .Where(c => c.ParentCategoryId == category.CategoryId)
+                .Where(c => c.ParentCategoryId == category.CategoryId && !c.IsArchived)
                 .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(c => BuildNode(c, all, path, root))
                 .ToList();
@@ -119,6 +119,7 @@ namespace TimePlanner.Core.Services
             {
                 match = all.FirstOrDefault(c =>
                     c.ParentCategoryId == parentId &&
+                    !c.IsArchived &&
                     string.Equals(c.Name, name.Trim(), StringComparison.OrdinalIgnoreCase));
 
                 //missing level gets no match
@@ -139,8 +140,8 @@ namespace TimePlanner.Core.Services
         {
             var clean = name?.Trim() ?? string.Empty;
 
-            //names MUST be present, length constained
-            if (clean.Length == 0 || clean.Length > MaxNameLength)
+            //names follow the shared rules
+            if (!NameRules.IsValidActivityName(clean))
             {
                 throw new ArgumentException("Activity name must be 1 to 60 characters.", nameof(name));
             }
@@ -162,6 +163,13 @@ namespace TimePlanner.Core.Services
             //sibling with same name gets reused
             if (existing != null)
             {
+                //a hidden activity comes back when typed again
+                if (existing.IsArchived)
+                {
+                    existing.IsArchived = false;
+                    await _categories.UpdateAsync(existing);
+                }
+
                 return existing.CategoryId;
             }
 
@@ -184,7 +192,8 @@ namespace TimePlanner.Core.Services
         {
             var ids = await _entries.GetRecentCategoryIdsAsync(userId, count);
             var all = await _categories.GetAllAsync();
-            return ids.Select(id => new RecentActivity(id, BuildPath(id, all))).ToList();
+            var activeIds = all.Where(c => !c.IsArchived).Select(c => c.CategoryId).ToHashSet();
+            return ids.Where(id => activeIds.Contains(id)).Select(id => new RecentActivity(id, BuildPath(id, all))).ToList();
         }
     }
 }

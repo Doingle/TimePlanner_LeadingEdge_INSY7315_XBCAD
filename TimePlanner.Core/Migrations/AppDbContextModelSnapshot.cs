@@ -55,6 +55,9 @@ namespace TimePlanner.Core.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsBillable")
                         .HasColumnType("INTEGER");
 
@@ -84,6 +87,7 @@ namespace TimePlanner.Core.Migrations
                         {
                             CategoryId = 1,
                             Colour = "#6366F1",
+                            IsArchived = false,
                             IsBillable = true,
                             Name = "Meeting",
                             SortOrder = 1
@@ -92,6 +96,7 @@ namespace TimePlanner.Core.Migrations
                         {
                             CategoryId = 2,
                             Colour = "#7C3AED",
+                            IsArchived = false,
                             IsBillable = true,
                             Name = "Coding",
                             SortOrder = 2
@@ -100,6 +105,7 @@ namespace TimePlanner.Core.Migrations
                         {
                             CategoryId = 4,
                             Colour = "#EA580C",
+                            IsArchived = false,
                             IsBillable = true,
                             Name = "Email",
                             SortOrder = 4
@@ -108,6 +114,7 @@ namespace TimePlanner.Core.Migrations
                         {
                             CategoryId = 5,
                             Colour = "#71717A",
+                            IsArchived = false,
                             IsBillable = true,
                             Name = "Admin",
                             SortOrder = 5
@@ -116,6 +123,7 @@ namespace TimePlanner.Core.Migrations
                         {
                             CategoryId = 6,
                             Colour = "#DB2777",
+                            IsArchived = false,
                             IsBillable = true,
                             Name = "Design",
                             SortOrder = 3
@@ -124,6 +132,7 @@ namespace TimePlanner.Core.Migrations
                         {
                             CategoryId = 7,
                             Colour = "#0891B2",
+                            IsArchived = false,
                             IsBillable = false,
                             Name = "Learning",
                             SortOrder = 6

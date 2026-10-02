@@ -29,6 +29,29 @@ namespace TimePlanner.Core.Repositories.SQLite
             _db.Categories.Add(category);
             await _db.SaveChangesAsync();
         }
+
+        //-----------------------------
+        //saves a changed activity
+        public async Task UpdateAsync(Category category)
+        {
+            _db.ChangeTracker.Clear();
+            _db.Entry(category).State = EntityState.Modified;
+            await _db.SaveChangesAsync();
+        }
+
+        //-----------------------------
+        //deletes an activity by id
+        public async Task DeleteAsync(int id)
+        {
+            var item = await _db.Categories.FindAsync(id);
+
+            //removes the activity when found
+            if (item != null)
+            {
+                _db.Categories.Remove(item);
+                await _db.SaveChangesAsync();
+            }
+        }
     }
 }
 //------------------------------EOF-----------------------------\\

@@ -10,6 +10,12 @@ namespace TimePlanner.Core.Repositories.Interfaces
         Task<List<Category>> GetAllAsync();
         Task<Category?> GetByIdAsync(int id);
         Task AddAsync(Category category);
+
+        //saves a changed activity
+        Task UpdateAsync(Category category);
+
+        //deletes an activity by id
+        Task DeleteAsync(int id);
     }
 }
 //------------------------------EOF-----------------------------\\

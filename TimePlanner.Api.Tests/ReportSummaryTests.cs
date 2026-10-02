@@ -41,8 +41,8 @@ namespace TimePlanner.Api.Tests
 
             Assert.Equal(4.0, s.GetProperty("totalHours").GetDouble());
             Assert.Equal(240, s.GetProperty("totalMinutes").GetInt32());
-            Assert.Equal(3.0, s.GetProperty("billableHours").GetDouble());
-            Assert.Equal(1.0, s.GetProperty("nonBillableHours").GetDouble());
+            Assert.Equal(2.0, s.GetProperty("billableHours").GetDouble());
+            Assert.Equal(2.0, s.GetProperty("nonBillableHours").GetDouble());
             Assert.Equal(3, s.GetProperty("entries").GetInt32());
         }
 
