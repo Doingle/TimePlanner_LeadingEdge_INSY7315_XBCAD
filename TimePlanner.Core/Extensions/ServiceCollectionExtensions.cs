@@ -46,6 +46,7 @@ namespace TimePlanner.Core.Extensions
             services.AddScoped<ActivityService>();
             services.AddScoped<EntryService>();
             services.AddScoped<LocalSetupService>();
+            services.AddScoped<CatalogService>();
 
             //single engine and clock for the widget lifetime
             services.AddSingleton<IClock, SystemClock>();
