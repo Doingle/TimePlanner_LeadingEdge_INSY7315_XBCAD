@@ -43,6 +43,9 @@ namespace TimePlanner.Api.Tests
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+            //a published site serves the build's generated static files (the scoped css bundle). A host outside Development does not unless asked, and the
+            //tests that check every file a page names should see the pages the way a visitor of the hosted site does
+            builder.UseStaticWebAssets();
             builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(Settings()));
         }
 
