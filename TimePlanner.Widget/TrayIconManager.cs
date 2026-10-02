@@ -1,4 +1,4 @@
-﻿using Hardcodet.Wpf.TaskbarNotification;
+using Hardcodet.Wpf.TaskbarNotification;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -15,11 +15,18 @@ namespace TimePlanner.Widget
         private readonly TaskbarIcon _icon;
         private readonly ContextMenu _menu = new();
 
-        public TrayIconManager(Action show)
+        //-----------------------------
+        //initialises tray icon with show, timesheet and exit menu options
+        public TrayIconManager(Action show, Action timesheet)
         {
             var open = new MenuItem { Header = "Show INSY", FontWeight = FontWeights.Bold };
             open.Click += (_, _) => show();
             _menu.Items.Add(open);
+
+            //opens timesheet view for current day
+            var timesheetItem = new MenuItem { Header = "Timesheet" };
+            timesheetItem.Click += (_, _) => timesheet();
+            _menu.Items.Add(timesheetItem);
 
             _menu.Items.Add(new Separator());
             var exit = new MenuItem { Header = "Exit" };

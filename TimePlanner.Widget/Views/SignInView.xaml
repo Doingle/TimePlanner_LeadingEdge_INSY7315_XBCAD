@@ -1,0 +1,44 @@
+<UserControl x:Class="TimePlanner.Widget.Views.SignInView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
+    
+    <controls:WidgetCard>
+        <controls:WidgetCard.CornerContent>
+            <Button Style="{StaticResource Button.Icon}" ToolTip="Cancel"
+                    AutomationProperties.Name="Cancel" Click="Cancel_Click">
+                <controls:Icon Kind="Close" />
+            </Button>
+        </controls:WidgetCard.CornerContent>
+
+        <StackPanel>
+            <StackPanel>
+                <TextBlock Style="{StaticResource Text.Title}" Text="Sign in to the dashboard" />
+                <TextBlock Style="{StaticResource Text.Subtitle}"
+                           Text="Your password isn't stored. The sign in lasts 30 minutes." />
+            </StackPanel>
+
+            <StackPanel Margin="{StaticResource GapSection}">
+                <TextBlock Style="{StaticResource Text.Label}" Text="Email" />
+                <TextBox x:Name="EmailBox" Style="{StaticResource Input}" controls:Field.Placeholder="email@company.com" />
+            </StackPanel>
+
+            <StackPanel Margin="{StaticResource GapFieldToField}">
+                <TextBlock Style="{StaticResource Text.Label}" Text="Password" />
+                <PasswordBox x:Name="PasswordBox" Height="{StaticResource SizeControl}" Padding="14,0"
+                             Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderControlBrush}"
+                             Foreground="{StaticResource TextPrimaryBrush}" FontSize="{StaticResource FontSizeBody}"
+                             VerticalContentAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel x:Name="ErrorLine" Visibility="Collapsed" Margin="0,8,0,0">
+                <TextBlock x:Name="ErrorText" Style="{StaticResource Text.Error}" />
+            </StackPanel>
+
+            <StackPanel Margin="{StaticResource GapSection}">
+                <Button x:Name="SignInButton" Style="{StaticResource Button.Primary}" Content="Sign in" Click="SignIn_Click" />
+                <Button Style="{StaticResource Button.Text}" Content="Cancel" Margin="0,4,0,0" Click="Cancel_Click" />
+            </StackPanel>
+        </StackPanel>
+    </controls:WidgetCard>
+</UserControl>

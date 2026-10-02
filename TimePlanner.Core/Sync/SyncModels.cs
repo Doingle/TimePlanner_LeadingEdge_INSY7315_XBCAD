@@ -17,7 +17,7 @@ namespace TimePlanner.Core.Sync
 
     //-----------------------------
     //one day the user has sent
-    public sealed record SentDay(DateOnly Day, DateTime SentAt, int Entries, double Hours);
+    public sealed record SentDay(DateOnly Day, DateTime SentAt, int Entries, double Hours, DateTime? ChangedAt = null);
 
     //-----------------------------
     //exactly what a send would upload for one day

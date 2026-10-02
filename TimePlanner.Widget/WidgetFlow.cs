@@ -6,7 +6,9 @@ using System.Text;
 using System.Windows;
 using Microsoft.Win32;
 using TimePlanner.Core.Domain.Enums;
+using TimePlanner.Core.Services;
 using TimePlanner.Core.Services.Models;
+using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
 using TimePlanner.Widget.Views;
@@ -28,6 +30,8 @@ namespace TimePlanner.Widget
             EndDay,
             DayEnded,
             Timesheet,
+            SignIn,
+            EntryEditor,
         }
 
         private readonly IWidgetHost _host;
@@ -239,7 +243,63 @@ namespace TimePlanner.Widget
             _host.HideWidget();
         }
 
-        public void ShowTimesheet(DaySummary day) => Present(Screen.Timesheet, new TimesheetReviewView(this, day));
+        //-----------------------------
+        //opens the timesheet for a day from day ended
+        public void ShowTimesheet(DaySummary day) => _ = ShowTimesheetAsync(DateOnly.FromDateTime(day.Day), () => ShowDayEnded(day));
+
+        //-----------------------------
+        //loads and shows one day of the timesheet
+        public async Task ShowTimesheetAsync(DateOnly day, Action back)
+        {
+            var slots = await _log.GetTimesheetAsync(Session.User.UserId, day);
+            var (preview, sent) = await _log.GetSendStateAsync(Session.User.UserId, day);
+            Present(Screen.Timesheet, new TimesheetReviewView(this, day, slots, preview, sent, back));
+        }
+
+        //-----------------------------
+        //gets timesheet slots for a user and day
+        public Task<IReadOnlyList<TimesheetSlot>> GetTimesheetAsync(int userId, DateOnly day) => _log.GetTimesheetAsync(userId, day);
+
+        //-----------------------------
+        //adds a manual timesheet entry
+        public Task<EditResult> AddEntryAsync(EntryEdit edit) => _log.AddEntryAsync(Session.User.UserId, edit);
+
+        //-----------------------------
+        //updates an existing timesheet entry
+        public Task<EditResult> UpdateEntryAsync(int entryId, EntryEdit edit) => _log.UpdateEntryAsync(Session.User.UserId, entryId, edit);
+
+        //-----------------------------
+        //deletes a timesheet entry
+        public Task<EditResult> DeleteEntryAsync(int entryId) => _log.DeleteEntryAsync(Session.User.UserId, entryId);
+
+        //-----------------------------
+        //sends a day to the dashboard
+        public Task<SendOutcome> SendDayAsync(DateOnly day) => _log.SendDayAsync(Session.User.UserId, day);
+
+        //-----------------------------
+        //signs in to dashboard
+        public Task<SignInOutcome> SignInToDashboardAsync(string email, string password) => _log.SignInToDashboardAsync(email, password);
+
+        //-----------------------------
+        //opens the editor for an entry or a gap
+        public async Task ShowEntryEditorAsync(DateOnly day, TimesheetSlot? entry, DateTime start, DateTime end, Action back)
+        {
+            var projects = await _log.GetProjectsAsync();
+            var activities = await _log.GetActivityTreeAsync();
+            Present(Screen.EntryEditor, new EntryEditView(this, day, entry, start, end, projects, activities, back));
+        }
+
+        //-----------------------------
+        //asks for dashboard details then runs the next step
+        public void ShowSignIn(Func<Task> afterSignIn, Action back) => Present(Screen.SignIn, new SignInView(this, afterSignIn, back));
+
+        //-----------------------------
+        //exports a day as csv
+        public async Task ExportDayAsync(DateOnly day)
+        {
+            var summary = await _log.GetDayAsync(Session.User.UserId, day.ToDateTime(TimeOnly.MinValue));
+            await ExportCsvAsync(summary);
+        }
 
         public async Task ExportCsvAsync(DaySummary day)
         {

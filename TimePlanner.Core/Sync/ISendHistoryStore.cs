@@ -9,6 +9,9 @@ namespace TimePlanner.Core.Sync
 
         //adds a day or replaces the same day
         Task AddAsync(SentDay sent);
+
+        //notes that a sent day was edited afterwards
+        Task MarkChangedAsync(DateOnly day, DateTime at);
     }
 }
 //------------------------------EOF-----------------------------\\

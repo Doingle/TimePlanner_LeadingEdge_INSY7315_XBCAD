@@ -63,6 +63,30 @@ namespace TimePlanner.Core.Sync
 
             await File.WriteAllBytesAsync(_path, json);
         }
+
+        //-----------------------------
+        //notes that a sent day was edited afterwards
+        public async Task MarkChangedAsync(DateOnly day, DateTime at)
+        {
+            var existing = (await GetAsync()).ToList();
+            var index = existing.FindIndex(d => d.Day == day);
+
+            //if the day is in history it gets marked changed
+            if (index >= 0)
+            {
+                existing[index] = existing[index] with { ChangedAt = at };
+                var json = JsonSerializer.SerializeToUtf8Bytes(existing);
+                var dir = Path.GetDirectoryName(_path);
+
+                //creates the local storage directory when missing
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                await File.WriteAllBytesAsync(_path, json);
+            }
+        }
     }
 }
 //------------------------------EOF-----------------------------\\

@@ -40,7 +40,7 @@ namespace TimePlanner.Widget
             var index = Array.FindIndex(e.Args, a => string.Equals(a, "--screen", StringComparison.OrdinalIgnoreCase));
             if (index >= 0 && index + 1 < e.Args.Length && ScreenPreviews.Find(e.Args[index + 1]) is { } preview)
             {
-                _tray = new TrayIconManager(ShowWidget);
+                _tray = new TrayIconManager(ShowWidget, () => { if (_flow != null) _ = _flow.ShowTimesheetAsync(DateOnly.FromDateTime(DateTime.Now), _flow.ShowFromTray); });
                 _tray.AddPreviews(ShowPreview);
                 await ShowPreviewAsync(preview);
                 return;
@@ -72,7 +72,7 @@ namespace TimePlanner.Widget
                 return;
             }
 
-            _tray = new TrayIconManager(ShowWidget);
+            _tray = new TrayIconManager(ShowWidget, () => _ = _flow.ShowTimesheetAsync(DateOnly.FromDateTime(DateTime.Now), _flow.ShowFromTray));
 #if DEBUG
             _tray.AddPreviews(ShowPreview);
 #endif

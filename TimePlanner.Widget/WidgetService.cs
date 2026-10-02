@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -10,6 +10,7 @@ using System.Text;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Core.Services;
+using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
 
@@ -64,6 +65,7 @@ namespace TimePlanner.Widget
             PreferencesStore preferences)
         {
             services.AddTimePlannerCore(connectionString);
+            services.AddTimePlannerSync();
 
             // Core's check-in engine runs on the widget's clock rather than the system's, so the previews can set it
             services.AddSingleton<IClock>(new TimeProviderClock(clock));
