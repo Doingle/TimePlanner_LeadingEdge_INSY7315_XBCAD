@@ -4,6 +4,7 @@ using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Core.Repositories.Interfaces;
 using TimePlanner.Core.Services;
 using TimePlanner.Core.Services.Models;
+using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Models;
 
 namespace TimePlanner.Widget.Services
@@ -225,6 +226,90 @@ namespace TimePlanner.Widget.Services
             }
 
             return new DaySummary(day.Date, entries);
+        }
+
+        //-----------------------------
+        //one day of rows for the timesheet screen
+        public async Task<IReadOnlyList<TimesheetSlot>> GetTimesheetAsync(int userId, DateOnly day)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<TimesheetEditService>().GetDayAsync(userId, day, clock.LocalNow());
+        }
+
+        //-----------------------------
+        //adds missing time and flags the day as changed
+        public async Task<EditResult> AddEntryAsync(int userId, EntryEdit edit)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var result = await scope.ServiceProvider.GetRequiredService<TimesheetEditService>().AddEntryAsync(userId, edit, clock.LocalNow());
+
+            //successful addition marks day changed
+            if (result.Ok)
+            {
+                await scope.ServiceProvider.GetRequiredService<ISendHistoryStore>().MarkChangedAsync(DateOnly.FromDateTime(edit.Start), clock.LocalNow());
+            }
+
+            return result;
+        }
+
+        //-----------------------------
+        //changes an entry and flags the day as changed
+        public async Task<EditResult> UpdateEntryAsync(int userId, int entryId, EntryEdit edit)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var result = await scope.ServiceProvider.GetRequiredService<TimesheetEditService>().UpdateEntryAsync(userId, entryId, edit, clock.LocalNow());
+
+            //successful update marks day changed
+            if (result.Ok)
+            {
+                await scope.ServiceProvider.GetRequiredService<ISendHistoryStore>().MarkChangedAsync(DateOnly.FromDateTime(edit.Start), clock.LocalNow());
+            }
+
+            return result;
+        }
+
+        //-----------------------------
+        //deletes an entry and flags the day as changed
+        public async Task<EditResult> DeleteEntryAsync(int userId, int entryId)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var result = await scope.ServiceProvider.GetRequiredService<TimesheetEditService>().DeleteEntryAsync(userId, entryId);
+
+            //successful deletion marks day changed
+            if (result.Ok && result.Previous != null)
+            {
+                await scope.ServiceProvider.GetRequiredService<ISendHistoryStore>().MarkChangedAsync(DateOnly.FromDateTime(result.Previous.Start), clock.LocalNow());
+            }
+
+            return result;
+        }
+
+        //-----------------------------
+        //whether the day can be sent and its last send
+        public async Task<(DayPreview Preview, SentDay? Sent)> GetSendStateAsync(int userId, DateOnly day)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            var preview = await services.GetRequiredService<DaySendService>().PreviewDayAsync(userId, day, clock.LocalNow());
+            var sent = (await services.GetRequiredService<ISendHistoryStore>().GetAsync()).FirstOrDefault(s => s.Day == day);
+
+            return (preview, sent);
+        }
+
+        //-----------------------------
+        //sends a day through the dashboard client
+        public async Task<SendOutcome> SendDayAsync(int userId, DateOnly day)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<DaySendService>().SendDayAsync(userId, day, clock.LocalNow(), clock.GetUtcNow().UtcDateTime);
+        }
+
+        //-----------------------------
+        //signs in to the dashboard
+        public async Task<SignInOutcome> SignInToDashboardAsync(string email, string password)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<DashboardClient>().SignInAsync(email, password);
         }
     }
 }
