@@ -79,7 +79,7 @@ namespace TimePlanner.Dashboard.Services.TimesheetImport
 
         //-----------------------------
         //validates every row, and only if all are fine stores them for the user
-        public async Task<ImportResult> ImportAsync(int userId, IReadOnlyList<(int Row, ImportEntry Entry)> rows)
+        public async Task<ImportResult> ImportAsync(int userId, IReadOnlyList<(int Row, ImportEntry Entry)> rows, bool replaceDays = false)
         {
             if (rows.Count == 0)
                 return ImportResult.Failed(0, "The file contains no entries.");
@@ -93,7 +93,7 @@ namespace TimePlanner.Dashboard.Services.TimesheetImport
                 return new ImportResult(0, 0, errors);
             }
 
-            var stored = await StoreAsync(userId, valid);
+            var stored = await StoreAsync(userId, valid, replaceDays);
 
             //every accepted import marks its days as submitted, even when each entry was already stored, so a retry after a failure still records them
             await _submissions.RecordAsync(userId, valid.Select(v => v.Start.Date));
@@ -187,7 +187,7 @@ namespace TimePlanner.Dashboard.Services.TimesheetImport
 
         //-----------------------------
         //saves the rows. Companies, projects, activities and tasks are created when new, existing entries are skipped, all in one transaction
-        private async Task<ImportResult> StoreAsync(int userId, List<ValidRow> valid)
+        private async Task<ImportResult> StoreAsync(int userId, List<ValidRow> valid, bool replaceDays)
         {
             await using var transaction = await _db.Database.BeginTransactionAsync();
 
@@ -210,6 +210,19 @@ namespace TimePlanner.Dashboard.Services.TimesheetImport
                     taskIds[(project.ProjectID, categoryId)] = taskId = (await _entries.FindOrCreateTaskAsync(userId, project.ProjectID, categoryId)).TaskID;
 
                 planned.Add((taskId, row));
+            }
+
+            //a resent day replaces what was stored for it
+            if (replaceDays)
+            {
+                //each day in the upload is cleared for this user only
+                foreach (var day in valid.Select(v => v.Start.Date).Distinct())
+                {
+                    var next = day.AddDays(1);
+                    await _db.TimeEntries
+                        .Where(e => e.UserId == userId && e.StartTime >= day && e.StartTime < next)
+                        .ExecuteDeleteAsync();
+                }
             }
 
             //an entry that is already stored for the same task and time is skipped, which makes re-sending harmless

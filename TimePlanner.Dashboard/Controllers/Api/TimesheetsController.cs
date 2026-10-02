@@ -37,7 +37,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
             return await _view.GetAsync(owner ?? me, period);
         }
 
-        public record ImportRequest(List<ImportEntry>? Entries);
+        //replaceDays swaps each sent day for the new rows
+        public record ImportRequest(List<ImportEntry>? Entries, bool ReplaceDays = false);
 
         //-----------------------------
         //imports worked time as json, used by the widget after the user has reviewed their timesheet.
@@ -55,7 +56,7 @@ namespace TimePlanner.Dashboard.Controllers.Api
                 .Select((entry, index) => (Row: index + 1, Entry: entry))
                 .ToList();
 
-            var result = await _import.ImportAsync(userId, rows);
+            var result = await _import.ImportAsync(userId, rows, request.ReplaceDays);
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
