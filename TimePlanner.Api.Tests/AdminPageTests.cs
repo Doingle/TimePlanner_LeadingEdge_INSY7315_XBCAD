@@ -71,12 +71,20 @@ namespace TimePlanner.Api.Tests
             await f.SubmitAsync(a.ProfileId, ClockedFactory.Monday);
             var admin = await AdminBrowserAsync(f);
 
-            var html = Text(await admin.GetStringAsync("/Admin"));
+            var raw = await admin.GetStringAsync("/Admin");
+            var html = Text(raw);
 
-            Assert.Contains("Team hours: 4.00 (3.00 billable, 1.00 non-billable, 2 entries)", html);
-            Assert.Contains("Submitted today: 1 of 2 (50%)", html);
+            Assert.Contains("<span class=\"tm-hero__num\">4:00</span> <span class=\"tm-hero__unit\">logged by the team this week</span>", raw);
+            Assert.Contains("From 2 entries.", html);
+            Assert.Contains("Submitted today 1 of 2 50%", html);
             //two people, Monday to Wednesday: 6 expected, a sent Monday and Wednesday
-            Assert.Contains("Submitted this week: 2 of 6 (33.3%)", html);
+            Assert.Contains("Submitted this week 2 of 6 33%", html);
+            //the billable split, with a part of the bar each
+            Assert.Contains("Billable 3:00 75%", html);
+            Assert.Contains("Non-billable 1:00 25%", html);
+            Assert.Contains("<span class=\"tm-seg\" data-percent=\"75\"></span>", raw);
+            Assert.Contains("<span class=\"tm-seg tm-seg--nb tm-seg--apart\" data-percent=\"25\"></span>", raw);
+            Assert.Contains("Where the team's time went", html);
             Assert.Contains("By category", html);
             Assert.Contains("By project", html);
             Assert.Contains("By person", html);
@@ -86,19 +94,46 @@ namespace TimePlanner.Api.Tests
         }
 
         [Fact]
+        public async Task TheOverview_OnAWeekendWithNothingLogged_SaysSo()
+        {
+            //Saturday 19 September
+            using var f = new ClockedFactory(new DateTimeOffset(2026, 9, 19, 8, 0, 0, TimeSpan.Zero));
+            await DeveloperAsync(f);
+            var admin = await AdminBrowserAsync(f);
+
+            var raw = await admin.GetStringAsync("/Admin");
+            var html = Text(raw);
+
+            Assert.Contains("<span class=\"tm-hero__num\">0:00</span>", raw);
+            Assert.Contains("Nothing logged in this period.", html);
+            Assert.Contains("Submitted today — Weekend", html);
+            Assert.DoesNotContain("tm-billing", raw);
+            Assert.Contains("Nothing logged.", html);
+        }
+
+        [Fact]
         public async Task TheOverview_LinksToTheOtherAdminPages_AndMovesBetweenPeriods()
         {
             using var f = new ClockedFactory();
             var admin = await AdminBrowserAsync(f);
 
             var html = await admin.GetStringAsync("/Admin");
+            var lastWeek = await admin.GetStringAsync("/Admin?view=week&date=2026-09-07");
 
-            Assert.Contains("href=\"/Admin/Submissions", html);
-            Assert.Contains("href=\"/Admin/Exports", html);
+            //the Team pages' own tabs, keeping the week
+            Assert.Contains("aria-current=\"page\" href=\"/Admin?view=week&amp;date=2026-09-14\">Overview", html);
+            Assert.Contains("href=\"/Admin/Submissions?view=week&amp;date=2026-09-14\"", html);
+            Assert.Contains("href=\"/Admin/Exports?view=week&amp;date=2026-09-14\"", html);
             Assert.Contains("href=\"/Users\"", html);
+            //the previous week opens, the next one does not exist yet. An earlier week can step forward
             Assert.Contains("href=\"/Admin?view=week&amp;date=2026-09-07\"", html);
-            Assert.Contains("href=\"/Admin?view=week&amp;date=2026-09-21\"", html);
-            Assert.Contains("aria-pressed=\"true\">Week", html);
+            Assert.DoesNotContain("date=2026-09-21", html);
+            Assert.Contains("aria-disabled=\"true\"", html);
+            Assert.Contains("href=\"/Admin?view=week&amp;date=2026-09-14\"", lastWeek);
+            Assert.Contains("logged by the team that week", lastWeek);
+            //week or month as links, the current one marked
+            Assert.Contains("aria-current=\"true\" href=\"/Admin?view=week\">Week", html);
+            Assert.Contains("href=\"/Admin?view=month\">Month", html);
         }
 
         [Fact]

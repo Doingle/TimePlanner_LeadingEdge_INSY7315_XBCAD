@@ -1,7 +1,445 @@
 /* Team pages
 
-   For now the detailed report under the submissions grid (Views/Admin/Submissions.cshtml): the filters, the summary line and the hours table.
-   The colours, type and spacing come from tokens.css */
+   The ink header the Team pages share (their own tabs, the period controls), the team overview (Views/Admin/Index.cshtml),
+   and the detailed report under the submissions grid (Views/Admin/Submissions.cshtml).
+   The colours, type and spacing come from tokens.css. Bar widths and category colours are applied by app.js from data-percent and
+   data-colour, because the content security policy blocks inline styles */
+
+/* ---------- Header on ink ---------- */
+
+.tm-hero {
+    padding: var(--space-6) 0;
+    color: var(--on-ink);
+    background: var(--ink);
+}
+
+    .tm-hero :focus-visible {
+        outline: var(--focus-ring-on-ink);
+        outline-offset: var(--focus-offset);
+    }
+
+.tm-hero__inner {
+    max-width: var(--app-frame);
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+}
+
+/* the Team pages' own tabs. They scroll sideways rather than wrap on a narrow screen */
+.tm-subnav {
+    display: flex;
+    gap: var(--space-1);
+    margin: calc(-1 * var(--space-3)) 0 var(--space-5);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+    .tm-subnav::-webkit-scrollbar {
+        display: none;
+    }
+
+.tm-subnav__link {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 var(--space-3);
+    font-weight: var(--weight-medium);
+    color: var(--on-ink-2);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+}
+
+    .tm-subnav__link:first-child {
+        margin-left: calc(-1 * var(--space-3));
+    }
+
+    .tm-subnav__link:hover,
+    .tm-subnav__link[aria-current="page"] {
+        color: var(--on-ink);
+        background: var(--ink-raised);
+    }
+
+    .tm-subnav__link[aria-current="page"] {
+        box-shadow: inset 0 -2px 0 var(--lilac);
+    }
+
+/* a link that does not point to a period the page can show */
+.tm-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+    padding: var(--space-3) var(--space-4);
+    line-height: var(--leading-body);
+    background: rgba(255, 155, 143, 0.12);
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 0 0 1px rgba(255, 155, 143, 0.5);
+}
+
+    .tm-banner p {
+        margin: 0;
+    }
+
+.tm-banner__icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 3px;
+    color: var(--danger-on-ink);
+}
+
+.tm-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.tm-period {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.tm-period__label {
+    min-width: 11.5rem;
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.tm-icon-button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    color: var(--on-ink);
+    border-radius: var(--radius-sm);
+}
+
+    .tm-icon-button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .tm-icon-button[href]:hover {
+        background: var(--ink-raised);
+    }
+
+    /* there is nothing after the current week or month yet */
+    .tm-icon-button[aria-disabled="true"] {
+        color: var(--lilac-dim);
+        cursor: not-allowed;
+    }
+
+/* week or month as links: the current one gets a lilac ring, solid lilac is kept for the primary button */
+.tm-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 0 0 1px var(--ink-line);
+}
+
+.tm-toggle__option {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 var(--space-4);
+    font-weight: var(--weight-medium);
+    color: var(--on-ink-2);
+    text-decoration: none;
+    border-radius: 4px;
+}
+
+    .tm-toggle__option:hover:not([aria-current]) {
+        color: var(--on-ink);
+        background: var(--ink-raised);
+    }
+
+    .tm-toggle__option[aria-current] {
+        font-weight: var(--weight-semibold);
+        color: var(--on-ink);
+        background: var(--ink-raised);
+        box-shadow: inset 0 0 0 2px var(--lilac);
+    }
+
+/* ---------- Overview: the team's total, the submission rates and the billable split ---------- */
+
+.tm-hero__top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--space-5) var(--space-7);
+}
+
+.tm-hero__figure {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-3);
+    margin: var(--space-5) 0 0;
+    font-family: var(--font-display);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+}
+
+.tm-hero__num {
+    font-size: var(--text-hero);
+    font-variant-numeric: lining-nums tabular-nums;
+}
+
+.tm-hero__unit {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-regular);
+    letter-spacing: 0;
+    color: var(--on-ink-2);
+}
+
+.tm-hero__sub {
+    max-width: 62ch;
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-md);
+    line-height: var(--leading-body);
+    color: var(--on-ink-2);
+}
+
+.tm-rates {
+    display: flex;
+    gap: var(--space-6);
+    margin: 0;
+}
+
+.tm-rate {
+    display: grid;
+    gap: 2px;
+}
+
+    .tm-rate dt {
+        color: var(--on-ink-2);
+    }
+
+    .tm-rate dd {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-2);
+        margin: 0;
+    }
+
+.tm-rate__value {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: var(--weight-semibold);
+    line-height: 1.1;
+    font-variant-numeric: lining-nums tabular-nums;
+}
+
+.tm-rate__of {
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-regular);
+    color: var(--on-ink-2);
+}
+
+.tm-rate__pct,
+.tm-rate__note {
+    font-variant-numeric: tabular-nums;
+    color: var(--on-ink-3);
+}
+
+.tm-billing {
+    margin-top: var(--space-6);
+}
+
+.tm-billing__groups {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin: 0 0 var(--space-3);
+}
+
+.tm-billing__group {
+    display: grid;
+    gap: 2px;
+}
+
+    .tm-billing__group dt {
+        color: var(--on-ink-2);
+    }
+
+    .tm-billing__group dd {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-2);
+        margin: 0;
+    }
+
+.tm-billing__group--nb {
+    justify-items: end;
+    text-align: right;
+}
+
+.tm-billing__hours {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: var(--weight-semibold);
+    line-height: 1.1;
+    font-variant-numeric: lining-nums tabular-nums;
+}
+
+.tm-billing__pct {
+    font-variant-numeric: tabular-nums;
+    color: var(--on-ink-3);
+}
+
+.tm-billing__bar {
+    display: flex;
+    height: 32px;
+}
+
+/* each part's width is its share, the parts shrink a little to make room for the gap between them */
+.tm-seg {
+    flex: 0 1 auto;
+    min-width: 3px;
+    background: var(--lilac);
+    border-radius: var(--radius-xs);
+}
+
+.tm-seg--nb {
+    background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(185, 169, 239, 0.5) 5px 6.5px), var(--ink-raised);
+    box-shadow: inset 0 0 0 1px #8a7bb8;
+}
+
+.tm-seg--apart {
+    margin-left: 6px;
+}
+
+/* ---------- Overview: the breakdowns on paper ---------- */
+
+.tm-section {
+    padding-top: var(--space-5);
+}
+
+    .tm-section + .tm-section {
+        padding-top: var(--space-7);
+    }
+
+.tm-section__title {
+    margin: 0 0 var(--space-4);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    letter-spacing: -0.01em;
+}
+
+/* by category and by project side by side, by person on its own full width */
+.tm-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--line);
+}
+
+.tm-cols__col {
+    padding: var(--space-5) var(--space-6) 0 0;
+}
+
+    .tm-cols__col + .tm-cols__col {
+        padding: var(--space-5) 0 0 var(--space-6);
+        border-left: 1px solid var(--line);
+    }
+
+.tm-cols__title {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+}
+
+.tm-people {
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
+}
+
+.tm-nothing {
+    margin: 0;
+    padding: var(--space-3) 0;
+    color: var(--text-2);
+}
+
+.tm-bars {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tm-bar-row {
+    display: grid;
+    grid-template-columns: minmax(6rem, 10rem) 1fr 4rem 2.75rem;
+    grid-template-areas: "label bar time pct";
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 2.75rem;
+}
+
+.tm-bar-row__label {
+    grid-area: label;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+    .tm-bar-row__label small {
+        display: block;
+        font-size: var(--text-xs);
+        color: var(--text-3);
+    }
+
+.tm-bar-row__bar {
+    grid-area: bar;
+    height: 6px;
+}
+
+/* as long as its share of the largest row (data-percent): a category in its colour, a project by billing, a person in plain grey */
+.tm-bar-row__fill {
+    display: block;
+    width: 0;
+    min-width: 2px;
+    height: 100%;
+    background: var(--logged);
+    border-radius: 0 3px 3px 0;
+}
+
+.tm-bar-row__fill--billable {
+    background: var(--billable);
+}
+
+.tm-bar-row__fill--non-billable {
+    background: var(--non-billable);
+}
+
+.tm-bar-row__fill--person {
+    background: var(--text-2);
+}
+
+.tm-bar-row__time {
+    grid-area: time;
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.tm-bar-row__pct {
+    grid-area: pct;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--text-2);
+}
+
+/* ---------- Detailed report ---------- */
 
 .tm-report {
     margin-top: var(--space-7);
@@ -167,7 +605,93 @@
         text-align: right;
     }
 
+/* ---------- Narrower windows: the rates go under the figure, the breakdowns stack ---------- */
+
+@media (max-width: 56rem) {
+    .tm-hero__top {
+        grid-template-columns: 1fr;
+    }
+
+    .tm-cols {
+        grid-template-columns: 1fr;
+    }
+
+    .tm-cols__col,
+    .tm-cols__col + .tm-cols__col {
+        padding: var(--space-5) 0 0;
+        border-left: 0;
+    }
+
+        .tm-cols__col + .tm-cols__col {
+            margin-top: var(--space-5);
+            border-top: 1px solid var(--line);
+        }
+}
+
+/* ---------- Phones ---------- */
+
 @media (max-width: 40rem) {
+    .tm-hero {
+        padding: var(--space-4) 0 var(--space-5);
+    }
+
+    .tm-hero__unit {
+        font-size: var(--text-xl);
+    }
+
+    .tm-hero__sub {
+        font-size: var(--text-sm);
+    }
+
+    .tm-subnav {
+        margin-top: 0;
+    }
+
+    .tm-subnav__link {
+        min-height: var(--target-touch);
+    }
+
+    .tm-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tm-period {
+        justify-content: space-between;
+    }
+
+    .tm-period__label {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .tm-icon-button {
+        width: var(--target-touch);
+        height: var(--target-touch);
+    }
+
+    .tm-toggle {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .tm-toggle__option {
+        min-height: var(--target-touch);
+    }
+
+    .tm-rates {
+        gap: var(--space-5);
+    }
+
+    .tm-rate__value,
+    .tm-billing__hours {
+        font-size: 1.375rem;
+    }
+
+    .tm-section + .tm-section {
+        padding-top: var(--space-6);
+    }
+
     .tm-field {
         flex: 1 1 100%;
     }
@@ -179,5 +703,18 @@
 
     .tm-filters .tm-button {
         width: 100%;
+    }
+}
+
+/* ---------- Small phones: a row's bar moves under its name ---------- */
+
+@media (max-width: 30rem) {
+    .tm-bar-row {
+        grid-template-columns: 1fr auto auto;
+        grid-template-areas:
+            "label time pct"
+            "bar bar bar";
+        row-gap: 6px;
+        padding: var(--space-2) 0;
     }
 }
