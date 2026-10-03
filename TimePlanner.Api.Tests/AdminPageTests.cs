@@ -164,20 +164,71 @@ namespace TimePlanner.Api.Tests
             var raw = await admin.GetStringAsync("/Admin/Submissions");
             var html = Text(raw);
 
-            foreach (var day in new[] { "Mon 14 Sep", "Tue 15 Sep", "Wed 16 Sep", "Thu 17 Sep", "Fri 18 Sep" })
+            foreach (var day in new[] { "Mon 14 September", "Tue 15 September", "Wed 16 September Today", "Thu 17 September", "Fri 18 September" })
                 Assert.Contains(day, html);
             //working days only
-            Assert.DoesNotContain("Sat 19 Sep", html);
-            Assert.DoesNotContain("Sun 20 Sep", html);
+            Assert.DoesNotContain("Sat 19", html);
+            Assert.DoesNotContain("Sun 20", html);
             Assert.Contains(a.Email, html);
-            Assert.Contains("grid-cell--submitted", raw);
-            Assert.Contains("grid-cell--missing", raw);
-            Assert.Contains("grid-cell--pending", raw);
-            Assert.Contains("grid-cell--notdue", raw);
+            //each day's status as a class and a tooltip, the words for screen readers, and the time a day was sent
+            Assert.Contains("tm-grid__cell--submitted", raw);
+            Assert.Contains("tm-grid__cell--missing", raw);
+            Assert.Contains("tm-grid__cell--pending tm-grid__cell--today", raw);
+            Assert.Contains("tm-grid__cell--notdue", raw);
             Assert.Contains("title=\"Submitted at 17:05\"", raw);
             Assert.Contains("title=\"Missing\"", raw);
             Assert.Contains("title=\"Not submitted yet\"", raw);
-            Assert.Equal(5, Regex.Matches(raw, "<td class=\"text-center grid-cell").Count);
+            Assert.Contains("Submitted at 17:05", html);
+            Assert.Contains("Not submitted yet", html);
+            Assert.Equal(5, Regex.Matches(raw, "<td class=\"tm-grid__cell ").Count);
+            //the week's sent and missing days, in the table and in the phone's block
+            Assert.Contains("<td class=\"tm-grid__num tm-grid__num--first\">1</td>", raw);
+            Assert.Contains("<td class=\"tm-grid__num tm-grid__num--missing\">1</td>", raw);
+            Assert.Contains("Sent 1 Missing 1", html);
+            Assert.Contains("Mon 14 September: Submitted at 17:05", html);
+            Assert.Contains("Submitted, with the time it was sent", html);
+        }
+
+        [Fact]
+        public async Task TheSubmissionsMonth_ShowsTheMarksOnly_AndAPhoneListsTheMissingDates()
+        {
+            using var f = new ClockedFactory();
+            var a = await DeveloperAsync(f);
+            await f.SubmitAsync(a.ProfileId, ClockedFactory.Monday);
+            var admin = await AdminBrowserAsync(f);
+
+            var raw = await admin.GetStringAsync("/Admin/Submissions?view=month");
+            var html = Text(raw);
+
+            Assert.Contains("tm-grid tm-grid--month", raw);
+            //the 22 working days of September, each read out in full
+            Assert.Equal(22, Regex.Matches(raw, "<td class=\"tm-grid__cell ").Count);
+            Assert.Contains("Tue 1 September", html);
+            Assert.Contains("Wed 16 September, today", html);
+            Assert.Contains("title=\"Wed 16 Sep, today\"", raw);
+            Assert.Contains("Submitted (hover for the time)", html);
+            //Monday the 14th was sent and today is not over, every working day before that is missing
+            Assert.Contains("<td class=\"tm-grid__num tm-grid__num--missing\">10</td>", raw);
+            Assert.Contains("Missing 1, 2, 3, 4, 7, 8, 9, 10, 11 and 15 Sep", html);
+            //the dates are listed, so the phone's block leaves out the count
+            Assert.DoesNotContain("tm-pcard__miss\"", raw);
+        }
+
+        [Fact]
+        public async Task TheSubmissionsPage_KeepsTheTeamTabs_AndMovesBetweenPeriods()
+        {
+            using var f = new ClockedFactory();
+            var admin = await AdminBrowserAsync(f);
+
+            var html = await admin.GetStringAsync("/Admin/Submissions");
+
+            Assert.Contains("aria-current=\"page\" href=\"/Admin/Submissions?view=week&amp;date=2026-09-14\">Submissions", html);
+            Assert.Contains("href=\"/Admin?view=week&amp;date=2026-09-14\">Overview", html);
+            //the previous week opens, the next one does not exist yet
+            Assert.Contains("href=\"/Admin/Submissions?view=week&amp;date=2026-09-07\"", html);
+            Assert.DoesNotContain("date=2026-09-21", html);
+            Assert.Contains("aria-current=\"true\" href=\"/Admin/Submissions?view=week\">Week", html);
+            Assert.Contains("href=\"/Admin/Submissions?view=month\">Month", html);
         }
 
         [Fact]
@@ -202,7 +253,11 @@ namespace TimePlanner.Api.Tests
             using var f = new ClockedFactory();
             var admin = await AdminBrowserAsync(f);
 
-            Assert.Contains("nobody to show yet", await admin.GetStringAsync("/Admin/Submissions"));
+            var html = await admin.GetStringAsync("/Admin/Submissions");
+
+            Assert.Contains("nobody to show yet", html);
+            Assert.Contains("Create accounts on the <a href=\"/Users\">Users</a> page", html);
+            Assert.DoesNotContain("tm-key", html);
         }
 
         // ---------- the detailed report, under the submissions grid ----------
@@ -217,12 +272,14 @@ namespace TimePlanner.Api.Tests
 
             var html = await admin.GetStringAsync("/Admin/Submissions");
 
-            Assert.True(html.IndexOf("submissions-grid", StringComparison.Ordinal) < html.IndexOf("id=\"detailed-report\"", StringComparison.Ordinal));
+            Assert.True(html.IndexOf("tm-grid", StringComparison.Ordinal) < html.IndexOf("id=\"detailed-report\"", StringComparison.Ordinal));
             Assert.Contains("id=\"from\" name=\"from\" value=\"2026-09-14\"", html);
             Assert.Contains("id=\"to\" name=\"to\" value=\"2026-09-20\"", html);
             Assert.Contains("<option value=\"\">Everyone</option>", html);
             Assert.Contains(a.Email, html);
-            Assert.Contains("<strong>1:30</strong> in 1 entry", html);
+            Assert.Contains("<strong>Everyone</strong>, 14 Sep to 20 Sep 2026, by project", html);
+            //the totals in the table's last row: hours, billable, entries
+            Assert.Contains("Total 1:30 1:30 1", Text(html));
             Assert.Contains("<th scope=\"row\">Acme / Web</th>", html);
             //a timesheet is one person's, so the download waits for a person to be picked
             Assert.Contains("Pick a person to download their timesheet.", html);
@@ -247,7 +304,8 @@ namespace TimePlanner.Api.Tests
             Assert.Contains($"<option value=\"{a.ProfileId}\" selected=\"selected\">", html);
             Assert.Contains("<th scope=\"col\">Day</th>", html);
             Assert.Equal(2, Regex.Matches(html, "<th scope=\"row\">").Count);
-            Assert.Contains("<strong>1:30</strong> in 2 entries", html);
+            Assert.Contains($"<strong>{a.Email}</strong>, 14 Sep to 15 Sep 2026, by day", html);
+            Assert.Contains("Total 1:30 1:30 2", Text(html));
             Assert.DoesNotContain("BobsClient", Regex.Match(html, "id=\"detailed-report\".*", RegexOptions.Singleline).Value);
             Assert.Contains($"href=\"/Report/Export?from=2026-09-14&amp;to=2026-09-15&amp;userId={a.ProfileId}\"", html);
             Assert.Contains("devs work", await export.Content.ReadAsStringAsync());
@@ -264,7 +322,7 @@ namespace TimePlanner.Api.Tests
 
             Assert.Contains("must not be after", html);
             Assert.Contains(a.Email, html);
-            Assert.Contains("grid-cell--missing", html);
+            Assert.Contains("tm-grid__cell--missing", html);
         }
 
         // ---------- exports ----------

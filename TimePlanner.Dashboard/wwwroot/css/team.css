@@ -1,7 +1,7 @@
 /* Team pages
 
    The ink header the Team pages share (their own tabs, the period controls), the team overview (Views/Admin/Index.cshtml),
-   and the detailed report under the submissions grid (Views/Admin/Submissions.cshtml).
+   and the submissions grid with the detailed report under it (Views/Admin/Submissions.cshtml).
    The colours, type and spacing come from tokens.css. Bar widths and category colours are applied by app.js from data-percent and
    data-colour, because the content security policy blocks inline styles */
 
@@ -167,6 +167,24 @@
         background: var(--ink-raised);
         box-shadow: inset 0 0 0 2px var(--lilac);
     }
+
+/* a page's own title under the controls, on the pages without a big figure */
+.tm-hero__title {
+    margin: var(--space-5) 0 0;
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    letter-spacing: -0.015em;
+}
+
+.tm-hero__intro {
+    max-width: 62ch;
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-md);
+    line-height: var(--leading-body);
+    color: var(--on-ink-2);
+}
 
 /* ---------- Overview: the team's total, the submission rates and the billable split ---------- */
 
@@ -439,36 +457,297 @@
     color: var(--text-2);
 }
 
-/* ---------- Detailed report ---------- */
+/* ---------- Submissions: who sent which working day ----------
+   Normal days are a quiet tick, only a missing day gets colour and a word */
 
-.tm-report {
-    margin-top: var(--space-7);
-    padding-top: var(--space-6);
-    border-top: 1px solid var(--line);
+.tm-panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
 }
 
-.tm-report__head {
-    display: flex;
-    flex-wrap: wrap;
+.tm-panel__empty {
+    margin: 0;
+    padding: var(--space-6);
+    line-height: var(--leading-body);
+}
+
+    .tm-panel__empty a {
+        font-weight: var(--weight-semibold);
+        color: var(--brand-600);
+        text-underline-offset: 3px;
+    }
+
+/* positioned, so the screen-reader-only text stays inside the scroll area */
+.tm-grid-wrap {
+    position: relative;
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+}
+
+    .tm-grid-wrap:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+.tm-grid {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+    .tm-grid th,
+    .tm-grid td {
+        padding: 0;
+        text-align: center;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .tm-grid tbody tr:last-child > * {
+        border-bottom: 0;
+    }
+
+    .tm-grid thead th {
+        height: 52px;
+        font-size: var(--text-xs);
+        font-weight: var(--weight-medium);
+        color: var(--text-2);
+        white-space: nowrap;
+    }
+
+    .tm-grid thead b {
+        display: block;
+        font-size: var(--text-sm);
+        font-weight: var(--weight-semibold);
+        color: var(--text);
+    }
+
+    .tm-grid td {
+        height: 52px;
+    }
+
+    /* the names stay put while the days scroll under them */
+    .tm-grid .tm-grid__person {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        min-width: 11rem;
+        padding: 0 var(--space-4);
+        font-weight: var(--weight-medium);
+        text-align: left;
+        white-space: nowrap;
+        background: var(--surface);
+    }
+
+    .tm-grid tbody .tm-grid__person {
+        font-size: var(--text-sm);
+        color: var(--text);
+    }
+
+    .tm-grid .tm-grid__num {
+        width: 5.5rem;
+        padding: 0 var(--space-4);
+        font-weight: var(--weight-semibold);
+        text-align: right;
+    }
+
+    .tm-grid thead .tm-grid__num {
+        font-weight: var(--weight-medium);
+    }
+
+    .tm-grid .tm-grid__num--first {
+        border-left: 1px solid var(--line);
+    }
+
+    .tm-grid .tm-grid__num--missing {
+        color: var(--warning-800);
+    }
+
+    .tm-grid .tm-grid__num--zero {
+        font-weight: var(--weight-regular);
+        color: var(--text-3);
+    }
+
+    .tm-grid .tm-grid__cell--missing {
+        background: var(--warning-50);
+        box-shadow: inset 0 0 0 1px var(--warning-200);
+    }
+
+    .tm-grid .tm-grid__day--today,
+    .tm-grid .tm-grid__cell--today {
+        background: var(--brand-50);
+    }
+
+    .tm-grid thead .tm-grid__day--today b {
+        color: var(--brand-700);
+    }
+
+/* a week has wide days with the time each was sent, a month has narrow ones with the marks only */
+.tm-grid--week .tm-grid__cell {
+    min-width: 7.5rem;
+}
+
+.tm-grid--month .tm-grid__day,
+.tm-grid--month .tm-grid__cell {
+    width: 34px;
+    min-width: 34px;
+}
+
+.tm-mark {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3) var(--space-4);
-    margin-bottom: var(--space-4);
-}
-
-.tm-report__title {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-head);
-    letter-spacing: -0.01em;
-}
-
-.tm-hint {
-    margin: 0;
+    justify-content: center;
+    gap: 6px;
+    min-width: 100%;
+    height: 100%;
+    font-size: var(--text-xs);
     color: var(--text-2);
 }
+
+    .tm-mark svg {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        color: var(--text-3);
+    }
+
+.tm-mark--missing {
+    font-weight: var(--weight-semibold);
+    color: var(--warning-800);
+}
+
+    .tm-mark--missing svg {
+        color: var(--warning-700);
+    }
+
+/* in a month the words are still read out, just not shown */
+.tm-grid--month .tm-mark__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
+
+.tm-key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-5);
+    margin-top: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--text-2);
+}
+
+.tm-key__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+    .tm-key__item svg {
+        width: 14px;
+        height: 14px;
+        color: var(--text-3);
+    }
+
+.tm-key__item--missing svg {
+    color: var(--warning-700);
+}
+
+/* phones: one block per person instead of the table */
+.tm-plist {
+    display: none;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tm-pcard {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--line);
+}
+
+    .tm-pcard:last-child {
+        border-bottom: 0;
+    }
+
+.tm-pcard__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-3);
+}
+
+.tm-pcard__name {
+    font-weight: var(--weight-semibold);
+    overflow-wrap: anywhere;
+}
+
+.tm-pcard__counts {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+    white-space: nowrap;
+}
+
+.tm-pcard__miss {
+    margin-left: var(--space-2);
+    font-weight: var(--weight-semibold);
+    color: var(--warning-800);
+}
+
+.tm-pcard__days {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    margin-top: var(--space-3);
+}
+
+.tm-pcard__missing {
+    margin: var(--space-2) 0 0;
+    line-height: 1.5;
+    color: var(--warning-800);
+}
+
+.tm-pday {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    padding: 6px 0;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    background: var(--paper);
+    border-radius: var(--radius-sm);
+}
+
+    .tm-pday svg,
+    .tm-pday__blank {
+        display: block;
+        width: 16px;
+        height: 16px;
+    }
+
+.tm-pday--submitted svg {
+    color: var(--text-3);
+}
+
+.tm-pday--today {
+    background: var(--brand-50);
+}
+
+.tm-pday--missing {
+    background: var(--warning-50);
+    box-shadow: inset 0 0 0 1px var(--warning-200);
+}
+
+    .tm-pday--missing svg {
+        color: var(--warning-700);
+    }
+
+/* ---------- Detailed report ---------- */
 
 /* the filters sit in one row and wrap on a narrow screen, the button lines up with the boxes */
 .tm-filters {
@@ -476,12 +755,13 @@
     flex-wrap: wrap;
     align-items: flex-end;
     gap: var(--space-4);
+    padding: var(--space-5);
+    border-bottom: 1px solid var(--line);
 }
 
 .tm-field {
     display: grid;
     gap: 6px;
-    min-width: 10rem;
 }
 
 .tm-label {
@@ -489,7 +769,7 @@
 }
 
 .tm-input {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 var(--space-3);
     font: inherit;
     color: var(--text);
@@ -508,12 +788,40 @@
         border-color: var(--brand-600);
     }
 
+    .tm-input[type="date"] {
+        width: 10.5rem;
+    }
+
+/* a select with its own arrow: an svg next to it, since the content security policy blocks a data: background image */
+.tm-select {
+    position: relative;
+    display: grid;
+}
+
+.tm-input--select {
+    width: 12rem;
+    padding-right: var(--space-6);
+    appearance: none;
+    cursor: pointer;
+}
+
+.tm-select__icon {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    width: 16px;
+    height: 16px;
+    color: var(--text-2);
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
 .tm-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 var(--space-4);
     font: inherit;
     font-weight: var(--weight-semibold);
@@ -553,7 +861,7 @@
 
 .tm-alert {
     max-width: 62ch;
-    margin: var(--space-4) 0 0;
+    margin: var(--space-5);
     padding: var(--space-3);
     line-height: 1.5;
     color: var(--danger-700);
@@ -562,18 +870,30 @@
     border-radius: var(--radius-sm);
 }
 
-.tm-report__summary {
-    margin: var(--space-5) 0 var(--space-3);
+/* who and when on the left, the download (or how to get one) on the right */
+.tm-report__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-5);
+    padding: var(--space-5) var(--space-5) var(--space-3);
+}
+
+.tm-report__caption,
+.tm-report__hint {
+    margin: 0;
     color: var(--text-2);
 }
 
-    .tm-report__summary strong {
-        font-variant-numeric: tabular-nums;
+    .tm-report__caption strong {
+        font-weight: var(--weight-semibold);
         color: var(--text);
     }
 
-.tm-empty {
+.tm-report__empty {
     margin: 0;
+    padding: var(--space-2) var(--space-5) var(--space-5);
     color: var(--text-2);
 }
 
@@ -585,25 +905,44 @@
 
     .tm-table th,
     .tm-table td {
-        padding: var(--space-3) var(--space-2);
-        text-align: left;
-        border-bottom: 1px solid var(--line);
+        padding: var(--space-3) var(--space-5);
+        text-align: right;
+        border-top: 1px solid var(--line);
     }
 
+        .tm-table th:first-child,
+        .tm-table td:first-child {
+            text-align: left;
+        }
+
     .tm-table thead th {
+        padding-top: 0;
         font-size: var(--text-xs);
         font-weight: var(--weight-medium);
         color: var(--text-3);
+        border-top: 0;
     }
 
     .tm-table tbody th {
-        font-weight: var(--weight-medium);
+        font-weight: var(--weight-regular);
         overflow-wrap: anywhere;
     }
 
-    .tm-table .tm-num {
-        text-align: right;
+    /* the hours stand out from the billable part and the count */
+    .tm-table tbody td:nth-child(2) {
+        font-weight: var(--weight-semibold);
     }
+
+    .tm-table tfoot th,
+    .tm-table tfoot td {
+        font-weight: var(--weight-semibold);
+        border-top: 1px solid var(--text);
+    }
+
+.tm-table__total {
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+}
 
 /* ---------- Narrower windows: the rates go under the figure, the breakdowns stack ---------- */
 
@@ -639,8 +978,13 @@
         font-size: var(--text-xl);
     }
 
-    .tm-hero__sub {
+    .tm-hero__sub,
+    .tm-hero__intro {
         font-size: var(--text-sm);
+    }
+
+    .tm-hero__title {
+        font-size: 1.875rem;
     }
 
     .tm-subnav {
@@ -692,18 +1036,57 @@
         padding-top: var(--space-6);
     }
 
-    .tm-field {
-        flex: 1 1 100%;
+    /* the table makes way for one block per person, the key is only for the table */
+    .tm-grid-wrap,
+    .tm-key {
+        display: none;
     }
+
+    .tm-plist {
+        display: block;
+    }
+
+    .tm-filters {
+        padding: var(--space-4);
+    }
+
+        .tm-filters .tm-field,
+        .tm-filters .tm-button {
+            width: 100%;
+        }
 
     .tm-input,
     .tm-button {
         min-height: var(--target-touch);
     }
 
-    .tm-filters .tm-button {
-        width: 100%;
+        .tm-input[type="date"],
+        .tm-input--select {
+            width: 100%;
+        }
+
+    .tm-alert {
+        margin: var(--space-4);
     }
+
+    .tm-report__head {
+        padding: var(--space-4) var(--space-4) var(--space-2);
+    }
+
+    .tm-report__empty {
+        padding: var(--space-2) var(--space-4) var(--space-4);
+    }
+
+    .tm-table th,
+    .tm-table td {
+        padding: var(--space-3) var(--space-4);
+    }
+
+        /* the entries count goes first on a phone */
+        .tm-table th:nth-child(4),
+        .tm-table td:nth-child(4) {
+            display: none;
+        }
 }
 
 /* ---------- Small phones: a row's bar moves under its name ---------- */
