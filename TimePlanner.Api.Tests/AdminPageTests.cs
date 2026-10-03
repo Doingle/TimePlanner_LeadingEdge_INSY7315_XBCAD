@@ -198,6 +198,7 @@ namespace TimePlanner.Api.Tests
         public async Task TheDetailedReport_GroupsAnyRangeForOnePerson_AndTheirTimesheetDownloads()
         {
             using var f = new ClockedFactory();
+            var a = await DeveloperAsync(f);
             var b = await DeveloperAsync(f);
             await f.AddEntryAsync(a.ProfileId, "Acme", "Web", Coding, ClockedFactory.Monday.AddHours(9), 60, "devs work");
             await f.AddEntryAsync(a.ProfileId, "Acme", "Web", Email, ClockedFactory.Tuesday.AddHours(9), 30);
