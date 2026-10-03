@@ -1,0 +1,18 @@
+{
+  "profiles": {
+    "TimePlanner.Widget": {
+      "commandName": "Project"
+    },
+    "Widget (sample day)": {
+      "commandName": "Project",
+      "commandLineArgs": "--sample-day"
+    },
+    "Widget (sample day, local dashboard)": {
+      "commandName": "Project",
+      "commandLineArgs": "--sample-day",
+      "environmentVariables": {
+        "TIMEPLANNER_DASHBOARD_URL": "https://localhost:7043/"
+      }
+    }
+  }
+}

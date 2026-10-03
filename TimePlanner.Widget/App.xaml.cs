@@ -64,6 +64,13 @@ namespace TimePlanner.Widget
                 _flow = _app.Services.GetRequiredService<WidgetFlow>();
                 // Core adds the user, their settings and an internal project to log against
                 await _flow.LoadAsync();
+
+                //testers load a finished example day with the sample day switch
+                if (e.Args.Any(a => string.Equals(a, "--sample-day", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var sample = await _flow.LoadSampleDayAsync();
+                    MessageBox.Show(sample.Message, "Sample day");
+                }
             }
             catch (Exception ex)
             {
