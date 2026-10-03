@@ -1,0 +1,94 @@
+# builds the widget as a self contained zip that runs on any Windows 10/11 64 bit machine without installing .NET.
+# Push a tag such as v1.0.0 and the zip, with a checksum file, is attached to a GitHub Release. Run it by hand to get the zip as a build artifact without a release.
+name: Release Widget
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+concurrency:
+  group: release-widget
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  widget-zip:
+    name: Widget zip
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # a tag v1.2.3 gives version 1.2.3, a manual run gives 0.0.0-dev.<run number>. The tag goes in through the environment, never into the script text
+      - name: Work out the version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          if ($env:REF_TYPE -eq 'tag') { $version = $env:REF_NAME.TrimStart('v') } else { $version = "0.0.0-dev.$($env:RUN_NUMBER)" }
+          if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$') { throw "'$version' is not a version like 1.2.3" }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "Building widget $version"
+
+      # a zip that fails its tests is never published
+      - name: Test core
+        run: dotnet test TimePlanner.Core.Tests/TimePlanner.Core.Tests.csproj --configuration Release
+
+      - name: Publish widget
+        run: >
+          dotnet publish TimePlanner.Widget/TimePlanner.Widget.csproj
+          --configuration Release --runtime win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:Version=$env:VERSION
+          --output publish/widget
+
+      # debug symbols are left out, they are only useful to developers and add size
+      - name: Zip and checksum
+        run: |
+          $name = "TimePlanner-Widget-$env:VERSION-win-x64"
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path (Get-ChildItem publish/widget -Exclude *.pdb).FullName -DestinationPath "dist/$name.zip" -Force
+          $hash = (Get-FileHash "dist/$name.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name.zip" | Out-File -FilePath "dist/$name.zip.sha256" -Encoding ascii
+          Get-ChildItem dist | Select-Object Name, @{ n = 'MB'; e = { [math]::Round($_.Length / 1MB, 1) } }
+
+      # unpacks the zip like a user would and starts the widget, which is a tray app that should still be running a few seconds later.
+      # Informational only: a hosted runner has no real desktop, so a failure here is reported as a warning and does not block the release
+      - name: Check the unpacked widget starts
+        continue-on-error: true
+        run: |
+          Expand-Archive -Path "dist/TimePlanner-Widget-$env:VERSION-win-x64.zip" -DestinationPath unpacked -Force
+          $process = Start-Process -FilePath unpacked/TimePlanner.Widget.exe -PassThru
+          Start-Sleep -Seconds 8
+          if ($process.HasExited) { Write-Host "::warning::The widget exited with code $($process.ExitCode) within 8 seconds"; exit 1 }
+          Stop-Process -Id $process.Id -Force
+          "The widget started and kept running"
+
+      - name: Keep the zip as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TimePlanner-Widget-${{ env.VERSION }}-win-x64
+          path: dist/*
+          if-no-files-found: error
+
+      # only a tag makes a release. Running the job again for the same tag replaces the files instead of failing
+      - name: Attach the zip to a GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -eq 0) { gh release upload $env:TAG (Get-ChildItem dist).FullName --clobber }
+          else { gh release create $env:TAG (Get-ChildItem dist).FullName --title "TimePlanner $env:TAG" --generate-notes }
+          if ($LASTEXITCODE -ne 0) { throw "Could not publish the release" }
