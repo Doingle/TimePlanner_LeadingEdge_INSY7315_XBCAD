@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <!-- every security rule is switched on, the reliability rules at the recommended level, and the rules that matter for this app fail the build.
+         Everything else stays a warning, so style and performance suggestions never block a teammate's work -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisModeSecurity>All</AnalysisModeSecurity>
+    <AnalysisModeReliability>Recommended</AnalysisModeReliability>
+
+    <!-- weak crypto and hashing, disabled certificate checks, sql/xss/path/command/redirect injection, unsafe xml, post actions without antiforgery, predictable random numbers, rethrow that hides the stack -->
+    <WarningsAsErrors>$(WarningsAsErrors);CA2100;CA2200;CA3001;CA3002;CA3003;CA3006;CA3007;CA3011;CA3012;CA3061;CA3075;CA3076;CA3077;CA3147;CA5350;CA5351;CA5358;CA5359;CA5360;CA5361;CA5363;CA5364;CA5365;CA5366;CA5367;CA5368;CA5369;CA5370;CA5371;CA5372;CA5373;CA5374;CA5375;CA5376;CA5377;CA5378;CA5379;CA5380;CA5381;CA5382;CA5383;CA5384;CA5385;CA5386;CA5387;CA5388;CA5389;CA5390;CA5391;CA5392;CA5393;CA5394;CA5396;CA5397;CA5398;CA5399;CA5400;CA5401;CA5402;CA5403;CA5404;CA5405</WarningsAsErrors>
+
+    <!-- CA5395 asks every page action to say GET explicitly, which is the default for them and only adds noise -->
+    <NoWarn>$(NoWarn);CA5395</NoWarn>
+
+    <!-- every restore checks direct and indirect packages against the public vulnerability list, and a known vulnerability fails the build -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>
+  </PropertyGroup>
+</Project>

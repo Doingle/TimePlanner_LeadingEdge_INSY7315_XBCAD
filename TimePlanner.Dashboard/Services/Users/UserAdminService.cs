@@ -76,7 +76,10 @@ namespace TimePlanner.Dashboard.Services.Users
                 return PasswordResult.Fail("An account with that email already exists.");
 
             var lower = cleanEmail.ToLowerInvariant();
+            //inside a query ToLower becomes the database LOWER function, so the server culture does not matter, and the provider cannot translate ToLowerInvariant
+#pragma warning disable CA1304, CA1311
             var profile = await _app.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == lower);
+#pragma warning restore CA1304, CA1311
             if (profile != null && await _auth.Users.AnyAsync(a => a.AppUserId == profile.UserId))
                 return PasswordResult.Fail("That email already belongs to another account.");
 

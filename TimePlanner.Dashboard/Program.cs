@@ -135,7 +135,7 @@ builder.Services.AddAuthorizationBuilder()
 builder.Services.AddSwaggerGen(o =>
 {
     o.SwaggerDoc("v1", new OpenApiInfo { Title = "TimePlanner API", Version = "v1" });
-    o.DocInclusionPredicate((_, api) => api.RelativePath?.StartsWith("api/") == true);
+    o.DocInclusionPredicate((_, api) => api.RelativePath?.StartsWith("api/", StringComparison.Ordinal) == true);
     o.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Type = SecuritySchemeType.Http,

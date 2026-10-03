@@ -1,0 +1,38 @@
+# looks for security problems in the C# code: injection, weak crypto, unsafe deserialisation and so on.
+# Code scanning on a private repository needs GitHub Advanced Security, so the job stays off until the repository variable ENABLE_CODEQL is set to true
+# (Settings > Secrets and variables > Actions > Variables) after Settings > Code security > Code scanning has been switched on.
+name: CodeQL
+
+on:
+  push:
+    branches: [ main, development ]
+  pull_request:
+    branches: [ main, development ]
+  schedule:
+    - cron: '0 3 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze C#
+    if: ${{ vars.ENABLE_CODEQL == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+          # reads the source without building, which also covers the WPF widget that cannot be built on Linux
+          build-mode: none
+          queries: security-extended
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:csharp

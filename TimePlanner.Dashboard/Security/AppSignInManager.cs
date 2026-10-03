@@ -37,7 +37,7 @@ namespace TimePlanner.Dashboard.Security
         {
             var identity = await base.GenerateClaimsAsync(user);
             if (user.AppUserId != null)
-                identity.AddClaim(new Claim(ClaimsExtensions.ProfileClaim, user.AppUserId.Value.ToString()));
+                identity.AddClaim(new Claim(ClaimsExtensions.ProfileClaim, user.AppUserId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)));
             if (user.MustChangePassword)
                 identity.AddClaim(new Claim(MustChangePasswordClaim, "1"));
             return identity;
