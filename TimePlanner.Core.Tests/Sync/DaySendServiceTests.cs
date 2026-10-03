@@ -313,6 +313,304 @@ namespace TimePlanner.Core.Tests.Sync
             var third = SyncServiceCollectionExtensions.ResolveDashboardUrl(null, null);
             Assert.Equal(SyncServiceCollectionExtensions.DefaultDashboardUrl, third);
         }
+
+        //-----------------------------
+        //sign in stores access token refresh token and expiry dates
+        [Fact]
+        public async Task SignIn_StoresRefreshTokenAndExpiry()
+        {
+            var handler = new FakeDashboardHandler
+            {
+                Respond = _ => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent("{\"accessToken\":\"acc1\",\"tokenType\":\"Bearer\",\"expiresAtUtc\":\"2030-01-01T00:00:00Z\",\"refreshToken\":\"ref1\",\"refreshExpiresAtUtc\":\"2030-02-01T00:00:00Z\"}", System.Text.Encoding.UTF8, "application/json")
+                }
+            };
+            var tokens = new InMemoryTokenStore();
+            using var host = CreateHost(handler, tokens);
+            using var scope = host.CreateScope();
+
+            var service = scope.ServiceProvider.GetRequiredService<DaySendService>();
+            var outcome = await service.SignInAsync("user@test.com", "pass");
+
+            Assert.Equal(SignInStatus.SignedIn, outcome.Status);
+            var saved = await tokens.LoadAsync();
+            Assert.NotNull(saved);
+            Assert.Equal("acc1", saved.AccessToken);
+            Assert.Equal("ref1", saved.RefreshToken);
+            Assert.Equal(new DateTime(2030, 2, 1, 0, 0, 0, DateTimeKind.Utc), saved.RefreshExpiresAtUtc);
+        }
+
+        //-----------------------------
+        //expired access token with valid refresh token refreshes silently before sending
+        [Fact]
+        public async Task SendDay_ExpiredAccessToken_RefreshesSilentlyAndSends()
+        {
+            var calls = new List<string>();
+            var handler = new FakeDashboardHandler
+            {
+                Respond = request =>
+                {
+                    calls.Add(request.RequestUri!.AbsolutePath);
+                    if (request.RequestUri.AbsolutePath.EndsWith("/refresh"))
+                    {
+                        return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                        {
+                            Content = new StringContent("{\"accessToken\":\"acc2\",\"tokenType\":\"Bearer\",\"expiresAtUtc\":\"2030-01-01T00:00:00Z\",\"refreshToken\":\"ref2\",\"refreshExpiresAtUtc\":\"2030-02-01T00:00:00Z\"}", System.Text.Encoding.UTF8, "application/json")
+                        };
+                    }
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("{\"created\":1,\"skipped\":0,\"errors\":[]}", System.Text.Encoding.UTF8, "application/json")
+                    };
+                }
+            };
+            var tokens = new InMemoryTokenStore();
+            var expiredAccess = DateTime.UtcNow.AddMinutes(-5);
+            var validRefresh = DateTime.UtcNow.AddDays(10);
+            await tokens.SaveAsync(new StoredToken("acc1", expiredAccess, "user@test.com", "ref1", validRefresh));
+
+            using var host = CreateHost(handler, tokens);
+            using var scope = host.CreateScope();
+
+            var userId = await SeedDayAsync(scope.ServiceProvider);
+            var service = scope.ServiceProvider.GetRequiredService<DaySendService>();
+            var day = new DateOnly(2026, 9, 28);
+            var now = new DateTime(2026, 9, 29, 10, 0, 0);
+
+            var outcome = await service.SendDayAsync(userId, day, now, DateTime.UtcNow);
+
+            Assert.Equal(SendStatus.Sent, outcome.Status);
+            Assert.Equal(new[] { "/api/v1/auth/refresh", "/api/v1/timesheets/import" }, calls);
+
+            var saved = await tokens.LoadAsync();
+            Assert.NotNull(saved);
+            Assert.Equal("acc2", saved.AccessToken);
+            Assert.Equal("ref2", saved.RefreshToken);
+        }
+
+        //-----------------------------
+        //refused refresh token clears token store and requires sign in
+        [Fact]
+        public async Task SendDay_RefreshRefused401_ReturnsNeedsSignInAndClearsStore()
+        {
+            var handler = new FakeDashboardHandler
+            {
+                Respond = request => new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized)
+            };
+            var tokens = new InMemoryTokenStore();
+            var expiredAccess = DateTime.UtcNow.AddMinutes(-5);
+            var validRefresh = DateTime.UtcNow.AddDays(10);
+            await tokens.SaveAsync(new StoredToken("acc1", expiredAccess, "user@test.com", "ref1", validRefresh));
+
+            using var host = CreateHost(handler, tokens);
+            using var scope = host.CreateScope();
+
+            var userId = await SeedDayAsync(scope.ServiceProvider);
+            var service = scope.ServiceProvider.GetRequiredService<DaySendService>();
+            var day = new DateOnly(2026, 9, 28);
+            var now = new DateTime(2026, 9, 29, 10, 0, 0);
+
+            var outcome = await service.SendDayAsync(userId, day, now, DateTime.UtcNow);
+
+            Assert.Equal(SendStatus.NeedsSignIn, outcome.Status);
+            Assert.Null(await tokens.LoadAsync());
+        }
+
+        //-----------------------------
+        //network offline during refresh returns offline status and keeps stored token
+        [Fact]
+        public async Task SendDay_OfflineDuringRefresh_ReturnsOfflineAndKeepsStore()
+        {
+            var handler = new FakeDashboardHandler { ThrowOffline = true };
+            var tokens = new InMemoryTokenStore();
+            var expiredAccess = DateTime.UtcNow.AddMinutes(-5);
+            var validRefresh = DateTime.UtcNow.AddDays(10);
+            await tokens.SaveAsync(new StoredToken("acc1", expiredAccess, "user@test.com", "ref1", validRefresh));
+
+            using var host = CreateHost(handler, tokens);
+            using var scope = host.CreateScope();
+
+            var userId = await SeedDayAsync(scope.ServiceProvider);
+            var service = scope.ServiceProvider.GetRequiredService<DaySendService>();
+            var day = new DateOnly(2026, 9, 28);
+            var now = new DateTime(2026, 9, 29, 10, 0, 0);
+
+            var outcome = await service.SendDayAsync(userId, day, now, DateTime.UtcNow);
+
+            Assert.Equal(SendStatus.Offline, outcome.Status);
+            var saved = await tokens.LoadAsync();
+            Assert.NotNull(saved);
+            Assert.Equal("acc1", saved.AccessToken);
+        }
+
+        //-----------------------------
+        //import 401 with valid looking access token refreshes once and retries import
+        [Fact]
+        public async Task SendDay_ImportRefused401_RefreshesAndRetries()
+        {
+            var calls = new List<string>();
+            var handler = new FakeDashboardHandler
+            {
+                Respond = request =>
+                {
+                    calls.Add(request.RequestUri!.AbsolutePath);
+                    if (calls.Count == 1)
+                    {
+                        return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+                    }
+                    if (request.RequestUri.AbsolutePath.EndsWith("/refresh"))
+                    {
+                        return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                        {
+                            Content = new StringContent("{\"accessToken\":\"acc2\",\"tokenType\":\"Bearer\",\"expiresAtUtc\":\"2030-01-01T00:00:00Z\",\"refreshToken\":\"ref2\",\"refreshExpiresAtUtc\":\"2030-02-01T00:00:00Z\"}", System.Text.Encoding.UTF8, "application/json")
+                        };
+                    }
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("{\"created\":1,\"skipped\":0,\"errors\":[]}", System.Text.Encoding.UTF8, "application/json")
+                    };
+                }
+            };
+            var tokens = new InMemoryTokenStore();
+            await tokens.SaveAsync(new StoredToken("acc1", DateTime.UtcNow.AddHours(1), "user@test.com", "ref1", DateTime.UtcNow.AddDays(10)));
+
+            using var host = CreateHost(handler, tokens);
+            using var scope = host.CreateScope();
+
+            var userId = await SeedDayAsync(scope.ServiceProvider);
+            var service = scope.ServiceProvider.GetRequiredService<DaySendService>();
+            var day = new DateOnly(2026, 9, 28);
+            var now = new DateTime(2026, 9, 29, 10, 0, 0);
+
+            var outcome = await service.SendDayAsync(userId, day, now, DateTime.UtcNow);
+
+            Assert.Equal(SendStatus.Sent, outcome.Status);
+            Assert.Equal(new[] { "/api/v1/timesheets/import", "/api/v1/auth/refresh", "/api/v1/timesheets/import" }, calls);
+        }
+
+        //-----------------------------
+        //expired token without refresh token prompts sign in without calling refresh
+        [Fact]
+        public async Task SendDay_ExpiredTokenWithoutRefreshToken_NeedsSignInWithoutRefreshCall()
+        {
+            var handler = new FakeDashboardHandler();
+            var tokens = new InMemoryTokenStore();
+            await tokens.SaveAsync(new StoredToken("acc1", DateTime.UtcNow.AddMinutes(-5), "user@test.com", null, null));
+
+            using var host = CreateHost(handler, tokens);
+            using var scope = host.CreateScope();
+
+            var userId = await SeedDayAsync(scope.ServiceProvider);
+            var service = scope.ServiceProvider.GetRequiredService<DaySendService>();
+            var day = new DateOnly(2026, 9, 28);
+            var now = new DateTime(2026, 9, 29, 10, 0, 0);
+
+            var outcome = await service.SendDayAsync(userId, day, now, DateTime.UtcNow);
+
+            Assert.Equal(SendStatus.NeedsSignIn, outcome.Status);
+            Assert.Equal(0, handler.Calls);
+        }
+
+        //-----------------------------
+        //is signed in returns true with expired access token and valid refresh token
+        [Fact]
+        public async Task IsSignedInAsync_ChecksRefreshValidityWhenAccessExpired()
+        {
+            var handler = new FakeDashboardHandler();
+            var tokens = new InMemoryTokenStore();
+            var now = DateTime.UtcNow;
+
+            await tokens.SaveAsync(new StoredToken("acc1", now.AddMinutes(-5), "user@test.com", "ref1", now.AddDays(1)));
+
+            using var host = CreateHost(handler, tokens);
+            using var scope = host.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<DaySendService>();
+
+            Assert.True(await service.IsSignedInAsync(now));
+
+            await tokens.SaveAsync(new StoredToken("acc1", now.AddMinutes(-5), "user@test.com", "ref1", now.AddMinutes(-1)));
+            Assert.False(await service.IsSignedInAsync(now));
+        }
+
+        //-----------------------------
+        //sign out posts logout endpoint and clears token store
+        [Fact]
+        public async Task SignOutAsync_CallsLogoutEndpointAndClearsStore()
+        {
+            var calls = new List<string>();
+            var handler = new FakeDashboardHandler
+            {
+                Respond = request =>
+                {
+                    calls.Add(request.RequestUri!.AbsolutePath);
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.NoContent);
+                }
+            };
+            var tokens = new InMemoryTokenStore();
+            await tokens.SaveAsync(new StoredToken("acc1", DateTime.UtcNow.AddHours(1), "user@test.com", "ref1", DateTime.UtcNow.AddDays(1)));
+
+            using var host = CreateHost(handler, tokens);
+            using var scope = host.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<DaySendService>();
+
+            await service.SignOutAsync();
+
+            Assert.Equal(new[] { "/api/v1/auth/logout" }, calls);
+            Assert.Null(await tokens.LoadAsync());
+
+            handler.ThrowOffline = true;
+            await tokens.SaveAsync(new StoredToken("acc1", DateTime.UtcNow.AddHours(1), "user@test.com", "ref1", DateTime.UtcNow.AddDays(1)));
+            await service.SignOutAsync();
+            Assert.Null(await tokens.LoadAsync());
+        }
+
+        //-----------------------------
+        //concurrent send day calls with expired access token issue only one refresh call
+        [Fact]
+        public async Task SendDayAsync_ConcurrentCalls_RefreshesOnlyOnce()
+        {
+            var refreshCount = 0;
+            var handler = new FakeDashboardHandler
+            {
+                Respond = request =>
+                {
+                    if (request.RequestUri!.AbsolutePath.EndsWith("/refresh"))
+                    {
+                        Interlocked.Increment(ref refreshCount);
+                        Thread.Sleep(50);
+                        return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                        {
+                            Content = new StringContent("{\"accessToken\":\"acc2\",\"tokenType\":\"Bearer\",\"expiresAtUtc\":\"2030-01-01T00:00:00Z\",\"refreshToken\":\"ref2\",\"refreshExpiresAtUtc\":\"2030-02-01T00:00:00Z\"}", System.Text.Encoding.UTF8, "application/json")
+                        };
+                    }
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("{\"created\":1,\"skipped\":0,\"errors\":[]}", System.Text.Encoding.UTF8, "application/json")
+                    };
+                }
+            };
+            var tokens = new InMemoryTokenStore();
+            await tokens.SaveAsync(new StoredToken("acc1", DateTime.UtcNow.AddMinutes(-5), "user@test.com", "ref1", DateTime.UtcNow.AddDays(10)));
+
+            using var host = CreateHost(handler, tokens);
+            using var scope = host.CreateScope();
+
+            var userId = await SeedDayAsync(scope.ServiceProvider);
+            var service = scope.ServiceProvider.GetRequiredService<DaySendService>();
+            var day = new DateOnly(2026, 9, 28);
+            var now = new DateTime(2026, 9, 29, 10, 0, 0);
+
+            var task1 = service.SendDayAsync(userId, day, now, DateTime.UtcNow);
+            var task2 = service.SendDayAsync(userId, day, now, DateTime.UtcNow);
+
+            var outcome1 = await task1;
+            var outcome2 = await task2;
+
+            Assert.Equal(1, refreshCount);
+            Assert.Equal(SendStatus.Sent, outcome1.Status);
+            Assert.Equal(SendStatus.Sent, outcome2.Status);
+        }
     }
 }
 //------------------------------EOF-----------------------------\\
