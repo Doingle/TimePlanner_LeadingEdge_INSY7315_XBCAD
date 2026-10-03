@@ -1,0 +1,119 @@
+/* Design tokens, v2
+
+   Direction: "violet ink and paper". One deep brand ink surface for the top bar and the day hero,
+   quiet lilac tinted paper for everything else. Every pairing is contrast checked, the ratios are WCAG 2.1.
+   Shared by every redesigned page, page styles such as login.css build on these */
+
+:root {
+    /* ---- Brand ---- */
+    --brand-600: #6247aa;   /* primary buttons, links, selected border, focus ring on paper. 6.5:1 on paper */
+    --brand-700: #4f3889;   /* hover / pressed, selected text on brand-50 (7.9:1) */
+    --brand-50: #efeaf9;    /* selected background tint */
+
+    /* ---- Ink: the brand's dark surface (top bar and today hero) ---- */
+    --ink: #241a3e;         /* white on it 16.3:1 */
+    --ink-raised: #33284f;  /* empty day track, skeletons on ink */
+    --ink-line: #3d3260;    /* hairlines on ink */
+    --on-ink: #ffffff;
+    --on-ink-2: #d4cbf3;    /* secondary text on ink, 10.6:1 */
+    --on-ink-3: #a99fc9;    /* axis ticks, captions on ink, 6.6:1 */
+    --lilac: #b9a9ef;       /* accents on ink: active nav, focus ring, calendar dots, primary button on ink. 7.7:1 */
+    --logged: #9d89e6;      /* logged time on Home's day strip, 5.5:1 */
+    --lilac-dim: #6f6394;   /* weekend dates, disabled controls on ink, 3.0:1 */
+
+    /* ---- Paper and text ---- */
+    --paper: #f7f5fb;       /* page background below the hero */
+    --surface: #ffffff;     /* panels, inputs */
+    --text: #1d1a2b;        /* 15.7:1 on paper */
+    --text-2: #5a566b;      /* secondary, 6.5:1 on paper */
+    --text-3: #6e6982;      /* captions only, 4.8:1 on paper */
+    --line: #e3dfed;        /* hairlines and panel borders */
+    --line-strong: #cdc6dc; /* control borders */
+
+    /* ---- Status: reserved for state, never for categories ---- */
+    --success-700: #067647;
+    --success-on-ink: #6fdc9c;
+    --warning-800: #93370d;    /* warning text on paper */
+    --warning-700: #b54708;    /* warning icons and borders on paper */
+    --warning-200: #fedf89;
+    --warning-50: #fffaeb;
+    --warning-on-ink: #fbc75f; /* gap hatch, skipped check in, warning text on ink, 10.4:1 */
+    --danger-700: #b42318;
+    --danger-200: #fecdca;
+    --danger-50: #fef3f2;
+    --danger-on-ink: #ff9b8f;  /* 8.0:1 */
+
+    /* ---- Data: categories, the same hue per category on both surfaces ----
+       Each set is validated all pairs: at least 16.9 dE with normal vision, 8.8 dE under
+       colour blind simulation, and 3:1 against its own surface */
+    --cat-coding: #0891b2;
+    --cat-coding-on-ink: #0a819d;
+    --cat-meeting: #1d4ed8;
+    --cat-meeting-on-ink: #615de5;
+    --cat-email: #9a5b13;
+    --cat-email-on-ink: #9c631d;
+    --cat-break: #16a34a;
+    --cat-break-on-ink: #68a244;
+    --cat-admin: #c0397a;
+    --cat-admin-on-ink: #be346d;
+
+    /* ---- Data: billable vs non billable (Home and My Reports) ---- */
+    --billable: #3b3554;     /* 10.7:1 on paper */
+    --non-billable: #8a85a0; /* 3.3:1 on paper, 3.3:1 against --billable */
+
+    /* ---- Typography ----
+       Lora carries the personality: the big figures, page and section titles, the wordmark.
+       Inter does every working job: labels, tables, controls */
+    --font-display: "Lora", Georgia, "Times New Roman", serif;
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+
+    --text-xs: 0.75rem;   /* 12  axis ticks, captions */
+    --text-sm: 0.875rem;  /* 14  body, labels, controls */
+    --text-md: 1rem;      /* 16  lead text */
+    --text-lg: 1.25rem;   /* 20  wordmark */
+    --text-xl: 1.625rem;  /* 26  section titles (Lora) */
+    --text-2xl: 2rem;     /* 32  hero unit text (Lora) */
+    --text-hero: clamp(3.5rem, 2rem + 6vw, 6rem); /* 56 to 96, the day's figure (Lora) */
+
+    --weight-regular: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --leading-tight: 1.1; /* display */
+    --leading-head: 1.2;  /* headings */
+    --leading-ui: 1.4;    /* single line UI */
+    --leading-body: 1.6;  /* sentences */
+
+    /* ---- Spacing (4px base) ---- */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-7: 3rem;
+    --space-8: 4rem;
+
+    /* ---- Shape: follows hierarchy ---- */
+    --radius-xs: 2px;     /* data marks */
+    --radius-sm: 6px;     /* buttons, inputs, segmented controls, callouts */
+    --radius-md: 10px;    /* panels */
+    --radius-pill: 999px; /* status badges only */
+
+    /* ---- Interaction ---- */
+    --focus-ring: 2px solid var(--brand-600);
+    --focus-ring-on-ink: 2px solid var(--lilac);
+    --focus-offset: 2px;
+    --target-touch: 48px;
+    --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+    /* ---- Layout ---- */
+    --page-max: 75rem;
+    --gutter: var(--space-6);
+    --nav-height: 3.5rem;
+}
+
+@media (max-width: 40rem) {
+    :root {
+        --gutter: var(--space-4);
+    }
+}
