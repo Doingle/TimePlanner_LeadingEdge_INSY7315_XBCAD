@@ -1,9 +1,9 @@
 @using System.Globalization
 @* the Team pages' own tabs, on the ink header: Overview, Submissions, Exports and Users. The pages with a period keep it when moving between them.
-   the model is (current page, view, first day of the period) *@
-@model (string Current, string View, DateTime From)
+   the model is (current page, view, first day of the period). Users has no period, so it passes nulls and the tabs open the current week *@
+@model (string Current, string? View, DateTime? From)
 @{
-    var date = Model.From.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    var date = Model.From?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     string? Current(string page) => Model.Current == page ? "page" : null;
 }
 

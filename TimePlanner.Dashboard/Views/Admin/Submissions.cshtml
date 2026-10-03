@@ -96,7 +96,7 @@
 @section Hero {
     <section class="tm-hero" aria-labelledby="tm-page-title">
         <div class="tm-hero__inner">
-            <partial name="_TeamNav" model="@("Submissions", Model.View, Model.From)" />
+            <partial name="_TeamNav" model="@("Submissions", Model.View, (DateTime?)Model.From)" />
 
             @if (Model.Error != null)
             {

@@ -1,7 +1,8 @@
 /* Team pages
 
    The ink header the Team pages share (their own tabs, the period controls), the team overview (Views/Admin/Index.cshtml),
-   the submissions grid with the detailed report under it (Views/Admin/Submissions.cshtml) and the exports form (Views/Admin/Exports.cshtml).
+   the submissions grid with the detailed report under it (Views/Admin/Submissions.cshtml), the exports form (Views/Admin/Exports.cshtml)
+   and the accounts page (Views/Users/Index.cshtml).
    The colours, type and spacing come from tokens.css. Bar widths and category colours are applied by app.js from data-percent and
    data-colour, because the content security policy blocks inline styles */
 
@@ -1049,6 +1050,408 @@
     }
 }
 
+/* ---------- Users: messages, creating an account, and everyone ---------- */
+
+.tm-hero__counts {
+    margin: var(--space-3) 0 0;
+    font-variant-numeric: tabular-nums;
+    color: var(--on-ink-3);
+}
+
+/* one status line, and the temporary password when there is one */
+.tm-messages {
+    display: grid;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+}
+
+.tm-status {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    line-height: var(--leading-body);
+    border-radius: var(--radius-sm);
+}
+
+    .tm-status svg {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        margin-top: 3px;
+    }
+
+.tm-status--ok {
+    background: var(--success-50);
+    border: 1px solid var(--success-200);
+}
+
+    .tm-status--ok svg {
+        color: var(--success-700);
+    }
+
+.tm-status--error {
+    background: var(--danger-50);
+    border: 1px solid var(--danger-200);
+}
+
+    .tm-status--error svg {
+        color: var(--danger-700);
+    }
+
+.tm-temp {
+    max-width: 40rem;
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--brand-600);
+    border-radius: var(--radius-md);
+}
+
+.tm-temp__title {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    overflow-wrap: anywhere;
+}
+
+/* one click selects the whole password */
+.tm-temp__code {
+    display: inline-block;
+    margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 1.25rem;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+
+.tm-temp__warn {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    line-height: var(--leading-body);
+    color: var(--text-2);
+}
+
+    .tm-temp__warn svg {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        margin-top: 3px;
+        color: var(--warning-700);
+    }
+
+.tm-create {
+    padding: var(--space-5);
+}
+
+.tm-create__form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-4);
+}
+
+.tm-input--name {
+    width: 14rem;
+}
+
+.tm-input--email {
+    width: 18rem;
+}
+
+/* the role as a pair of options: the radio sits invisibly over its label, the checked one gets the selected tint */
+.tm-choice {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+}
+
+.tm-choice__option {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 var(--space-4);
+    font-weight: var(--weight-medium);
+    color: var(--text-2);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+    .tm-choice__option input {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .tm-choice__option:has(input:checked) {
+        font-weight: var(--weight-semibold);
+        color: var(--brand-700);
+        background: var(--brand-50);
+        box-shadow: inset 0 0 0 1px var(--brand-600);
+    }
+
+    .tm-choice__option:has(input:focus-visible) {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+.tm-people-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+
+    .tm-people-head .tm-section__title {
+        margin: 0;
+    }
+
+    .tm-people-head p {
+        margin: 0;
+        color: var(--text-2);
+    }
+
+.tm-users {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .tm-users th,
+    .tm-users td {
+        padding: var(--space-3) var(--space-4);
+        font-weight: var(--weight-regular);
+        text-align: left;
+        vertical-align: middle;
+        border-top: 1px solid var(--line);
+    }
+
+    .tm-users thead th {
+        font-size: var(--text-xs);
+        font-weight: var(--weight-medium);
+        color: var(--text-3);
+        border-top: 0;
+    }
+
+.tm-users__who strong {
+    display: block;
+    font-weight: var(--weight-semibold);
+    overflow-wrap: anywhere;
+}
+
+.tm-users__who > span {
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    overflow-wrap: anywhere;
+}
+
+.tm-users__you {
+    margin-left: 6px;
+    font-weight: var(--weight-regular);
+    color: var(--text-3);
+}
+
+.tm-users__when {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+    white-space: nowrap;
+}
+
+.tm-users__when--never {
+    color: var(--text-3);
+}
+
+.tm-users .tm-users__acts {
+    text-align: right;
+    white-space: nowrap;
+}
+
+    .tm-users__acts form {
+        display: inline;
+    }
+
+        .tm-users__acts form + form {
+            margin-left: var(--space-1);
+        }
+
+/* a deactivated person is greyed, their buttons are not */
+.tm-users__row--off .tm-users__who,
+.tm-users__row--off td:not(.tm-users__acts) {
+    color: var(--text-3);
+}
+
+    .tm-users__row--off .tm-users__who strong {
+        color: var(--text-2);
+    }
+
+.tm-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tm-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 8px;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    line-height: 1.6;
+    border-radius: var(--radius-pill);
+}
+
+    .tm-tag svg {
+        width: 12px;
+        height: 12px;
+    }
+
+.tm-tag--plain {
+    padding-left: 0;
+    color: var(--text-2);
+}
+
+.tm-tag--off {
+    color: var(--text-2);
+    background: var(--paper);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.tm-tag--temp {
+    color: var(--brand-700);
+    background: var(--brand-50);
+}
+
+.tm-tag--locked {
+    color: var(--danger-700);
+    background: var(--danger-50);
+    box-shadow: inset 0 0 0 1px var(--danger-200);
+}
+
+.tm-small-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 var(--space-3);
+    font: inherit;
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+    .tm-small-button:hover {
+        background: var(--paper);
+        border-color: var(--text-3);
+    }
+
+    .tm-small-button:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+/* quiet until hovered: a column of red buttons would shout */
+.tm-small-button--quiet {
+    color: var(--text-2);
+    background: none;
+    border-color: transparent;
+}
+
+    .tm-small-button--quiet:hover {
+        color: var(--danger-700);
+        background: var(--danger-50);
+        border-color: transparent;
+    }
+
+/* narrower windows: one block per person, the table's headings are still read out */
+@media (max-width: 52rem) {
+    .tm-users thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+    }
+
+    .tm-users,
+    .tm-users tbody,
+    .tm-users th,
+    .tm-users td {
+        display: block;
+    }
+
+    .tm-users tbody tr {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: var(--space-2) var(--space-3);
+        padding: var(--space-4);
+        border-top: 1px solid var(--line);
+    }
+
+        .tm-users tbody tr:first-child {
+            border-top: 0;
+        }
+
+    .tm-users tbody th,
+    .tm-users tbody td {
+        padding: 0;
+        border: 0;
+    }
+
+    .tm-users .tm-users__who {
+        grid-column: 1;
+    }
+
+    .tm-users .tm-users__role {
+        grid-column: 2;
+        grid-row: 1;
+        color: var(--text-2);
+    }
+
+    .tm-users .tm-users__state,
+    .tm-users .tm-users__when {
+        grid-column: 1 / -1;
+    }
+
+        .tm-users .tm-users__when::before {
+            content: "Last sign in: ";
+            color: var(--text-3);
+        }
+
+    .tm-users .tm-users__acts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        grid-column: 1 / -1;
+        margin-top: var(--space-1);
+        text-align: left;
+    }
+
+        .tm-users__acts form + form {
+            margin-left: 0;
+        }
+}
+
 /* ---------- Narrower windows: the rates go under the figure, the breakdowns stack ---------- */
 
 @media (max-width: 56rem) {
@@ -1203,6 +1606,35 @@
 
     .tm-actions .tm-button {
         width: 100%;
+    }
+
+    .tm-create {
+        padding: var(--space-4);
+    }
+
+        .tm-create__form .tm-field,
+        .tm-create__form .tm-button,
+        .tm-input--name,
+        .tm-input--email {
+            width: 100%;
+        }
+
+    .tm-choice {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .tm-choice__option,
+    .tm-small-button {
+        min-height: 44px;
+    }
+
+    .tm-temp {
+        padding: var(--space-4);
+    }
+
+    .tm-temp__code {
+        font-size: 1.125rem;
     }
 }
 

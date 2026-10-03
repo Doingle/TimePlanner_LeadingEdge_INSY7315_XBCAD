@@ -32,6 +32,8 @@
 
     /* ---- Status: reserved for state, never for categories ---- */
     --success-700: #067647;
+    --success-200: #abefc6;    /* border of a success message on paper */
+    --success-50: #ecfdf3;     /* background of a success message on paper */
     --success-on-ink: #6fdc9c;
     --warning-800: #93370d;    /* warning text on paper */
     --warning-700: #b54708;    /* warning icons and borders on paper */
