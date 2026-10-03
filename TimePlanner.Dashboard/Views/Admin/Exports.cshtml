@@ -1,45 +1,95 @@
 @using System.Globalization
+@using TimePlanner.Dashboard.Services.Reports
 @model AdminPageModel
 @{
     ViewData["Title"] = "Exports";
     ViewData["Nav"] = "Admin";
     Layout = "_AppLayout";
     var culture = CultureInfo.InvariantCulture;
+
+    //a bad link is the page's problem and shows on the header, anything else (nothing to export) belongs to the form
+    var badLink = Model.Error == Period.InvalidViewMessage;
 }
 
-<h1 class="h3 mb-3">Exports</h1>
-
-<nav class="admin-nav mb-3" aria-label="Admin">
-    <a asp-controller="Admin" asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.From.ToString("yyyy-MM-dd", culture)">Overview</a> |
-    <a asp-controller="Admin" asp-action="Submissions" asp-route-view="@Model.View" asp-route-date="@Model.From.ToString("yyyy-MM-dd", culture)">Submissions</a> |
-    <a asp-controller="Admin" asp-action="Exports" aria-current="page">Exports</a> |
-    <a asp-controller="Users" asp-action="Index">Users</a>
-</nav>
-
-@if (Model.Error != null)
-{
-    <div class="alert alert-danger" role="alert">@Model.Error</div>
+@section Styles {
+    <link rel="stylesheet" href="~/css/team.css" asp-append-version="true" />
 }
 
-<partial name="_PeriodNav" model="@("Admin", "Exports", Model.View, Model.Label, Model.Previous, Model.Next)" />
+@section Hero {
+    <section class="tm-hero" aria-labelledby="tm-page-title">
+        <div class="tm-hero__inner">
+            <partial name="_TeamNav" model="@("Exports", Model.View, Model.From)" />
 
-<p>Download the timesheet for @Model.Label in the company's layout. Choose a person for one file, or everyone for a zip with one file per person who logged time.</p>
-
-@* a plain get form: the download is a file, so there is nothing to submit and nothing is changed *@
-<form method="get" asp-controller="Admin" asp-action="Export" class="row g-3">
-    <input type="hidden" name="view" value="@Model.View" />
-    <input type="hidden" name="date" value="@Model.From.ToString("yyyy-MM-dd", culture)" />
-    <div class="col-md-6">
-        <label for="userId" class="form-label">Person</label>
-        <select id="userId" name="userId" class="form-select">
-            <option value="">Everyone (one file each, in a zip)</option>
-            @foreach (var person in Model.People)
+            @if (badLink)
             {
-                <option value="@person.Id">@person.Name</option>
+                <div class="tm-banner" role="alert">
+                    <svg class="tm-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" /></svg>
+                    <p>@Model.Error</p>
+                </div>
             }
-        </select>
+
+            <partial name="_TeamPeriod" model="@("Exports", Model.View, Model.Label, Model.Previous, Model.Next)" />
+
+            <h1 class="tm-hero__title" id="tm-page-title">Exports</h1>
+            <p class="tm-hero__intro">Download timesheets in the company layout for the period above.</p>
+        </div>
+    </section>
+}
+
+<section class="tm-section" aria-label="Export">
+    <div class="tm-panel tm-panel--form">
+        @* a plain get form: the download is a file, so there is nothing to submit and nothing is changed.
+           exports.js keeps the line under the picker and the button's label in step with the person picked *@
+        <form class="tm-export" method="get" asp-controller="Admin" asp-action="Export" data-export-form>
+            <input type="hidden" name="view" value="@Model.View" />
+            <input type="hidden" name="date" value="@Model.From.ToString("yyyy-MM-dd", culture)" />
+            <div class="tm-field">
+                <label class="tm-label" for="userId">Whose timesheets</label>
+                <span class="tm-select">
+                    <select class="tm-input tm-input--select" id="userId" name="userId" aria-describedby="tm-you-get">
+                        <option value="">Everyone</option>
+                        @foreach (var person in Model.People)
+                        {
+                            <option value="@person.Id">@person.Name</option>
+                        }
+                    </select>
+                    <svg class="tm-select__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                </span>
+            </div>
+
+            @* exactly what the button gives, for everyone or for the person picked *@
+            <p class="tm-you-get" id="tm-you-get" aria-live="polite">
+                <span class="tm-you-get__item" data-export-for="everyone">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8v13H3V8" /><path d="M1 3h22v5H1zM10 12h4" /></svg>
+                    <span><strong>A .zip file</strong> with one CSV per person who logged time<small>@Model.Label</small></span>
+                </span>
+                <span class="tm-you-get__item" data-export-for="person" hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>
+                    <span><strong>One CSV file</strong> for <span data-export-name>the person picked</span><small>@Model.Label</small></span>
+                </span>
+            </p>
+
+            @if (Model.Error != null && !badLink)
+            {
+                <p class="tm-notice" role="alert" data-export-notice>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+                    <span><strong>@Model.Error</strong> Pick another period with the arrows above, or another person.</span>
+                </p>
+            }
+
+            <div class="tm-actions">
+                <button class="tm-button" type="submit" data-export-button>
+                    <span class="tm-spinner" aria-hidden="true" data-export-busy hidden></span>
+                    <svg class="tm-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-export-icon><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
+                    <span data-export-for="everyone">Download .zip</span>
+                    <span data-export-for="person" hidden>Download CSV</span>
+                    <span data-export-busy hidden>Preparing download…</span>
+                </button>
+            </div>
+        </form>
     </div>
-    <div class="col-md-6 d-flex align-items-end">
-        <button type="submit" class="btn btn-primary">Download</button>
-    </div>
-</form>
+</section>
+
+@section Scripts {
+    <script src="~/js/exports.js" asp-append-version="true"></script>
+}

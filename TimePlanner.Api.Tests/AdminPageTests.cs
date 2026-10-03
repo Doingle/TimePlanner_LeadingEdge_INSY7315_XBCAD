@@ -336,11 +336,36 @@ namespace TimePlanner.Api.Tests
 
             var html = await admin.GetStringAsync("/Admin/Exports");
 
-            Assert.Contains("Everyone (one file each, in a zip)", html);
+            Assert.Contains("<option value=\"\">Everyone</option>", html);
             Assert.Contains($"<option value=\"{a.ProfileId}\">{a.Email}</option>", html);
             Assert.Contains("name=\"view\" value=\"week\"", html);
             Assert.Contains("name=\"date\" value=\"2026-09-14\"", html);
             Assert.Contains("action=\"/Admin/Export\"", html);
+            //what the button gives: a zip for everyone to begin with, one csv once a person is picked
+            Assert.Contains("A .zip file with one CSV per person who logged time 14 Sep to 20 Sep 2026", Text(html));
+            Assert.Contains("One CSV file", html);
+            Assert.Contains("Download .zip", html);
+            Assert.Contains("/js/exports.js", html);
+        }
+
+        [Fact]
+        public async Task TheExportsPage_KeepsTheTeamTabs_AndExplainsABadLink()
+        {
+            using var f = new ClockedFactory();
+            var admin = await AdminBrowserAsync(f);
+
+            var html = await admin.GetStringAsync("/Admin/Exports");
+            var bad = await admin.GetStringAsync("/Admin/Exports?view=year");
+
+            Assert.Contains("aria-current=\"page\" href=\"/Admin/Exports?view=week&amp;date=2026-09-14\">Exports", html);
+            Assert.Contains("href=\"/Admin/Exports?view=week&amp;date=2026-09-07\"", html);
+            Assert.DoesNotContain("date=2026-09-21", html);
+            Assert.Contains("aria-current=\"true\" href=\"/Admin/Exports?view=week\">Week", html);
+            //a bad link shows on the header and falls back to the current week, the form has no notice
+            Assert.Contains("<div class=\"tm-banner\" role=\"alert\">", bad);
+            Assert.Contains("view must be week or month", bad);
+            Assert.Contains("14 Sep to 20 Sep 2026", bad);
+            Assert.DoesNotContain("tm-notice", bad);
         }
 
         [Fact]
@@ -380,6 +405,9 @@ namespace TimePlanner.Api.Tests
             Assert.Equal(HttpStatusCode.Redirect, empty.StatusCode);
             Assert.Contains("/Admin/Exports", empty.Headers.Location!.OriginalString);
             Assert.Contains("nothing to export", Text(page));
+            //the message sits with the form, not on the header
+            Assert.Contains("<p class=\"tm-notice\" role=\"alert\" data-export-notice>", page);
+            Assert.DoesNotContain("tm-banner", page);
             Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
         }
 
