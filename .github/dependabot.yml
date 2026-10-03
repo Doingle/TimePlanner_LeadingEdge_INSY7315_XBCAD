@@ -1,0 +1,23 @@
+# weekly pull requests for out of date NuGet packages and GitHub Actions, aimed at development like every other change.
+# Security fixes are raised straight away, whatever this schedule says, once Dependabot security updates are switched on in the repository settings
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directories:
+      - "/*"
+    target-branch: development
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # minor and patch updates arrive as one pull request, so five projects do not mean five pull requests per package
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    target-branch: development
+    schedule:
+      interval: weekly
+      day: monday
