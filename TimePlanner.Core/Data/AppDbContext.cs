@@ -152,6 +152,28 @@ namespace TimePlanner.Core.Data
                 .HasOne(s => s.DaySession).WithMany()
                 .HasForeignKey(s => s.DaySessionId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            //the database refuses rows the services would never write
+            modelBuilder.Entity<TimeEntry>().ToTable(t => t.HasCheckConstraint("CK_TimeEntries_EndAfterStart", "\"EndTime\" > \"StartTime\""));
+
+            //day and report queries filter by user then start time
+            modelBuilder.Entity<TimeEntry>().HasIndex(e => new { e.UserId, e.StartTime });
+
+            //an ended day or pause cannot end before it started
+            modelBuilder.Entity<DaySession>().ToTable(t => t.HasCheckConstraint("CK_DaySessions_EndAfterStart", "\"EndedAt\" IS NULL OR \"EndedAt\" >= \"StartedAt\""));
+            modelBuilder.Entity<SessionPause>().ToTable(t => t.HasCheckConstraint("CK_SessionPauses_EndAfterStart", "\"EndedAt\" IS NULL OR \"EndedAt\" >= \"StartedAt\""));
+
+            //settings stay inside the ranges SettingsService allows
+            modelBuilder.Entity<UserSettings>().ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_UserSettings_Interval", "\"CheckInIntervalMinutes\" BETWEEN 5 AND 480");
+                t.HasCheckConstraint("CK_UserSettings_Snooze", "\"SnoozeMinutes\" BETWEEN 1 AND 60");
+                t.HasCheckConstraint("CK_UserSettings_MaxSnoozes", "\"MaxSnoozes\" BETWEEN 0 AND 10");
+                t.HasCheckConstraint("CK_UserSettings_MaxSkips", "\"MaxSkipsPerDay\" BETWEEN 0 AND 10");
+                t.HasCheckConstraint("CK_UserSettings_Goal", "\"DailyGoalHours\" BETWEEN 0.5 AND 24");
+                t.HasCheckConstraint("CK_UserSettings_Ignored", "\"IgnoredCheckInMinutes\" BETWEEN 1 AND 60");
+                t.HasCheckConstraint("CK_UserSettings_Lunch", "\"LunchStart\" < \"LunchEnd\"");
+            });
         }
     }
 }
