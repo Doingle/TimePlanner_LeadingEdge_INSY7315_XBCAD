@@ -1,5 +1,6 @@
 @using System.Globalization
 @using TimePlanner.Dashboard.Services.Overview
+@using TimePlanner.Dashboard.Services.Reports
 @model AdminPageModel
 @{
     ViewData["Title"] = "Submissions";
@@ -7,6 +8,15 @@
     Layout = "_AppLayout";
     var culture = CultureInfo.InvariantCulture;
     var grid = Model.Grid!;
+
+    //hours as H:MM, the way the design shows them
+    string Hm(double hours)
+    {
+        var minutes = (int)Math.Round(hours * 60);
+        return $"{minutes / 60}:{(minutes % 60).ToString("00", culture)}";
+    }
+    //how each grouping reads on the page
+    string Grouping(ReportGrouping grouping) => grouping == ReportGrouping.User ? "Person" : grouping.ToString();
 
     //a short mark for each cell, the full status is also written as a class (grid-cell--submitted and so on) and as the cell's title
     string Mark(GridCell cell) => cell.Status switch
@@ -23,6 +33,10 @@
         TimesheetViewService.Pending => "Not submitted yet",
         _ => "Not due yet"
     };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/team.css" asp-append-version="true" />
 }
 
 <h1 class="h3 mb-3">Submissions</h1>
@@ -78,3 +92,100 @@ else
         </tbody>
     </table>
 }
+
+@* the detailed report: hours for any range and grouping, for everyone or one person. A get form, so a report can be bookmarked and nothing is changed.
+   it keeps the grid's week or month, and comes back to this section *@
+<section class="tm-report" id="detailed-report" aria-labelledby="detailed-report-title">
+    <div class="tm-report__head">
+        <h2 class="tm-report__title" id="detailed-report-title">Detailed report</h2>
+        @if (Model.CanExport)
+        {
+            <a class="tm-button" asp-controller="Report" asp-action="Export" asp-route-from="@Model.ReportFrom.ToString("yyyy-MM-dd", culture)"
+               asp-route-to="@Model.ReportTo.ToString("yyyy-MM-dd", culture)" asp-route-userId="@Model.ReportUserId">
+                <svg class="tm-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
+                Download CSV
+            </a>
+        }
+        else if (Model.Report != null)
+        {
+            <p class="tm-hint">Pick a person to download their timesheet.</p>
+        }
+    </div>
+
+    <form class="tm-filters" method="get" asp-controller="Admin" asp-action="Submissions" asp-fragment="detailed-report">
+        <input type="hidden" name="view" value="@Model.View" />
+        <input type="hidden" name="date" value="@Model.From.ToString("yyyy-MM-dd", culture)" />
+        <div class="tm-field">
+            <label class="tm-label" for="from">From</label>
+            <input class="tm-input" type="date" id="from" name="from" value="@Model.ReportFrom.ToString("yyyy-MM-dd", culture)" required />
+        </div>
+        <div class="tm-field">
+            <label class="tm-label" for="to">To</label>
+            <input class="tm-input" type="date" id="to" name="to" value="@Model.ReportTo.ToString("yyyy-MM-dd", culture)" required />
+        </div>
+        <div class="tm-field">
+            <label class="tm-label" for="groupBy">Group by</label>
+            <select class="tm-input" id="groupBy" name="groupBy">
+                @foreach (var option in Enum.GetValues<ReportGrouping>())
+                {
+                    <option value="@option" selected="@(option == Model.GroupBy)">@Grouping(option)</option>
+                }
+            </select>
+        </div>
+        <div class="tm-field">
+            <label class="tm-label" for="userId">Person</label>
+            <select class="tm-input" id="userId" name="userId">
+                <option value="">Everyone</option>
+                @foreach (var person in Model.People)
+                {
+                    <option value="@person.Id" selected="@(person.Id == Model.ReportUserId)">@person.Name</option>
+                }
+            </select>
+        </div>
+        <button class="tm-button tm-button--secondary" type="submit">Show report</button>
+    </form>
+
+    @if (Model.ReportError != null)
+    {
+        <p class="tm-alert" role="alert">@Model.ReportError</p>
+    }
+
+    @if (Model.Report != null)
+    {
+        var report = Model.Report;
+        <p class="tm-report__summary">
+            <strong>@Hm(report.TotalHours)</strong> in @report.Entries entr@(report.Entries == 1 ? "y" : "ies"),
+            <strong>@Hm(report.BillableHours)</strong> billable, @report.From.ToString("d MMM yyyy", culture) to @report.To.ToString("d MMM yyyy", culture).
+        </p>
+
+        @if (report.Rows.Count == 0)
+        {
+            <p class="tm-empty">No time was logged in this period.</p>
+        }
+        else
+        {
+            <table class="tm-table">
+                <caption class="app-sr-only">Hours grouped by @Grouping(Model.GroupBy).ToLowerInvariant()</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">@Grouping(Model.GroupBy)</th>
+                        <th scope="col" class="tm-num">Hours</th>
+                        <th scope="col" class="tm-num">Billable</th>
+                        <th scope="col" class="tm-num">Entries</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in report.Rows)
+                    {
+                        <tr>
+                            <th scope="row">@row.Label</th>
+                            <td class="tm-num">@Hm(row.Hours)</td>
+                            <td class="tm-num">@Hm(row.BillableHours)</td>
+                            <td class="tm-num">@row.Entries</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</section>

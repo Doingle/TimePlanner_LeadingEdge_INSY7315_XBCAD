@@ -406,6 +406,10 @@ body.app-body {
         min-height: 60px;
         padding: 0 var(--space-1);
         font-size: var(--text-xs);
+        line-height: 1.2;
+        text-align: center;
+        /* a long name wraps onto a second line rather than running into the next tab on a very narrow screen */
+        white-space: normal;
         border-bottom: 0;
     }
 

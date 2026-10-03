@@ -1,4 +1,5 @@
 using TimePlanner.Dashboard.Services.Overview;
+using TimePlanner.Dashboard.Services.Reports;
 
 namespace TimePlanner.Dashboard.Models
 {
@@ -31,6 +32,19 @@ namespace TimePlanner.Dashboard.Models
         public List<(int Id, string Name)> People { get; set; } = new();
         public DateTime From { get; set; }
         public DateTime To { get; set; }
+
+        //-----------------------------
+        //the detailed report under the submissions grid: any range, grouped by project, company, person, day or activity, for everyone or one person.
+        //the range starts as the grid's week or month. Report is null when the filter was not valid, ReportError then says why
+        public DateTime ReportFrom { get; set; }
+        public DateTime ReportTo { get; set; }
+        public ReportGrouping GroupBy { get; set; } = ReportGrouping.Project;
+        public int? ReportUserId { get; set; }
+        public HoursReport? Report { get; set; }
+        public string? ReportError { get; set; }
+
+        //a timesheet is one person's, so the download needs a person picked
+        public bool CanExport => Report != null && ReportUserId != null;
     }
 }
 //------------------------------EOF-----------------------------\\

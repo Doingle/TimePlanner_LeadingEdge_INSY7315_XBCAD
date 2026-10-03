@@ -315,18 +315,47 @@ namespace TimePlanner.Api.Tests
             await Add(person.ProfileId, ClockedFactory.Monday.AddHours(9), 120, Coding, "Acme", "Web");
             await Add(person.ProfileId, ClockedFactory.Tuesday.AddHours(9), 60, Email, InternalCompany, "Internal");
 
+            await _factory.SubmitAsync(person.ProfileId, ClockedFactory.Monday);
+            await _factory.SubmitAsync(person.ProfileId, ClockedFactory.Tuesday);
+
             var week = await person.Browser.GetStringAsync("/Report?view=week");
             var month = await person.Browser.GetStringAsync("/Report?view=month&date=2026-09-16");
 
             Assert.Contains("14 Sep to 20 Sep 2026", week);
-            Assert.Matches(@"Billable</span>\s*<strong>2:00</strong>", week);
-            Assert.Matches(@"Non-billable</span>\s*<strong>1:00</strong>", week);
+            Assert.Contains("<span class=\"rp-hero__num\">3:00</span> <span class=\"rp-hero__unit\">submitted this week</span>", week);
+            Assert.Contains("From 2 submitted days.", week);
+            //the billable split: the hours, their shares, and a part of the bar each
+            Assert.Matches(@"<dt>Billable</dt>\s*<dd><span class=""rp-billing__hours"">2:00</span><span class=""rp-billing__pct"">67%</span></dd>", week);
+            Assert.Matches(@"<dt>Non-billable</dt>\s*<dd><span class=""rp-billing__hours"">1:00</span><span class=""rp-billing__pct"">33%</span></dd>", week);
+            Assert.Contains("<span class=\"rp-seg\" data-percent=\"66.7\"></span>", week);
+            Assert.Contains("<span class=\"rp-seg rp-seg--nb rp-seg--apart\" data-percent=\"33.3\"></span>", week);
+            Assert.Contains("Where this week went", week);
             Assert.Contains("By category", week);
-            Assert.Contains("By project", week);
-            Assert.Contains("Acme / Web", week);
+            Assert.Contains("Acme / Web <small>Billable</small>", week);
+            //the download is this week's timesheet, uploading opens the csv upload
+            Assert.Contains("href=\"/Report/Export?from=2026-09-14&amp;to=2026-09-20\"", week);
+            Assert.Contains("href=\"/CsvUpload\"", week);
+            //the previous week opens, the next one does not exist yet
+            Assert.Contains("href=\"/Report?view=week&amp;date=2026-09-07\"", week);
+            Assert.DoesNotContain("date=2026-09-21", week);
             Assert.Contains("September 2026", month);
-            Assert.Contains("href=\"/Report?view=week&amp;date=2026-09-07&amp;groupBy=Project\"", week);
-            Assert.Contains("Download CSV", week);
+            Assert.Contains("submitted in September", month);
+            Assert.Contains("Where September went", month);
+        }
+
+        [Fact]
+        public async Task Reports_AnEmptyWeek_HasNothingToDownload()
+        {
+            var person = await SignedInAsync();
+
+            var html = await person.Browser.GetStringAsync("/Report?view=week&date=2026-09-07");
+
+            Assert.Contains("<span class=\"rp-hero__num\">0:00</span> <span class=\"rp-hero__unit\">submitted that week</span>", html);
+            Assert.Contains("Nothing was submitted that week.", html);
+            Assert.Contains("<a class=\"rp-button rp-button--primary\" role=\"link\" aria-disabled=\"true\" aria-describedby=\"rp-download-why\">", html);
+            Assert.Contains("Nothing to download for 7 Sep to 13 Sep 2026", html);
+            Assert.DoesNotContain("/Report/Export", html);
+            Assert.Contains("Categories appear here", html);
         }
 
         [Fact]
@@ -339,7 +368,8 @@ namespace TimePlanner.Api.Tests
             var range = await person.Browser.GetStringAsync("/Report?from=2026-09-01&to=2026-09-30");
 
             Assert.Contains("view must be week or month", bad);
-            Assert.Contains("<strong>1:00</strong> in", range);
+            Assert.Contains("1 Sep 2026 to 30 Sep 2026", range);
+            Assert.Contains("<span class=\"rp-hero__num\">1:00</span> <span class=\"rp-hero__unit\">submitted in this range</span>", range);
             Assert.Contains("By category", range);
         }
 

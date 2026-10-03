@@ -1,0 +1,183 @@
+/* Team pages
+
+   For now the detailed report under the submissions grid (Views/Admin/Submissions.cshtml): the filters, the summary line and the hours table.
+   The colours, type and spacing come from tokens.css */
+
+.tm-report {
+    margin-top: var(--space-7);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--line);
+}
+
+.tm-report__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.tm-report__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    letter-spacing: -0.01em;
+}
+
+.tm-hint {
+    margin: 0;
+    color: var(--text-2);
+}
+
+/* the filters sit in one row and wrap on a narrow screen, the button lines up with the boxes */
+.tm-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-4);
+}
+
+.tm-field {
+    display: grid;
+    gap: 6px;
+    min-width: 10rem;
+}
+
+.tm-label {
+    font-weight: var(--weight-medium);
+}
+
+.tm-input {
+    min-height: 40px;
+    padding: 0 var(--space-3);
+    font: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+}
+
+    .tm-input:hover {
+        border-color: var(--text-3);
+    }
+
+    .tm-input:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 0;
+        border-color: var(--brand-600);
+    }
+
+.tm-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 40px;
+    padding: 0 var(--space-4);
+    font: inherit;
+    font-weight: var(--weight-semibold);
+    color: #ffffff;
+    text-decoration: none;
+    background: var(--brand-600);
+    border: 1px solid var(--brand-600);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+    .tm-button:hover {
+        background: var(--brand-700);
+        border-color: var(--brand-700);
+    }
+
+    .tm-button:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+.tm-button--secondary {
+    color: var(--text);
+    background: var(--surface);
+    border-color: var(--line-strong);
+}
+
+    .tm-button--secondary:hover {
+        background: var(--paper);
+        border-color: var(--text-3);
+    }
+
+.tm-button__icon {
+    width: 16px;
+    height: 16px;
+}
+
+.tm-alert {
+    max-width: 62ch;
+    margin: var(--space-4) 0 0;
+    padding: var(--space-3);
+    line-height: 1.5;
+    color: var(--danger-700);
+    background: var(--danger-50);
+    border: 1px solid var(--danger-200);
+    border-radius: var(--radius-sm);
+}
+
+.tm-report__summary {
+    margin: var(--space-5) 0 var(--space-3);
+    color: var(--text-2);
+}
+
+    .tm-report__summary strong {
+        font-variant-numeric: tabular-nums;
+        color: var(--text);
+    }
+
+.tm-empty {
+    margin: 0;
+    color: var(--text-2);
+}
+
+.tm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+}
+
+    .tm-table th,
+    .tm-table td {
+        padding: var(--space-3) var(--space-2);
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .tm-table thead th {
+        font-size: var(--text-xs);
+        font-weight: var(--weight-medium);
+        color: var(--text-3);
+    }
+
+    .tm-table tbody th {
+        font-weight: var(--weight-medium);
+        overflow-wrap: anywhere;
+    }
+
+    .tm-table .tm-num {
+        text-align: right;
+    }
+
+@media (max-width: 40rem) {
+    .tm-field {
+        flex: 1 1 100%;
+    }
+
+    .tm-input,
+    .tm-button {
+        min-height: var(--target-touch);
+    }
+
+    .tm-filters .tm-button {
+        width: 100%;
+    }
+}

@@ -8,7 +8,7 @@ using TimePlanner.Dashboard.Services.Reports;
 namespace TimePlanner.Dashboard.Controllers
 {
     //-----------------------------
-    //the administrators' pages: team overview (/Admin), submissions (/Admin/Submissions) and exports (/Admin/Exports).
+    //the administrators' pages: team overview (/Admin), submissions with the detailed report (/Admin/Submissions) and exports (/Admin/Exports).
     //accounts are managed on /Users. All of it is a record of what was submitted, there is nothing to approve or chase
     [Authorize(Roles = "Admin")]
     public class AdminController : Controller
@@ -32,11 +32,25 @@ namespace TimePlanner.Dashboard.Controllers
             return View(page);
         }
 
+        //-----------------------------
+        //the submissions grid for the week or month, and under it the detailed report: hours for any range (the grid's period to begin with),
+        //grouped by project, company, person, day or activity, for everyone or one person
         [HttpGet]
-        public async Task<IActionResult> Submissions(string? view, DateTime? date)
+        public async Task<IActionResult> Submissions(string? view, DateTime? date, DateTime? from, DateTime? to,
+            ReportGrouping groupBy = ReportGrouping.Project, int? userId = null)
         {
             var (page, period) = Resolve(view, date);
             page.Grid = await _admin.GridAsync(period);
+
+            page.ReportFrom = from ?? period.From;
+            page.ReportTo = to ?? period.To;
+            page.GroupBy = groupBy;
+            page.ReportUserId = userId;
+            page.People = await _reports.GetUserOptionsAsync();
+            if (ReportService.ValidateRange(page.ReportFrom, page.ReportTo) is string problem)
+                page.ReportError = problem;
+            else
+                page.Report = await _reports.GetHoursAsync(page.ReportFrom, page.ReportTo, groupBy, userId, null);
             return View(page);
         }
 

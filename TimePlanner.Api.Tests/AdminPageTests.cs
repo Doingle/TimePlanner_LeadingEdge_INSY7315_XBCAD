@@ -170,6 +170,67 @@ namespace TimePlanner.Api.Tests
             Assert.Contains("nobody to show yet", await admin.GetStringAsync("/Admin/Submissions"));
         }
 
+        // ---------- the detailed report, under the submissions grid ----------
+
+        [Fact]
+        public async Task TheDetailedReport_IsUnderTheGrid_AndStartsOnTheGridsWeekForEveryone()
+        {
+            using var f = new ClockedFactory();
+            var a = await DeveloperAsync(f);
+            await f.AddEntryAsync(a.ProfileId, "Acme", "Web", Coding, ClockedFactory.Monday.AddHours(9), 90);
+            var admin = await AdminBrowserAsync(f);
+
+            var html = await admin.GetStringAsync("/Admin/Submissions");
+
+            Assert.True(html.IndexOf("submissions-grid", StringComparison.Ordinal) < html.IndexOf("id=\"detailed-report\"", StringComparison.Ordinal));
+            Assert.Contains("id=\"from\" name=\"from\" value=\"2026-09-14\"", html);
+            Assert.Contains("id=\"to\" name=\"to\" value=\"2026-09-20\"", html);
+            Assert.Contains("<option value=\"\">Everyone</option>", html);
+            Assert.Contains(a.Email, html);
+            Assert.Contains("<strong>1:30</strong> in 1 entry", html);
+            Assert.Contains("<th scope=\"row\">Acme / Web</th>", html);
+            //a timesheet is one person's, so the download waits for a person to be picked
+            Assert.Contains("Pick a person to download their timesheet.", html);
+            Assert.DoesNotContain("/Report/Export", html);
+        }
+
+        [Fact]
+        public async Task TheDetailedReport_GroupsAnyRangeForOnePerson_AndTheirTimesheetDownloads()
+        {
+            using var f = new ClockedFactory();
+            var b = await DeveloperAsync(f);
+            await f.AddEntryAsync(a.ProfileId, "Acme", "Web", Coding, ClockedFactory.Monday.AddHours(9), 60, "devs work");
+            await f.AddEntryAsync(a.ProfileId, "Acme", "Web", Email, ClockedFactory.Tuesday.AddHours(9), 30);
+            await f.AddEntryAsync(b.ProfileId, "BobsClient", "Secret", Coding, ClockedFactory.Monday.AddHours(9), 600);
+            var admin = await AdminBrowserAsync(f);
+
+            var html = await admin.GetStringAsync($"/Admin/Submissions?view=week&date=2026-09-14&from=2026-09-14&to=2026-09-15&groupBy=Day&userId={a.ProfileId}");
+            var export = await admin.GetAsync($"/Report/Export?from=2026-09-14&to=2026-09-15&userId={a.ProfileId}");
+
+            Assert.Contains("<option value=\"Day\" selected=\"selected\">Day</option>", html);
+            Assert.Contains($"<option value=\"{a.ProfileId}\" selected=\"selected\">", html);
+            Assert.Contains("<th scope=\"col\">Day</th>", html);
+            Assert.Equal(2, Regex.Matches(html, "<th scope=\"row\">").Count);
+            Assert.Contains("<strong>1:30</strong> in 2 entries", html);
+            Assert.DoesNotContain("BobsClient", Regex.Match(html, "id=\"detailed-report\".*", RegexOptions.Singleline).Value);
+            Assert.Contains($"href=\"/Report/Export?from=2026-09-14&amp;to=2026-09-15&amp;userId={a.ProfileId}\"", html);
+            Assert.Contains("devs work", await export.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
+        public async Task TheDetailedReport_ExplainsAnInvalidRange_AndTheGridStillShows()
+        {
+            using var f = new ClockedFactory();
+            var a = await DeveloperAsync(f);
+            var admin = await AdminBrowserAsync(f);
+
+            var html = await admin.GetStringAsync("/Admin/Submissions?from=2026-09-15&to=2026-09-10");
+
+            Assert.Contains("must not be after", html);
+            Assert.Contains(a.Email, html);
+            Assert.Contains("grid-cell--missing", html);
+        }
+
         // ---------- exports ----------
 
         [Fact]
