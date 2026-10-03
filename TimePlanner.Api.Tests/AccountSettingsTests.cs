@@ -241,6 +241,29 @@ namespace TimePlanner.Api.Tests
         }
 
         [Fact]
+        public async Task TheSettingsPage_ShowsEachOutcome_NextToTheFormItCameFrom()
+        {
+            var person = await PersonAsync();
+            var browser = await BrowserAsync(person.Email, Current);
+
+            //the name form's half of the page runs from its heading to the password heading
+            static string NamePart(string html) => html[html.IndexOf("id=\"st-name-title\"", StringComparison.Ordinal)..html.IndexOf("id=\"st-password-title\"", StringComparison.Ordinal)];
+            static string PasswordPart(string html) => html[html.IndexOf("id=\"st-password-title\"", StringComparison.Ordinal)..];
+
+            var badName = await (await PostFormAsync(browser, "/Settings/Name", new() { ["name"] = "   " })).Content.ReadAsStringAsync();
+            var badPassword = await (await PostFormAsync(browser, "/Settings/Password", new() { ["currentPassword"] = Current, ["newPassword"] = Next, ["confirmPassword"] = "Other-Password-44!" })).Content.ReadAsStringAsync();
+            var renamed = await browser.GetStringAsync((await PostFormAsync(browser, "/Settings/Name", new() { ["name"] = "Outcome Person" })).Headers.Location!.OriginalString);
+
+            Assert.Contains("st-status--error", NamePart(badName));
+            Assert.Contains("aria-invalid=\"true\"", NamePart(badName));
+            Assert.DoesNotContain("st-status", PasswordPart(badName));
+            Assert.Contains("do not match", PasswordPart(badPassword));
+            Assert.DoesNotContain("st-status", NamePart(badPassword));
+            Assert.Contains("Your name was updated", NamePart(renamed));
+            Assert.DoesNotContain("st-status", PasswordPart(renamed));
+        }
+
+        [Fact]
         public async Task TheSettingsPage_ChangesThePassword_KeepsThisSessionAndEndsTheOthers()
         {
             var person = await PersonAsync();

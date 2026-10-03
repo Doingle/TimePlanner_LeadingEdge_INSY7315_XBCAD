@@ -1,54 +1,160 @@
 @model SettingsPageModel
 @{
     ViewData["Title"] = "Settings";
+    ViewData["Nav"] = "Settings";
+    Layout = "_AppLayout";
+
+    var account = Model.Account;
+    //someone on a temporary password from their admin only sees the one task: choosing their own
+    var temporary = account.MustChangePassword;
+    var initials = string.Concat(account.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(word => char.ToUpperInvariant(word[0])));
+
+    //a failed change shows the page again from the address of the form that was sent, so its error goes under that form
+    var nameError = Model.Error != null && (Context.Request.Path.Value ?? "").EndsWith("/Name", StringComparison.OrdinalIgnoreCase) ? Model.Error : null;
+    var passwordError = Model.Error != null && nameError == null ? Model.Error : null;
+    //a change that worked comes back to the page with a message saying what changed
+    var passwordMessage = Model.Message != null && Model.Message.Contains("password", StringComparison.OrdinalIgnoreCase) ? Model.Message : null;
+    var nameMessage = Model.Message != null && passwordMessage == null ? Model.Message : null;
 }
 
-<h1 class="h3 mb-3">Settings</h1>
-
-@if (Model.Account.MustChangePassword)
-{
-    <div class="alert alert-warning" role="alert">You are using a temporary password. Choose your own below to continue.</div>
-}
-@if (Model.Message != null)
-{
-    <div class="alert alert-success" role="status">@Model.Message</div>
-}
-@if (Model.Error != null)
-{
-    <div class="alert alert-danger" role="alert">@Model.Error</div>
+@section Styles {
+    <link rel="stylesheet" href="~/css/settings.css" asp-append-version="true" />
 }
 
-<p class="text-muted">Signed in as @Model.Account.Email (@Model.Account.Role). Tracking settings are in the widget.</p>
+@section Hero {
+    <section class="st-hero" aria-labelledby="st-title">
+        <div class="st-hero__inner">
+            @if (temporary)
+            {
+                <div class="st-narrow">
+                    <h1 class="st-hero__title" id="st-title">Choose your own password</h1>
+                    <p class="st-hero__sub">You're signed in as @account.Email with a temporary password from your admin. Set your own to start using Time Planner.</p>
+                </div>
+            }
+            else
+            {
+                <div class="st-who st-narrow">
+                    <span class="st-who__avatar" aria-hidden="true">@initials</span>
+                    <div class="st-who__text">
+                        <h1 class="st-hero__title" id="st-title"><span class="app-sr-only">Settings for </span>@account.Name</h1>
+                        <p class="st-who__lines">
+                            @if (account.Email != account.Name)
+                            {
+                                <span>@account.Email</span>
+                            }
+                            <span>@account.Role</span>
+                        </p>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+}
 
-<div class="row g-4">
-    <div class="col-md-6">
-        <h2 class="h5">Your name</h2>
-        <form method="post" asp-action="Name">
-            <div class="mb-3">
-                <label for="name" class="form-label">Name</label>
-                <input id="name" name="name" class="form-control" maxlength="100" value="@Model.Account.Name" required />
-            </div>
-            <button type="submit" class="btn btn-primary">Save name</button>
-        </form>
+@* one column, one left edge: the header, the panel, its headings, labels, boxes and buttons all start at the same place *@
+<div class="st-settings">
+    <div class="st-sheet st-narrow">
+        @if (!temporary)
+        {
+            <section class="st-setting" aria-labelledby="st-name-title">
+                <h2 class="st-setting__title" id="st-name-title">Your name</h2>
+                <form class="st-form" method="post" asp-action="Name">
+                    <div class="st-field">
+                        <input class="st-input" id="name" name="name" autocomplete="name" maxlength="100" value="@account.Name" required
+                               aria-labelledby="st-name-title" aria-describedby="st-name-hint st-name-count@(nameError != null ? " st-name-status" : "")" aria-invalid="@(nameError != null ? "true" : null)" />
+                        <div class="st-field__row">
+                            <p class="st-field__hint" id="st-name-hint">The name your admin sees on the team pages and in exports.</p>
+                            @* shown by settings.js near the limit *@
+                            <span class="st-field__count" id="st-name-count" hidden></span>
+                        </div>
+                    </div>
+                    <div class="st-form__actions">
+                        <button class="st-button" type="submit">Save name</button>
+                        @if (nameMessage != null)
+                        {
+                            <p class="st-status st-status--ok" role="status">
+                                <svg class="st-status__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                                @nameMessage
+                            </p>
+                        }
+                        else if (nameError != null)
+                        {
+                            <p class="st-status st-status--error" id="st-name-status" role="alert">
+                                <svg class="st-status__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+                                @nameError
+                            </p>
+                        }
+                    </div>
+                </form>
+            </section>
+        }
+
+        <section class="st-setting" aria-labelledby="st-password-title">
+            <h2 class="@(temporary ? "app-sr-only" : "st-setting__title")" id="st-password-title">@(temporary ? "New password" : "Change password")</h2>
+            <form class="st-form" method="post" asp-action="Password">
+                <div class="st-field">
+                    <label class="st-label" for="currentPassword">@(temporary ? "Temporary password" : "Current password")</label>
+                    <div class="st-input-wrap">
+                        <input class="st-input st-input--password" id="currentPassword" name="currentPassword" type="password" autocomplete="current-password" required
+                               aria-describedby="@(temporary ? "st-current-hint" : null)" />
+                        <button class="st-reveal" type="button" data-reveal="currentPassword" aria-label="Show password" aria-pressed="false">
+                            <svg class="st-reveal__show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+                            <svg class="st-reveal__hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.4 17.4 0 0 0 2 12s3.5 7 10 7a10.6 10.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                        </button>
+                    </div>
+                    @if (temporary)
+                    {
+                        <p class="st-field__hint" id="st-current-hint">The one your admin gave you.</p>
+                    }
+                </div>
+                <div class="st-field">
+                    <label class="st-label" for="newPassword">New password</label>
+                    <div class="st-input-wrap">
+                        <input class="st-input st-input--password" id="newPassword" name="newPassword" type="password" autocomplete="new-password" required aria-describedby="st-password-rules" />
+                        <button class="st-reveal" type="button" data-reveal="newPassword" aria-label="Show password" aria-pressed="false">
+                            <svg class="st-reveal__show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+                            <svg class="st-reveal__hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.4 17.4 0 0 0 2 12s3.5 7 10 7a10.6 10.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                        </button>
+                    </div>
+                    <p class="st-field__hint" id="st-password-rules">At least 12 characters, with upper and lower case letters, a digit and a symbol.</p>
+                </div>
+                <div class="st-field">
+                    <label class="st-label" for="confirmPassword">Confirm new password</label>
+                    <div class="st-input-wrap">
+                        <input class="st-input st-input--password" id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" required />
+                        <button class="st-reveal" type="button" data-reveal="confirmPassword" aria-label="Show password" aria-pressed="false">
+                            <svg class="st-reveal__show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+                            <svg class="st-reveal__hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.4 17.4 0 0 0 2 12s3.5 7 10 7a10.6 10.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="st-form__actions">
+                    <button class="st-button" type="submit">@(temporary ? "Set password" : "Change password")</button>
+                    @if (passwordMessage != null)
+                    {
+                        <p class="st-status st-status--ok" role="status">
+                            <svg class="st-status__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                            @passwordMessage
+                        </p>
+                    }
+                    else if (passwordError != null)
+                    {
+                        <p class="st-status st-status--error" role="alert">
+                            <svg class="st-status__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+                            @passwordError
+                        </p>
+                    }
+                </div>
+            </form>
+        </section>
     </div>
 
-    <div class="col-md-6">
-        <h2 class="h5">Change password</h2>
-        <form method="post" asp-action="Password">
-            <div class="mb-3">
-                <label for="currentPassword" class="form-label">Current password</label>
-                <input id="currentPassword" name="currentPassword" type="password" class="form-control" autocomplete="current-password" required />
-            </div>
-            <div class="mb-3">
-                <label for="newPassword" class="form-label">New password</label>
-                <input id="newPassword" name="newPassword" type="password" class="form-control" autocomplete="new-password" required />
-                <div class="form-text">At least 12 characters with upper and lower case letters, a digit and a symbol.</div>
-            </div>
-            <div class="mb-3">
-                <label for="confirmPassword" class="form-label">Confirm new password</label>
-                <input id="confirmPassword" name="confirmPassword" type="password" class="form-control" autocomplete="new-password" required />
-            </div>
-            <button type="submit" class="btn btn-primary">Change password</button>
-        </form>
-    </div>
+    @if (!temporary)
+    {
+        <p class="st-note st-narrow">Tracking settings are in the widget.</p>
+    }
 </div>
+
+@section Scripts {
+    <script src="~/js/settings.js" asp-append-version="true"></script>
+}

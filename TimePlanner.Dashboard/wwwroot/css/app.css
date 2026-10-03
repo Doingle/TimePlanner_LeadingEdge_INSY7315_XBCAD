@@ -296,6 +296,11 @@ body.app-body {
         outline: none;
     }
 
+    /* the settings link while on the settings page */
+    .app-user__item[aria-current="page"] {
+        font-weight: var(--weight-semibold);
+    }
+
 .app-user__icon {
     flex: none;
     width: 18px;

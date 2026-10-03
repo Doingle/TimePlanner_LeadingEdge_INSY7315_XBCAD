@@ -222,6 +222,32 @@ namespace TimePlanner.Api.Tests
         }
 
         [Fact]
+        public async Task TheSettingsPage_OnATemporaryPassword_ShowsOnlyThatTask_WithoutTheTabs()
+        {
+            var admin = await AdminAsync();
+            var created = await CreateAsync(admin);
+            var browser = await BrowserAsync(created.Email, created.TemporaryPassword);
+
+            var before = await browser.GetStringAsync("/Settings");
+            await PostFormAsync(browser, "/Settings", "/Settings/Password",
+                new() { ["currentPassword"] = created.TemporaryPassword, ["newPassword"] = Chosen, ["confirmPassword"] = Chosen });
+            var after = await browser.GetStringAsync("/Settings");
+
+            Assert.Contains("Choose your own password", before);
+            Assert.Contains($"You're signed in as {created.Email} with a temporary password from your admin.", WebUtility.HtmlDecode(before));
+            Assert.Contains(">Temporary password</label>", before);
+            Assert.Contains(">Set password</button>", before);
+            //no name to change and no tabs to wander off to until the task is done, signing out still works
+            Assert.DoesNotContain("Your name", before);
+            Assert.DoesNotContain("class=\"app-nav\"", before);
+            Assert.Contains("/Account/Logout", before);
+            //once chosen, the page is the usual one again
+            Assert.Contains("class=\"app-nav\"", after);
+            Assert.Contains("Your name", after);
+            Assert.DoesNotContain("temporary password", after);
+        }
+
+        [Fact]
         public async Task TheCreatePage_ShowsTheTemporaryPasswordOnce_AndNeverAgain()
         {
             var browser = await BrowserAsync(ApiFactory.AdminEmail, ApiFactory.AdminPassword);
