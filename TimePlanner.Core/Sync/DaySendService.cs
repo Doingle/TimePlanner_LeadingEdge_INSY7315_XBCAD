@@ -33,12 +33,30 @@ namespace TimePlanner.Core.Sync
             _activities = activities;
         }
 
+        //one refresh at a time because tokens rotate
+        private static readonly SemaphoreSlim RefreshGate = new(1, 1);
+
         //-----------------------------
-        //true while a saved token is still valid
+        //true while a saved token or refresh token is still valid
         public async Task<bool> IsSignedInAsync(DateTime nowUtc)
         {
             var token = await _tokens.LoadAsync();
-            return token != null && token.ExpiresAtUtc > nowUtc.AddMinutes(1);
+            return token != null && (token.AccessValid(nowUtc) || token.CanRefresh(nowUtc));
+        }
+
+        //-----------------------------
+        //stored email when signed in or refreshed
+        public async Task<string?> GetSignedInEmailAsync(DateTime nowUtc)
+        {
+            var token = await _tokens.LoadAsync();
+
+            //returns the email while the user remains signed in or refreshable
+            if (token != null && (token.AccessValid(nowUtc) || token.CanRefresh(nowUtc)))
+            {
+                return token.Email;
+            }
+
+            return null;
         }
 
         //-----------------------------
@@ -57,8 +75,19 @@ namespace TimePlanner.Core.Sync
         }
 
         //-----------------------------
-        //forgets the saved token
-        public Task SignOutAsync() => _tokens.ClearAsync();
+        //ends the session on the server and forgets the local token
+        public async Task SignOutAsync()
+        {
+            var token = await _tokens.LoadAsync();
+
+            //revokes the refresh token on the server before clearing local state
+            if (token?.RefreshToken != null)
+            {
+                await _client.LogoutAsync(token.RefreshToken);
+            }
+
+            await _tokens.ClearAsync();
+        }
 
         //-----------------------------
         //days already sent newest first
@@ -71,6 +100,72 @@ namespace TimePlanner.Core.Sync
             var rows = await BuildRowsAsync(userId, day);
             var ended = await HasEndedAsync(userId, day, now);
             return new DayPreview(day, rows, Hours(rows), ended && rows.Count > 0);
+        }
+
+        //-----------------------------
+        //gets a valid access token or refreshes it silently using the refresh token
+        private async Task<(StoredToken? Token, SendOutcome? Problem)> GetTokenAsync(DateTime nowUtc, bool forceRefresh)
+        {
+            var token = await _tokens.LoadAsync();
+
+            //a missing token needs a fresh sign in
+            if (token == null)
+            {
+                return (null, SendOutcome.Of(SendStatus.NeedsSignIn, "Please sign in to the dashboard."));
+            }
+
+            //a valid access token is returned directly when force refresh is false
+            if (!forceRefresh && token.AccessValid(nowUtc))
+            {
+                return (token, null);
+            }
+
+            //an expired refresh token clears the store
+            if (!token.CanRefresh(nowUtc))
+            {
+                await _tokens.ClearAsync();
+                return (null, SendOutcome.Of(SendStatus.NeedsSignIn, "Please sign in to the dashboard."));
+            }
+
+            await RefreshGate.WaitAsync();
+            try
+            {
+                var reloaded = await _tokens.LoadAsync();
+
+                //another caller refreshed the token while waiting
+                if (reloaded != null && reloaded.AccessValid(nowUtc) && reloaded.AccessToken != token.AccessToken)
+                {
+                    return (reloaded, null);
+                }
+
+                var outcome = await _client.RefreshAsync(reloaded ?? token);
+
+                //a successful refresh saves the rotated token
+                if (outcome.Status == SignInStatus.SignedIn)
+                {
+                    await _tokens.SaveAsync(outcome.Token!);
+                    return (outcome.Token, null);
+                }
+
+                //refused refresh clears the store so the user signs in again
+                if (outcome.Status == SignInStatus.InvalidDetails)
+                {
+                    await _tokens.ClearAsync();
+                    return (null, SendOutcome.Of(SendStatus.NeedsSignIn, "Your dashboard session ended. Please sign in again."));
+                }
+
+                //being offline keeps the stored token
+                if (outcome.Status == SignInStatus.Offline)
+                {
+                    return (null, SendOutcome.Of(SendStatus.Offline, outcome.Message));
+                }
+
+                return (null, SendOutcome.Of(SendStatus.Failed, outcome.Message));
+            }
+            finally
+            {
+                RefreshGate.Release();
+            }
         }
 
         //-----------------------------
@@ -91,15 +186,29 @@ namespace TimePlanner.Core.Sync
                 return SendOutcome.Of(SendStatus.NothingToSend, "There are no entries for this day.");
             }
 
-            var token = await _tokens.LoadAsync();
+            var (token, problem) = await GetTokenAsync(nowUtc, false);
 
-            //a missing or expired token needs a fresh sign in
-            if (token == null || token.ExpiresAtUtc <= nowUtc.AddMinutes(1))
+            //a problem loading or refreshing the token is returned directly
+            if (problem != null)
             {
-                return SendOutcome.Of(SendStatus.NeedsSignIn, "Please sign in to the dashboard.");
+                return problem;
             }
 
-            var outcome = await _client.SendDayAsync(token.AccessToken, rows);
+            var outcome = await _client.SendDayAsync(token!.AccessToken, rows);
+
+            //a refused send retries once after a refresh if the refresh token can be used
+            if (outcome.Status == SendStatus.NeedsSignIn && token.CanRefresh(nowUtc))
+            {
+                var (refreshedToken, refreshProblem) = await GetTokenAsync(nowUtc, true);
+
+                //if refresh yielded a problem return it
+                if (refreshProblem != null)
+                {
+                    return refreshProblem;
+                }
+
+                outcome = await _client.SendDayAsync(refreshedToken!.AccessToken, rows);
+            }
 
             //a refused token is dropped so the user signs in again
             if (outcome.Status == SendStatus.NeedsSignIn)

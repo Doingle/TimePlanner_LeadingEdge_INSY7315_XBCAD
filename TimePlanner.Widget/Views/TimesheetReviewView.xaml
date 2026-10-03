@@ -35,6 +35,10 @@
 
             <TextBlock x:Name="Subtitle" Style="{StaticResource Text.Subtitle}" Text="Tuesday, Aug 1 · 6h 5m" />
             <TextBlock x:Name="StatusText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0" />
+            <StackPanel x:Name="AccountRow" Orientation="Horizontal" Visibility="Collapsed" Margin="0,2,0,0">
+                <TextBlock x:Name="AccountText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                <Button x:Name="SignOutButton" Style="{StaticResource Button.Text}" Content="Sign out" Margin="4,0,0,0" Click="SignOut_Click" />
+            </StackPanel>
 
             <ScrollViewer x:Name="EntryScroller" Margin="{StaticResource GapSection}" MaxHeight="300"
                           VerticalScrollBarVisibility="Auto" Focusable="False">

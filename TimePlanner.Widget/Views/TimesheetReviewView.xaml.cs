@@ -57,6 +57,33 @@ namespace TimePlanner.Widget.Views
             SendButton.IsEnabled = preview.CanSend;
 
             RenderSlots(slots);
+            _ = LoadAccountStatusAsync();
+        }
+
+        //-----------------------------
+        //loads signed in account email and shows account row
+        private async Task LoadAccountStatusAsync()
+        {
+            var email = await _flow.GetDashboardEmailAsync();
+
+            //shows signed in email when present
+            if (!string.IsNullOrEmpty(email))
+            {
+                AccountText.Text = $"Signed in as {email}";
+                AccountRow.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                AccountRow.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        //-----------------------------
+        //signs out of dashboard and hides account row
+        private async void SignOut_Click(object sender, RoutedEventArgs e)
+        {
+            await _flow.SignOutOfDashboardAsync();
+            AccountRow.Visibility = Visibility.Collapsed;
         }
 
         //-----------------------------
@@ -385,7 +412,14 @@ namespace TimePlanner.Widget.Views
             {
                 _flow.ShowSignIn(async () =>
                 {
-                    await _flow.SendDayAsync(_day);
+                    var retry = await _flow.SendDayAsync(_day);
+
+                    //a second failure is shown instead of looping back to sign in
+                    if (retry.Status != SendStatus.Sent)
+                    {
+                        MessageBox.Show(retry.Message ?? "The day was not sent.", "Send day");
+                    }
+
                     ReopenTimesheet();
                 }, ReopenTimesheet);
                 return;

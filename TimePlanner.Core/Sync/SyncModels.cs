@@ -12,8 +12,17 @@ namespace TimePlanner.Core.Sync
         string Method);
 
     //-----------------------------
-    //a saved access token for the dashboard api
-    public sealed record StoredToken(string AccessToken, DateTime ExpiresAtUtc, string Email);
+    //saved dashboard tokens where the refresh token keeps the user signed in
+    public sealed record StoredToken(string AccessToken, DateTime ExpiresAtUtc, string Email, string? RefreshToken = null, DateTime? RefreshExpiresAtUtc = null)
+    {
+        //-----------------------------
+        //true while the access token has over a minute left
+        public bool AccessValid(DateTime nowUtc) => ExpiresAtUtc > nowUtc.AddMinutes(1);
+
+        //-----------------------------
+        //true while a refresh token can still be swapped
+        public bool CanRefresh(DateTime nowUtc) => RefreshToken != null && RefreshExpiresAtUtc > nowUtc;
+    }
 
     //-----------------------------
     //one day the user has sent
