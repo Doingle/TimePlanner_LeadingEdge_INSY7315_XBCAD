@@ -281,6 +281,14 @@ namespace TimePlanner.Widget
         public Task<SignInOutcome> SignInToDashboardAsync(string email, string password) => _log.SignInToDashboardAsync(email, password);
 
         //-----------------------------
+        //gets signed in dashboard email
+        public Task<string?> GetDashboardEmailAsync() => _log.GetDashboardEmailAsync();
+
+        //-----------------------------
+        //signs out of dashboard
+        public Task SignOutOfDashboardAsync() => _log.SignOutOfDashboardAsync();
+
+        //-----------------------------
         //opens the editor for an entry or a gap
         public async Task ShowEntryEditorAsync(DateOnly day, TimesheetSlot? entry, DateTime start, DateTime end, Action back)
         {

@@ -305,11 +305,27 @@ namespace TimePlanner.Widget.Services
         }
 
         //-----------------------------
-        //signs in to the dashboard
+        //signs in to the dashboard and saves the token
         public async Task<SignInOutcome> SignInToDashboardAsync(string email, string password)
         {
             await using var scope = scopes.CreateAsyncScope();
-            return await scope.ServiceProvider.GetRequiredService<DashboardClient>().SignInAsync(email, password);
+            return await scope.ServiceProvider.GetRequiredService<DaySendService>().SignInAsync(email, password);
+        }
+
+        //-----------------------------
+        //gets the signed in dashboard email if still valid or refreshable
+        public async Task<string?> GetDashboardEmailAsync()
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<DaySendService>().GetSignedInEmailAsync(clock.GetUtcNow().UtcDateTime);
+        }
+
+        //-----------------------------
+        //signs out of the dashboard
+        public async Task SignOutOfDashboardAsync()
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<DaySendService>().SignOutAsync();
         }
     }
 }
