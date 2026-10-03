@@ -218,6 +218,26 @@ namespace TimePlanner.Api.Tests
             Assert.Contains("Inter Project Authors", license);
         }
 
+        [Fact]
+        public async Task TheLoraFont_IsServedFromThisSite_WithItsLicense()
+        {
+            var client = _factory.NewClient();
+            Assert.Matches(@"<link rel=""stylesheet"" href=""/css/fonts-lora\.css\?v=[^""]+""", await client.GetStringAsync("/Account/Login"));
+
+            foreach (var file in new[] { "lora-latin.woff2", "lora-latin-ext.woff2" })
+            {
+                var response = await client.GetAsync("/fonts/" + file);
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.Equal("font/woff2", response.Content.Headers.ContentType!.MediaType);
+                Assert.Equal("wOF2", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+            }
+
+            var license = await client.GetStringAsync("/fonts/Lora-LICENSE.txt");
+            Assert.Contains("SIL OPEN FONT LICENSE", license.ToUpperInvariant());
+            Assert.Contains("Lora Project Authors", license);
+        }
+
         // ---------- the policy stays strict ----------
 
         [Fact]

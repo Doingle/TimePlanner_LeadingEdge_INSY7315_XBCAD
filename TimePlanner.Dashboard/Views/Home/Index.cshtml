@@ -13,6 +13,18 @@
     string Hm(int minutes) => $"{minutes / 60}:{(minutes % 60).ToString("00", culture)}";
     //a share as a whole percent
     string Pct(double percent) => Math.Round(percent, 0).ToString("0", culture) + "%";
+    //minutes since midnight for an "HH:mm" value
+    int Minutes(string clock)
+    {
+        var time = TimeOnly.ParseExact(clock, "HH:mm", culture);
+        return time.Hour * 60 + time.Minute;
+    }
+    //"10:00 to 11:00", or "10:00 to 11:00 and 13:00 to 14:00"
+    string Spans(IEnumerable<UnloggedSpan> spans)
+    {
+        var parts = spans.Select(s => $"{s.Start} to {s.End}").ToList();
+        return parts.Count <= 1 ? string.Join("", parts) : string.Join(", ", parts.Take(parts.Count - 1)) + " and " + parts[^1];
+    }
 }
 
 @section Styles {
@@ -27,136 +39,192 @@
 }
 
 @{
-    var dayStart = TimeOnly.ParseExact(Model.DayStart, "HH:mm", culture);
-    var dayEnd = TimeOnly.ParseExact(Model.DayEnd, "HH:mm", culture);
-    var unloggedMinutes = Model.Unlogged.Sum(g => g.Minutes);
-    var breakdown = Model.Breakdown;
-    var shownMinutes = Model.Period == "week" ? Model.WeekMinutes : Model.TodayMinutes;
+    //a day only reaches the website once it is submitted, so the hero shows the latest submitted day: usually yesterday during the day, today in the evening.
+    //before the first submission it shows today with everything in place but empty
+    var day = Model.LatestDay;
+    var date = day?.Date ?? Model.Today;
+    var isToday = date == Model.Today;
+    var weekView = Model.Period == "week";
+    var dayMinutes = day?.Minutes ?? 0;
+    var timeline = day?.Timeline ?? Array.Empty<TimelineBlock>();
+    var gaps = day?.Unlogged ?? Array.Empty<UnloggedSpan>();
+    var dayUnlogged = gaps.Sum(g => g.Minutes);
 }
 
-<h1 class="home-title">Today, @Model.Today.ToString("ddd d MMM", culture)</h1>
+@section Hero {
+    <section class="home-hero" aria-label="Your latest day">
+        <div class="home-hero__inner">
+            @{
+                var goalPercent = Model.GoalHours <= 0 ? 0 : dayMinutes / (Model.GoalHours * 60) * 100;
+                //the working day of the latest day, or today's usual one before the first submission
+                var windowStart = day?.DayStart ?? Model.DayStart;
+                var windowEnd = day?.DayEnd ?? Model.DayEnd;
+                var dayStart = Minutes(windowStart);
+                var dayEnd = Minutes(windowEnd);
 
-@* home-status__item--done shows a green tick, home-status__item--pending an orange clock *@
-<ul class="home-status">
-    @if (Model.LastSubmission != null)
-    {
-        <li class="home-status__item home-status__item--done">Last submission: <strong>@Model.LastSubmission.Date.ToString("ddd d MMM", culture), submitted @Model.LastSubmission.SubmittedAt.ToString("HH:mm", culture)</strong></li>
-    }
-    else
-    {
-        <li class="home-status__item home-status__item--pending">Last submission: <strong>—</strong></li>
-    }
+                //an axis label every two hours from the start of the day, and one at the end. A label too close to the end makes way for it
+                var ticks = new List<int>();
+                for (var at = dayStart; at < dayEnd; at += 120)
+                    ticks.Add(at);
+                if (ticks.Count > 1 && dayEnd - ticks[^1] < 60)
+                    ticks.RemoveAt(ticks.Count - 1);
+                ticks.Add(dayEnd);
+            }
 
-    @if (Model.SubmittedToday)
-    {
-        <li class="home-status__item home-status__item--done">Today is submitted.</li>
-    }
-    else
-    {
-        <li class="home-status__item home-status__item--pending">Today isn't submitted yet. Submit it from the widget at the end of your day.</li>
-    }
-</ul>
+            <p class="home-hero__date">@date.ToString("dddd d MMMM", culture)@(day == null ? "" : $"{(isToday ? " (today)" : "")}, submitted at {day.SubmittedAt.ToString("HH:mm", culture)}")</p>
+            <h1 class="home-hero__figure"><span class="home-hero__num">@Hm(dayMinutes)</span> <span class="home-hero__unit">logged</span></h1>
+            <p class="home-hero__meta">@Pct(goalPercent) of your @Model.GoalHours.ToString("0.##", culture) h goal</p>
+            @if (day == null)
+            {
+                <p class="home-hero__meta">Nothing submitted yet. At the end of the day, submit it from the widget.</p>
+            }
+            else if (!isToday)
+            {
+                <p class="home-hero__meta">Today isn't submitted yet. It shows up here once you submit it from the widget.</p>
+            }
 
-<section class="home-card home-timeline" aria-labelledby="timeline-title">
-    <div class="home-timeline__header">
-        <h2 class="home-timeline__title" id="timeline-title">
-            Today's timeline <span class="home-timeline__range">@dayStart.ToString("HH:mm", culture)–@dayEnd.ToString("HH:mm", culture)</span>
-        </h2>
-        <p class="home-timeline__summary"><strong>@Hm(Model.TodayMinutes)</strong> logged (@Pct(Model.GoalProgressPercent) of your @Model.GoalHours.ToString("0.##", culture) h goal), next check-in at —</p>
-    </div>
+            @* home.js places each block from data-start and data-end and each axis label from data-at, app.js colours a bar with data-colour (inline styles are blocked by the CSP) *@
+            <div class="home-ribbon" data-day-start="@windowStart" data-day-end="@windowEnd">
+                @if (timeline.Count == 0 && gaps.Count == 0)
+                {
+                    @* nothing to lay out: the empty track stays, and says why *@
+                    <div class="home-ribbon__track">
+                        <p class="home-ribbon__empty">@(day == null ? "Nothing logged yet. Each submitted day appears here as blocks." : $"Nothing was logged on {date.ToString("dddd d MMMM", culture)}.")</p>
+                    </div>
+                }
+                else
+                {
+                    <ol class="home-ribbon__track" aria-label="@(isToday ? "Today's" : date.ToString("dddd d MMMM", culture) + "'s") entries in time order">
+                        @* entries and the gaps between them, in time order *@
+                        @foreach (var item in timeline.Select(b => (Start: b.Start, Block: (TimelineBlock?)b, Gap: (UnloggedSpan?)null))
+                            .Concat(gaps.Select(g => (Start: g.Start, Block: (TimelineBlock?)null, Gap: (UnloggedSpan?)g)))
+                            .OrderBy(i => i.Start, StringComparer.Ordinal))
+                        {
+                            if (item.Block is { } block)
+                            {
+                                <li class="home-block" data-start="@block.Start" data-end="@block.End" data-tip="@block.Label, @block.Start to @block.End, @Hm(block.Minutes) · @block.Title">
+                                    <span class="home-block__bar" data-colour="@block.Colour"></span>
+                                    <span class="home-block__name">@block.Label</span>
+                                    <span class="home-block__detail home-block__time">@block.Start–@block.End</span>
+                                    <span class="home-block__detail home-block__dur">@Hm(block.Minutes)</span>
+                                    <span class="home-block__more">@block.Title</span>
+                                </li>
+                            }
+                            else if (item.Gap is { } gap)
+                            {
+                                <li class="home-block home-block--gap" data-start="@gap.Start" data-end="@gap.End" data-tip="Not logged, @gap.Start to @gap.End, @Hm(gap.Minutes)">
+                                    <span class="home-block__bar"></span>
+                                    <span class="home-block__name">Not logged</span>
+                                    <span class="home-block__detail home-block__time">@gap.Start–@gap.End</span>
+                                    <span class="home-block__detail home-block__dur">@Hm(gap.Minutes)</span>
+                                </li>
+                            }
+                        }
+                    </ol>
+                }
+                <div class="home-axis" aria-hidden="true">
+                    @foreach (var at in ticks)
+                    {
+                        var label = $"{(at / 60).ToString("00", culture)}:{(at % 60).ToString("00", culture)}";
+                        <span class="home-axis__tick" data-at="@label">@label</span>
+                    }
+                </div>
+            </div>
 
-    @* one block per entry. home.js places it from data-start and data-end, app.js colours it with data-colour (inline styles are blocked by the CSP) *@
-    <div class="home-track" data-day-start="@dayStart.ToString("HH:mm", culture)" data-day-end="@dayEnd.ToString("HH:mm", culture)">
-        @foreach (var block in Model.Timeline)
-        {
-            <div class="home-block" data-start="@block.Start" data-end="@block.End" data-colour="@block.Colour" title="@block.Title"><span class="home-block__label">@block.Label</span></div>
-        }
-        @foreach (var gap in Model.Unlogged)
-        {
-            <div class="home-block home-block--unlogged" data-start="@gap.Start" data-end="@gap.End"><span class="home-block__text">Not logged · @gap.Start–@gap.End</span></div>
-        }
-        @if (Model.Timeline.Count == 0)
-        {
-            <p class="home-track__empty">Nothing logged yet. Each answer you give the widget appears here as a block.</p>
-        }
+            @if (dayUnlogged > 0)
+            {
+                <p class="home-hero__note">
+                    <svg class="home-hero__note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 8v4M12 16h.01" />
+                    </svg>
+                    <span><strong>@Hm(dayUnlogged) wasn't logged, @Spans(gaps).</strong> To fill it, add the time in the widget and submit @(isToday ? "today" : "that day") again.</span>
+                </p>
+            }
+        </div>
+    </section>
+}
 
-        @* follows the device clock, see home.js *@
-        <div class="home-now" hidden><span class="home-now__label">Now</span></div>
-    </div>
+@{
+    //the latest day's breakdown, or today's (empty) one before the first submission
+    var breakdown = weekView || day == null ? Model.Breakdown : day.Breakdown;
+    var title = weekView ? "Where this week went" : isToday ? "Where today went" : $"Where {date.ToString("dddd", culture)} went";
+    var subtitle = weekView
+        ? Model.WeekMinutes == 0 ? "Nothing logged this week yet"
+            : Model.WeekSubmittedDays == 0 ? $"{Hm(Model.WeekMinutes)} logged this week"
+            : $"{Hm(Model.WeekMinutes)} logged from {Model.WeekSubmittedDays} submitted day{(Model.WeekSubmittedDays == 1 ? "" : "s")}"
+        : dayMinutes == 0 ? (isToday ? "Nothing logged today yet" : $"Nothing logged on {date.ToString("ddd d MMM", culture)}")
+            : dayUnlogged > 0 ? $"{Hm(dayMinutes)} logged, plus {Hm(dayUnlogged)} not logged"
+            : isToday ? $"{Hm(dayMinutes)} logged today"
+            : $"{Hm(dayMinutes)} logged on {date.ToString("ddd d MMM", culture)}";
+    //each bar is as long as its share of the largest row, so the biggest one always fills the column
+    var categoryMax = breakdown.ByCategory.Select(r => r.Minutes).DefaultIfEmpty(0).Max();
+    var projectMax = breakdown.ByProject.Select(r => r.Minutes).DefaultIfEmpty(0).Max();
+    string Width(int minutes, int max) => max <= 0 ? "0" : (minutes * 100.0 / max).ToString("0.#", culture);
 
-    <div class="home-axis" aria-hidden="true">
-        @for (var hour = dayStart.Hour; hour <= dayEnd.Hour; hour++)
-        {
-            <span class="home-axis__tick"><span class="home-axis__label">@hour.ToString("00", culture):00</span></span>
-        }
-    </div>
+    <section class="home-where" aria-labelledby="where-title">
+        <div class="home-where__head">
+            <div>
+                <h2 class="home-where__title" id="where-title">@title</h2>
+                <p class="home-where__sub">@subtitle</p>
+            </div>
 
-    @if (Model.Unlogged.Count > 0)
-    {
-        <p class="home-alert" role="alert"><strong>@Hm(unloggedMinutes) isn't logged, @string.Join(", ", Model.Unlogged.Select(g => $"{g.Start}–{g.End}")).</strong> Add this time in the widget before you submit today.</p>
-    }
-</section>
-
-<section class="home-split" aria-labelledby="split-title">
-    <div class="home-split__header">
-        <div>
-            <h2 class="home-split__title" id="split-title">Where the time went</h2>
-            <p class="home-split__subtitle">@(shownMinutes == 0 ? (Model.Period == "week" ? "Nothing logged this week yet" : "Nothing logged today yet") : $"{Hm(shownMinutes)} logged {(Model.Period == "week" ? "this week" : "today")}")</p>
+            @* a form, so the choice works without scripts: each button reloads the page with ?period=. "today" shows the latest submitted day *@
+            <form class="home-where__period" method="get" asp-controller="Home" asp-action="Index">
+                <div class="home-toggle" role="group" aria-label="Period">
+                    <button class="home-toggle__option" type="submit" name="period" value="today" aria-pressed="@(weekView ? "false" : "true")">@(isToday ? "Today" : date.ToString("ddd d MMM", culture))</button>
+                    <button class="home-toggle__option" type="submit" name="period" value="week" aria-pressed="@(weekView ? "true" : "false")">This week</button>
+                </div>
+            </form>
         </div>
 
-        @* a form, so the choice works without scripts: each button reloads the page with ?period= *@
-        <form method="get" asp-controller="Home" asp-action="Index">
-            <div class="home-toggle" role="group" aria-label="Period">
-                <button class="home-toggle__option" type="submit" name="period" value="today" aria-pressed="@(Model.Period == "today" ? "true" : "false")">Today</button>
-                <button class="home-toggle__option" type="submit" name="period" value="week" aria-pressed="@(Model.Period == "week" ? "true" : "false")">This week</button>
-            </div>
-        </form>
-    </div>
+        <div class="home-split">
+            <section class="home-split__col" aria-labelledby="category-title">
+                <h3 class="home-split__title" id="category-title">By category</h3>
+                @if (breakdown.ByCategory.Count == 0)
+                {
+                    <p class="home-split__empty">Categories appear here, largest first, once something is logged.</p>
+                }
+                else
+                {
+                    <ul class="home-bars">
+                        @foreach (var row in breakdown.ByCategory)
+                        {
+                            <li class="home-bar-row">
+                                <span class="home-bar-row__label">@row.Label</span>
+                                <span class="home-bar-row__bar" aria-hidden="true"><span class="home-bar-row__fill" data-percent="@Width(row.Minutes, categoryMax)" data-colour="@row.Colour"></span></span>
+                                <span class="home-bar-row__time">@Hm(row.Minutes)</span>
+                                <span class="home-bar-row__pct">@Pct(row.Percent)</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
 
-    <div class="home-split__cards">
-        <section class="home-card home-breakdown" aria-labelledby="category-title">
-            <h3 class="home-breakdown__title" id="category-title">By category</h3>
-            @if (breakdown.ByCategory.Count == 0)
-            {
-                <p class="home-breakdown__empty">Categories appear here, largest first, once something is logged.</p>
-            }
-            else
-            {
-                <ul class="home-breakdown__list">
-                    @foreach (var row in breakdown.ByCategory)
-                    {
-                        <li class="home-breakdown__row">
-                            <span class="home-breakdown__name">@row.Label</span>
-                            <span class="home-bar" aria-hidden="true"><span class="home-bar__fill" data-percent="@row.Percent.ToString("0.#", culture)" data-colour="@row.Colour"></span></span>
-                            <span class="home-breakdown__value"><strong>@Hm(row.Minutes)</strong> · @Pct(row.Percent)</span>
-                        </li>
-                    }
-                </ul>
-            }
-        </section>
-
-        <section class="home-card home-breakdown" aria-labelledby="project-title">
-            <h3 class="home-breakdown__title" id="project-title">By project</h3>
-            @if (breakdown.ByProject.Count == 0)
-            {
-                <p class="home-breakdown__empty">Projects appear here, largest first, once something is logged.</p>
-            }
-            else
-            {
-                <ul class="home-breakdown__list">
-                    @foreach (var row in breakdown.ByProject)
-                    {
-                        <li class="home-breakdown__row">
-                            <span class="home-breakdown__name">@row.Label <small class="home-breakdown__note">@(row.Billable == true ? "Billable" : "Non-billable")</small></span>
-                            <span class="home-bar" aria-hidden="true"><span class="home-bar__fill @(row.Billable == true ? "home-bar__fill--billable" : "home-bar__fill--non-billable")" data-percent="@row.Percent.ToString("0.#", culture)"></span></span>
-                            <span class="home-breakdown__value"><strong>@Hm(row.Minutes)</strong> · @Pct(row.Percent)</span>
-                        </li>
-                    }
-                </ul>
-            }
-        </section>
-    </div>
-</section>
+            <section class="home-split__col" aria-labelledby="project-title">
+                <h3 class="home-split__title" id="project-title">By project</h3>
+                @if (breakdown.ByProject.Count == 0)
+                {
+                    <p class="home-split__empty">Projects appear here, largest first, once something is logged.</p>
+                }
+                else
+                {
+                    <ul class="home-bars">
+                        @foreach (var row in breakdown.ByProject)
+                        {
+                            <li class="home-bar-row">
+                                <span class="home-bar-row__label">@row.Label <small>@(row.Billable == true ? "Billable" : "Non-billable")</small></span>
+                                <span class="home-bar-row__bar" aria-hidden="true"><span class="home-bar-row__fill @(row.Billable == true ? "home-bar-row__fill--billable" : "home-bar-row__fill--non-billable")" data-percent="@Width(row.Minutes, projectMax)"></span></span>
+                                <span class="home-bar-row__time">@Hm(row.Minutes)</span>
+                                <span class="home-bar-row__pct">@Pct(row.Percent)</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        </div>
+    </section>
+}
 
 @section Scripts {
     <script src="~/js/home.js" asp-append-version="true"></script>

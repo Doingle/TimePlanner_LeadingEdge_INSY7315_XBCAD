@@ -274,6 +274,61 @@ namespace TimePlanner.Api.Tests
             Assert.True((await GetAsync(person.Client)).GetProperty("submittedToday").GetBoolean());
         }
 
+        // ---------- the latest submitted day ----------
+
+        [Fact]
+        public async Task TheLatestDay_IsTheLastSubmittedDayInFull_EvenWhenItIsNotToday()
+        {
+            var person = await PersonAsync();
+            await Add(_factory, person.ProfileId, ClockedFactory.Monday.AddHours(9), 60, Meeting);
+            await Add(_factory, person.ProfileId, ClockedFactory.Tuesday.AddHours(9), 60);
+            await Add(_factory, person.ProfileId, ClockedFactory.Tuesday.AddHours(11), 90, Email);
+            await _factory.SubmitAsync(person.ProfileId, ClockedFactory.Monday);
+            await _factory.SubmitAsync(person.ProfileId, ClockedFactory.Tuesday);
+
+            var o = await GetAsync(person.Client);
+            var day = o.GetProperty("latestDay");
+
+            Assert.Equal("2026-09-15T00:00:00", day.GetProperty("date").GetString());
+            Assert.Equal("2026-09-15T17:05:00+02:00", day.GetProperty("submittedAt").GetString());
+            Assert.Equal(150, day.GetProperty("minutes").GetInt32());
+            Assert.Equal("08:00", day.GetProperty("dayStart").GetString());
+            Assert.Equal("17:00", day.GetProperty("dayEnd").GetString());
+            Assert.Equal(new[] { "09:00", "11:00" }, day.GetProperty("timeline").EnumerateArray().Select(b => b.GetProperty("start").GetString()));
+            var gap = Assert.Single(day.GetProperty("unlogged").EnumerateArray());
+            Assert.Equal("10:00", gap.GetProperty("start").GetString());
+            Assert.Equal("11:00", gap.GetProperty("end").GetString());
+            //only Tuesday's entries: Monday's meeting is left out of its breakdown
+            Assert.Equal(new[] { "Email", "Coding" }, day.GetProperty("breakdown").GetProperty("byCategory").EnumerateArray().Select(r => r.GetProperty("label").GetString()));
+            //today was not sent, so today's own timeline stays empty
+            Assert.Empty(o.GetProperty("timeline").EnumerateArray());
+            Assert.Equal(2, o.GetProperty("weekSubmittedDays").GetInt32());
+        }
+
+        [Fact]
+        public async Task TheLatestDay_IsNullBeforeTheFirstSubmission_AndCanBeInAnEarlierWeek()
+        {
+            var newcomer = await PersonAsync();
+            var lastWeek = await PersonAsync();
+            var today = await PersonAsync();
+            await _factory.SubmitAsync(lastWeek.ProfileId, ClockedFactory.Monday.AddDays(-3));
+            await Add(_factory, today.ProfileId, Today.AddHours(9), 30);
+            await _factory.SubmitAsync(today.ProfileId, Today);
+
+            var none = await GetAsync(newcomer.Client);
+            var friday = await GetAsync(lastWeek.Client);
+            var sent = await GetAsync(today.Client);
+
+            Assert.Equal(JsonValueKind.Null, none.GetProperty("latestDay").ValueKind);
+            Assert.Equal(0, none.GetProperty("weekSubmittedDays").GetInt32());
+            Assert.Equal("2026-09-11T00:00:00", friday.GetProperty("latestDay").GetProperty("date").GetString());
+            Assert.Equal(0, friday.GetProperty("latestDay").GetProperty("minutes").GetInt32());
+            Assert.Equal(0, friday.GetProperty("weekSubmittedDays").GetInt32());
+            Assert.Equal("2026-09-16T00:00:00", sent.GetProperty("latestDay").GetProperty("date").GetString());
+            Assert.Equal(30, sent.GetProperty("latestDay").GetProperty("minutes").GetInt32());
+            Assert.Equal(1, sent.GetProperty("weekSubmittedDays").GetInt32());
+        }
+
         // ---------- the company's day, not the server's ----------
 
         [Fact]

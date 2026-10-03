@@ -1,6 +1,7 @@
 //-----------------------------
-//lays out the home page's timeline. The content security policy blocks inline styles, so the page writes times as data attributes
-//and this file turns them into positions. Bar widths (data-percent) and colours (data-colour) are applied by app.js
+//lays out the day ribbon in the home page's hero. The content security policy blocks inline styles, so the page writes times as data attributes
+//and this file turns them into positions. They are set as custom properties (--left, --width, --at) so a phone's list layout can ignore them.
+//Bar widths (data-percent) and colours (data-colour) are applied by app.js
 (function () {
     //minutes since midnight for an "HH:mm" value, NaN for anything else
     function toMinutes(value) {
@@ -8,50 +9,40 @@
         return match ? Number(match[1]) * 60 + Number(match[2]) : NaN;
     }
 
-    function pad(number) {
-        return (number < 10 ? "0" : "") + number;
-    }
-
-    var track = document.querySelector(".home-track");
-    if (!track)
+    var ribbon = document.querySelector(".home-ribbon");
+    if (!ribbon)
         return;
 
-    var dayStart = toMinutes(track.dataset.dayStart);
-    var dayEnd = toMinutes(track.dataset.dayEnd);
+    var dayStart = toMinutes(ribbon.dataset.dayStart);
+    var dayEnd = toMinutes(ribbon.dataset.dayEnd);
     if (!(dayEnd > dayStart))
         return;
 
-    //how far along the working day a time is, as a percentage of the track
+    //how far along the working day a time is, as a percentage of the ribbon
     function position(minutes) {
         return Math.min(100, Math.max(0, (minutes - dayStart) / (dayEnd - dayStart) * 100));
     }
 
     //blocks span data-start to data-end, anything outside the working day is cut off at the edge
-    track.querySelectorAll(".home-block").forEach(function (block) {
+    ribbon.querySelectorAll(".home-block").forEach(function (block, index) {
         var left = position(toMinutes(block.dataset.start));
         var right = position(toMinutes(block.dataset.end));
         if (isNaN(left) || isNaN(right) || right <= left) {
             block.hidden = true;
             return;
         }
-        block.style.left = left + "%";
-        block.style.width = right - left + "%";
+        block.style.setProperty("--left", left + "%");
+        block.style.setProperty("--width", right - left + "%");
+        //a block in the second half of the day opens its tooltip to the left, so it stays on screen
+        block.classList.toggle("home-block--late", left > 50);
+
+        //the day fills in from left to right, one block after the other
+        var bar = block.querySelector(".home-block__bar");
+        if (bar)
+            bar.style.animationDelay = index * 70 + "ms";
     });
 
-    //the now marker follows this device's clock and is hidden outside the working day
-    var now = track.querySelector(".home-now");
-    var label = now && now.querySelector(".home-now__label");
-    if (!now || !label)
-        return;
-
-    function placeNow() {
-        var date = new Date();
-        var minutes = date.getHours() * 60 + date.getMinutes();
-        now.hidden = minutes < dayStart || minutes > dayEnd;
-        now.style.left = position(minutes) + "%";
-        label.textContent = "Now " + pad(date.getHours()) + ":" + pad(date.getMinutes());
-    }
-
-    placeNow();
-    setInterval(placeNow, 30000);
+    ribbon.querySelectorAll(".home-axis__tick").forEach(function (tick) {
+        tick.style.setProperty("--at", position(toMinutes(tick.dataset.at)) + "%");
+    });
 })();
