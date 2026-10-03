@@ -35,7 +35,7 @@ namespace TimePlanner.Core.Sync
                 if (response.IsSuccessStatusCode)
                 {
                     var body = await response.Content.ReadFromJsonAsync<TokenBody>();
-                    var token = new StoredToken(body!.AccessToken, body.ExpiresAtUtc, email);
+                    var token = new StoredToken(body!.AccessToken, body.ExpiresAtUtc, email, body.RefreshToken, body.RefreshExpiresAtUtc);
                     return new SignInOutcome(SignInStatus.SignedIn, token, null);
                 }
 
@@ -52,6 +52,56 @@ namespace TimePlanner.Core.Sync
                 }
 
                 return new SignInOutcome(SignInStatus.Failed, null, $"Sign in failed ({(int)response.StatusCode}).");
+            }
+        }
+
+        //-----------------------------
+        //swaps a refresh token for new access and refresh tokens
+        public async Task<SignInOutcome> RefreshAsync(StoredToken current)
+        {
+            HttpResponseMessage response;
+
+            try
+            {
+                response = await _http.PostAsJsonAsync("api/v1/auth/refresh", new { refreshToken = current.RefreshToken });
+            }
+            //no connection or a timeout means offline
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                return new SignInOutcome(SignInStatus.Offline, null, "The dashboard could not be reached.");
+            }
+
+            using (response)
+            {
+                //a new token pair comes back on success
+                if (response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadFromJsonAsync<TokenBody>();
+                    var token = new StoredToken(body!.AccessToken, body.ExpiresAtUtc, current.Email, body.RefreshToken, body.RefreshExpiresAtUtc);
+                    return new SignInOutcome(SignInStatus.SignedIn, token, null);
+                }
+
+                //the refresh token was revoked or invalid
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    return new SignInOutcome(SignInStatus.InvalidDetails, null, "Please sign in again.");
+                }
+
+                return new SignInOutcome(SignInStatus.Failed, null, $"Refresh failed ({(int)response.StatusCode}).");
+            }
+        }
+
+        //-----------------------------
+        //revokes the refresh token on the server when signing out
+        public async Task LogoutAsync(string refreshToken)
+        {
+            try
+            {
+                using var response = await _http.PostAsJsonAsync("api/v1/auth/logout", new { refreshToken });
+            }
+            //signing out locally still happens when the dashboard is unreachable
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
             }
         }
 
@@ -138,7 +188,7 @@ namespace TimePlanner.Core.Sync
             return "Request refused.";
         }
 
-        private sealed record TokenBody(string AccessToken, string TokenType, DateTime ExpiresAtUtc);
+        private sealed record TokenBody(string AccessToken, string TokenType, DateTime ExpiresAtUtc, string? RefreshToken, DateTime? RefreshExpiresAtUtc);
 
         private sealed record ImportError(int Row, string Message);
 
