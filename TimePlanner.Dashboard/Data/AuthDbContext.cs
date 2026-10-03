@@ -31,6 +31,8 @@ namespace TimePlanner.Dashboard.Data
 
         public DbSet<DaySubmission> DaySubmissions => Set<DaySubmission>();
 
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -43,6 +45,17 @@ namespace TimePlanner.Dashboard.Data
             {
                 e.HasIndex(x => new { x.AppUserId, x.Date }).IsUnique();
                 e.HasIndex(x => x.Date);
+            });
+
+            builder.Entity<RefreshToken>(e =>
+            {
+                e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+                e.Property(x => x.TokenHash).HasMaxLength(44).IsRequired();
+                e.Property(x => x.FamilyId).HasMaxLength(32).IsRequired();
+                e.Property(x => x.Stamp).HasMaxLength(100);
+                e.HasIndex(x => x.TokenHash).IsUnique();
+                e.HasIndex(x => x.FamilyId);
+                e.HasIndex(x => x.UserId);
             });
 
             builder.Entity<AuditEvent>(e =>
