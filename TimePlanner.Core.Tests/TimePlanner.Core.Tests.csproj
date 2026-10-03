@@ -24,4 +24,8 @@
     <ProjectReference Include="..\TimePlanner.Core\TimePlanner.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\TimePlanner.Widget\SampleData\sample-day.csv" Link="SampleData\sample-day.csv" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

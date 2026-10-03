@@ -1,0 +1,10 @@
+Date,Activity/Task,Client / Project,Start Time,End Time,Duration (hours),Notes,Billable
+2026-10-02,Daily stand-up,Leading Edge (Internal),08:00,08:15,0.25,Meeting > Stand-up,Internal
+2026-10-02,Reply to client emails about the release,Acme Logistics / Fleet Portal,08:15,08:45,0.50,Email,Yes
+2026-10-02,Fix driver list paging bug,Acme Logistics / Fleet Portal,08:45,10:30,1.75,Coding > Bug fixing,Yes
+2026-10-02,Code review for the invoice export,Acme Logistics / Fleet Portal,10:30,11:15,0.75,Coding > Code review,Yes
+2026-10-02,Sprint planning,Leading Edge (Internal),11:25,12:30,1.08,Meeting > Planning,Internal
+2026-10-02,Booking form wireframes,Harbour Clinic / Patient Portal,13:15,14:45,1.50,Design > Wireframes,Yes
+2026-10-02,Patient search API endpoint,Harbour Clinic / Patient Portal,14:45,16:15,1.50,Coding > Feature work,Yes
+2026-10-02,Read up on FHIR for the portal,Harbour Clinic / Patient Portal,16:15,16:45,0.50,Learning,No
+2026-10-02,Update timesheet and tickets,Leading Edge (Internal),16:45,17:00,0.25,Admin,Internal

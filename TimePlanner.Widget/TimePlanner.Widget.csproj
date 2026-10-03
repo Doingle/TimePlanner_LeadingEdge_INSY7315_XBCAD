@@ -26,4 +26,11 @@
 		<Resource Include="Assests\insy.ico" Link="Assets\insy.ico" />
 	</ItemGroup>
 
+	<!-- sample day for testing -->
+	<ItemGroup>
+		<None Update="SampleData\sample-day.csv">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
 </Project>

@@ -289,6 +289,10 @@ namespace TimePlanner.Widget
         public Task SignOutOfDashboardAsync() => _log.SignOutOfDashboardAsync();
 
         //-----------------------------
+        //loads sample day for testing
+        public Task<SampleDayResult> LoadSampleDayAsync() => _log.LoadSampleDayAsync(Session.User.UserId);
+
+        //-----------------------------
         //opens the editor for an entry or a gap
         public async Task ShowEntryEditorAsync(DateOnly day, TimesheetSlot? entry, DateTime start, DateTime end, Action back)
         {

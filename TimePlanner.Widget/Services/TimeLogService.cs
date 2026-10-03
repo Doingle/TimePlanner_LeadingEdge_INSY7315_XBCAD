@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.Extensions.DependencyInjection;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Domain.Enums;
@@ -326,6 +327,15 @@ namespace TimePlanner.Widget.Services
         {
             await using var scope = scopes.CreateAsyncScope();
             await scope.ServiceProvider.GetRequiredService<DaySendService>().SignOutAsync();
+        }
+
+        //-----------------------------
+        //loads sample day data from sample csv file
+        public async Task<SampleDayResult> LoadSampleDayAsync(int userId)
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "SampleData", "sample-day.csv");
+            await using var scope = scopes.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<SampleDayService>().LoadAsync(userId, path, clock.LocalNow());
         }
     }
 }
