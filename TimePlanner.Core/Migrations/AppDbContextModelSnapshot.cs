@@ -194,7 +194,10 @@ namespace TimePlanner.Core.Migrations
                         .IsUnique()
                         .HasFilter("\"EndedAt\" IS NULL");
 
-                    b.ToTable("DaySessions");
+                    b.ToTable("DaySessions", t =>
+                        {
+                            t.HasCheckConstraint("CK_DaySessions_EndAfterStart", "\"EndedAt\" IS NULL OR \"EndedAt\" >= \"StartedAt\"");
+                        });
                 });
 
             modelBuilder.Entity("TimePlanner.Core.Domain.Entities.Project", b =>
@@ -248,7 +251,10 @@ namespace TimePlanner.Core.Migrations
                         .IsUnique()
                         .HasFilter("\"EndedAt\" IS NULL");
 
-                    b.ToTable("SessionPauses");
+                    b.ToTable("SessionPauses", t =>
+                        {
+                            t.HasCheckConstraint("CK_SessionPauses_EndAfterStart", "\"EndedAt\" IS NULL OR \"EndedAt\" >= \"StartedAt\"");
+                        });
                 });
 
             modelBuilder.Entity("TimePlanner.Core.Domain.Entities.TimeEntry", b =>
@@ -279,9 +285,12 @@ namespace TimePlanner.Core.Migrations
 
                     b.HasIndex("TaskId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "StartTime");
 
-                    b.ToTable("TimeEntries");
+                    b.ToTable("TimeEntries", t =>
+                        {
+                            t.HasCheckConstraint("CK_TimeEntries_EndAfterStart", "\"EndTime\" > \"StartTime\"");
+                        });
                 });
 
             modelBuilder.Entity("TimePlanner.Core.Domain.Entities.TimeSheet", b =>
@@ -356,7 +365,22 @@ namespace TimePlanner.Core.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("UserSettings");
+                    b.ToTable("UserSettings", t =>
+                        {
+                            t.HasCheckConstraint("CK_UserSettings_Goal", "\"DailyGoalHours\" BETWEEN 0.5 AND 24");
+
+                            t.HasCheckConstraint("CK_UserSettings_Ignored", "\"IgnoredCheckInMinutes\" BETWEEN 1 AND 60");
+
+                            t.HasCheckConstraint("CK_UserSettings_Interval", "\"CheckInIntervalMinutes\" BETWEEN 5 AND 480");
+
+                            t.HasCheckConstraint("CK_UserSettings_Lunch", "\"LunchStart\" < \"LunchEnd\"");
+
+                            t.HasCheckConstraint("CK_UserSettings_MaxSkips", "\"MaxSkipsPerDay\" BETWEEN 0 AND 10");
+
+                            t.HasCheckConstraint("CK_UserSettings_MaxSnoozes", "\"MaxSnoozes\" BETWEEN 0 AND 10");
+
+                            t.HasCheckConstraint("CK_UserSettings_Snooze", "\"SnoozeMinutes\" BETWEEN 1 AND 60");
+                        });
                 });
 
             modelBuilder.Entity("TimePlanner.Core.Domain.Entities.WorkTask", b =>
