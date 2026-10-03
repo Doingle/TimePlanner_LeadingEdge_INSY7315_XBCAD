@@ -6,8 +6,8 @@ using TimePlanner.Dashboard.Services.Submissions;
 namespace TimePlanner.Dashboard.Services.Overview
 {
     //-----------------------------
-    //one worked period inside a day, as the read-only timesheet lists it
-    public record TimesheetItem(string Start, string End, double Hours, string Company, string Project, string Activity, string? Note, bool Billable);
+    //one worked period inside a day, as the read-only timesheet lists it. Colour is its top level category's colour, the same one Home uses
+    public record TimesheetItem(string Start, string End, double Hours, string Company, string Project, string Activity, string? Note, bool Billable, string? Colour);
 
     //-----------------------------
     //one calendar day. Status is Submitted, Pending (today, not sent yet), Missing (a working day in the past that was never sent),
@@ -51,7 +51,8 @@ namespace TimePlanner.Dashboard.Services.Overview
                 return new TimesheetDay(day, day.ToString("ddd", CultureInfo.InvariantCulture), Period.IsWorkingDay(day), StatusOf(day, today, at != null),
                     Math.Round(items.Sum(ReportService.Hours), 2), items.Count, at,
                     items.Select(e => new TimesheetItem(e.Start.ToString("HH:mm", CultureInfo.InvariantCulture), e.End.ToString("HH:mm", CultureInfo.InvariantCulture),
-                        Math.Round(ReportService.Hours(e), 2), e.Company, e.Project, activities.Path(e.CategoryId), e.Note, ReportService.IsBillable(e, activities))).ToList());
+                        Math.Round(ReportService.Hours(e), 2), e.Company, e.Project, activities.Path(e.CategoryId), e.Note, ReportService.IsBillable(e, activities),
+                        activities.RootColour(e.CategoryId))).ToList());
             }).ToList();
 
             return new TimesheetView(period.View, period.Label, period.From, period.To, Math.Round(days.Sum(d => d.Hours), 2),

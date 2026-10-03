@@ -1,333 +1,663 @@
-/* Timesheet page
+/* My Timesheet
 
-   The week's entries grouped by day (Views/Timesheet/Index.cshtml). Builds on the
-   colours and buttons in app.css. Category dots are coloured by app.js from data-colour,
-   because the content security policy blocks inline styles */
+   The period on the brand ink, straight under the top bar: the controls, the submitted total and a calendar of the days.
+   Then each day's entries on paper (Views/Timesheet/Index.cshtml). The colours, type and spacing come from tokens.css.
+   Category colours are applied by app.js from data-colour, because the content security policy blocks inline styles */
 
-:root {
-    --ts-border: #e4e7ec;
-    --ts-divider: #f2f4f7;
-    --ts-head: #f7f8fa;
-    --ts-strong: #374151;
-    --ts-muted: #6b7280;
-    --ts-faint: #9ca3af;
-    --ts-icon: #b7becb;
-    --ts-radius: 10px;
-    /* category, company, description, time, total. Shared by the column headings and every entry */
-    --ts-columns: 124px 143px minmax(0, 1fr) 150px 74px;
-    --ts-icon-voice: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z'/%3E%3Cpath d='M19 10v2a7 7 0 0 1-14 0v-2'/%3E%3Cpath d='M12 19v3'/%3E%3C/svg%3E");
+/* a day picked on the calendar scrolls into view with a little room above it */
+html {
+    scroll-padding-top: var(--space-5);
 }
 
-/* ---------- Page heading ---------- */
-
-.ts-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px 24px;
-    margin-top: 13px;
-}
+/* ---------- A login without a profile ---------- */
 
 .ts-title {
-    margin: 0;
-    font-size: 22.5px;
-    font-weight: 700;
-    line-height: 1.25;
+    margin: 0 0 var(--space-4);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
     letter-spacing: -0.01em;
 }
 
-.ts-subtitle {
-    margin: 4px 0 0;
-    font-size: 14px;
-    color: var(--ts-muted);
+.ts-alert {
+    max-width: 60ch;
+    margin: 0;
+    padding: var(--space-3);
+    line-height: 1.5;
+    color: var(--warning-800);
+    background: var(--warning-50);
+    border: 1px solid var(--warning-200);
+    border-radius: var(--radius-sm);
 }
 
-.ts-week {
+/* ---------- Hero: the period on ink ---------- */
+
+.ts-hero {
+    padding: var(--space-6) 0;
+    color: var(--on-ink);
+    background: var(--ink);
+}
+
+    .ts-hero :focus-visible {
+        outline: var(--focus-ring-on-ink);
+        outline-offset: var(--focus-offset);
+    }
+
+.ts-hero__inner {
+    max-width: var(--app-frame);
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+}
+
+.ts-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.ts-period {
     display: flex;
     align-items: center;
-    gap: 5px;
-    margin-top: 2px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--ts-strong);
+    gap: var(--space-1);
 }
 
-/* the chevron's own padding is pulled back so it lines up with the title */
-.ts-week__step {
-    display: flex;
-    margin-left: -3px;
-    color: var(--ts-muted);
+.ts-period__label {
+    min-width: 11.5rem;
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
 }
 
-    .ts-week__step + .ts-week__range + .ts-week__step {
-        margin-left: 0;
-    }
-
-    .ts-week__step svg {
-        width: 13px;
-        height: 13px;
-    }
-
-    .ts-week__step[href]:hover {
-        color: var(--ts-strong);
-    }
-
-.ts-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 1px;
+.ts-icon-button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    color: var(--on-ink);
+    border-radius: var(--radius-sm);
 }
 
-/* week or month, as tall as the buttons beside it */
+    .ts-icon-button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .ts-icon-button[href]:hover {
+        background: var(--ink-raised);
+    }
+
+    /* there is nothing after the current week or month yet */
+    .ts-icon-button[aria-disabled="true"] {
+        color: var(--lilac-dim);
+        cursor: not-allowed;
+    }
+
+/* week or month: the chosen one gets a lilac ring, solid lilac is kept for the primary button */
 .ts-toggle {
     display: inline-flex;
+    gap: 2px;
     margin: 0;
     padding: 2px;
-    background: var(--app-surface);
-    border: 1px solid var(--ts-border);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 0 0 1px var(--ink-line);
 }
 
 .ts-toggle__option {
-    height: 30px;
-    padding: 0 12px;
+    min-height: 34px;
+    padding: 0 var(--space-4);
     font: inherit;
-    font-size: 13.5px;
-    font-weight: 500;
-    color: var(--ts-strong);
-    background: none;
-    border: none;
-    border-radius: 6px;
+    font-weight: var(--weight-medium);
+    color: var(--on-ink-2);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
     cursor: pointer;
 }
 
-    .ts-toggle__option:hover {
-        background: #f9fafb;
+    .ts-toggle__option:hover:not([aria-pressed="true"]) {
+        color: var(--on-ink);
+        background: var(--ink-raised);
     }
 
     .ts-toggle__option[aria-pressed="true"] {
-        color: #ffffff;
-        background: #8b5cf6;
+        font-weight: var(--weight-semibold);
+        color: var(--on-ink);
+        background: var(--ink-raised);
+        box-shadow: inset 0 0 0 2px var(--lilac);
     }
 
-    .ts-toggle__option:focus-visible {
-        outline: 2px solid var(--app-purple);
-        outline-offset: 2px;
+/* an unknown view in the address, explained above the figure */
+.ts-hero__note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    max-width: 62ch;
+    margin: var(--space-5) 0 0;
+    padding-left: var(--space-4);
+    font-size: var(--text-md);
+    line-height: var(--leading-body);
+    border-left: 3px solid var(--warning-on-ink);
+}
+
+.ts-hero__note-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 4px;
+    color: var(--warning-on-ink);
+}
+
+.ts-hero__figure {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-3);
+    margin: var(--space-5) 0 0;
+    font-family: var(--font-display);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+}
+
+.ts-hero__num {
+    font-size: var(--text-hero);
+    font-variant-numeric: lining-nums tabular-nums;
+}
+
+.ts-hero__unit {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-regular);
+    letter-spacing: 0;
+    color: var(--on-ink-2);
+}
+
+.ts-hero__sub {
+    max-width: 62ch;
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-md);
+    line-height: var(--leading-body);
+    color: var(--on-ink-2);
+}
+
+/* the days that were never submitted, each linking to its entries */
+.ts-hero__flag {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 6px;
+    color: var(--on-ink);
+}
+
+.ts-hero__flag-icon {
+    flex: none;
+    align-self: center;
+    width: 16px;
+    height: 16px;
+    color: var(--warning-on-ink);
+}
+
+.ts-hero__link {
+    font-weight: var(--weight-semibold);
+    color: var(--warning-on-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+    .ts-hero__link:hover {
+        color: var(--on-ink);
     }
 
-/* ---------- Column headings ---------- */
+/* ---------- Calendar: the one bold thing on this page ----------
+   Same language as Home: filled was submitted, an amber ring was missed, a light ring is today.
+   The weekend columns are narrower */
 
-/* the extra pixel each side matches the day cards' border */
-.ts-columns {
+.ts-cal {
+    margin-top: var(--space-6);
+}
+
+.ts-cal__grid {
     display: grid;
-    grid-template-columns: var(--ts-columns);
-    margin: 24px 0 8px;
-    padding: 0 21px;
-    font-size: 10.5px;
-    font-weight: 500;
-    line-height: 15px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--ts-faint);
+    grid-template-columns: repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, 0.55fr));
+    gap: 6px;
 }
 
-.ts-columns__end {
-    text-align: right;
+.ts-cal__dow {
+    padding: 0 2px var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--on-ink-3);
 }
 
-/* ---------- Day cards ---------- */
-
-.ts-day {
-    overflow: hidden;
-    background: var(--app-surface);
-    border: 1px solid var(--ts-border);
-    border-radius: var(--ts-radius);
+.ts-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 64px;
+    padding: 8px 10px;
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    color: var(--on-ink);
+    background: var(--ink-raised);
+    border: 0;
+    border-radius: var(--radius-sm);
 }
 
-    .ts-day + .ts-day {
-        margin-top: 16px;
+button.ts-tile,
+a.ts-tile {
+    cursor: pointer;
+}
+
+    button.ts-tile:hover,
+    a.ts-tile:hover {
+        background: #43376a;
     }
+
+.ts-tile__num {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: var(--weight-semibold);
+    line-height: 1;
+    font-variant-numeric: lining-nums;
+}
+
+.ts-tile__bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ts-tile__hours {
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+}
+
+.ts-tile__meta {
+    font-size: var(--text-xs);
+    color: var(--on-ink-2);
+}
+
+.ts-tile--missed {
+    box-shadow: inset 0 0 0 1px var(--warning-on-ink);
+}
+
+    .ts-tile--missed .ts-tile__meta {
+        color: var(--warning-on-ink);
+    }
+
+.ts-tile--today {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--on-ink-3);
+}
+
+    .ts-tile--today .ts-tile__meta {
+        font-weight: var(--weight-medium);
+        color: var(--on-ink);
+    }
+
+.ts-tile--future,
+.ts-tile--weekend {
+    color: var(--on-ink-3);
+    background: none;
+}
+
+.ts-tile--weekend {
+    padding-left: 2px;
+    color: var(--lilac-dim);
+}
+
+    .ts-tile--future .ts-tile__num,
+    .ts-tile--weekend .ts-tile__num {
+        font-weight: var(--weight-regular);
+    }
+
+/* the day whose entries show below */
+.ts-tile[aria-pressed="true"] {
+    background: #4a3d74;
+    box-shadow: inset 0 0 0 2px var(--on-ink);
+}
+
+.ts-tile--missed[aria-pressed="true"] {
+    box-shadow: inset 0 0 0 2px var(--warning-on-ink);
+}
+
+.ts-tile--blank {
+    visibility: hidden;
+}
+
+/* a week has the same tiles with more room: the weekday name instead of the number, and a bigger total */
+.ts-cal--week .ts-tile {
+    min-height: 96px;
+    padding: 12px 14px;
+}
+
+.ts-cal--week .ts-tile__label {
+    font-size: var(--text-sm);
+    color: var(--on-ink-2);
+}
+
+.ts-cal--week .ts-tile__hours {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    line-height: 1.1;
+}
+
+.ts-cal--month .ts-tile__label,
+.ts-cal--week .ts-tile__num,
+.ts-cal--week .ts-cal__dow {
+    display: none;
+}
+
+/* ---------- Entries on paper ---------- */
+
+.ts-entries {
+    padding: var(--space-4) 0 var(--space-6);
+}
+
+.ts-empty {
+    max-width: 62ch;
+    margin: 0;
+    line-height: var(--leading-body);
+    color: var(--text-2);
+}
+
+.ts-edit-note {
+    margin: var(--space-5) 0 0;
+    font-size: var(--text-xs);
+    color: var(--text-3);
+}
+
+.ts-day + .ts-day {
+    margin-top: var(--space-7);
+}
 
 .ts-day__head {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    min-height: 37px;
-    padding: 0 20px;
-    background: var(--ts-head);
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--text);
 }
 
 .ts-day__date {
     margin: 0;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--ts-strong);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    letter-spacing: -0.01em;
 }
 
-/* sits beside the date, coloured by the day's status class */
+    .ts-day__date:focus {
+        outline: none;
+    }
+
+    .ts-day__date:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
 .ts-day__status {
-    margin: 0 auto 0 0;
-    font-size: 12.5px;
-    color: var(--ts-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-2);
 }
 
-.ts-day--submitted .ts-day__status {
-    color: #067647;
+.ts-day__icon {
+    flex: none;
+    width: 14px;
+    height: 14px;
 }
 
-.ts-day--pending .ts-day__status {
-    color: #b54708;
+.ts-day__status--ok .ts-day__icon {
+    color: var(--success-700);
 }
 
-.ts-day--missing .ts-day__status {
-    color: #b42318;
+.ts-day__status--missed {
+    font-weight: var(--weight-medium);
+    color: var(--warning-800);
 }
+
+    .ts-day__status--missed .ts-day__icon {
+        width: 16px;
+        height: 16px;
+        color: var(--warning-700);
+    }
 
 .ts-day__total {
-    margin: 0;
-    font-size: 12.5px;
-    color: var(--ts-muted);
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    margin-left: auto;
+    color: var(--text-2);
 }
 
     .ts-day__total strong {
-        font-size: 13.5px;
-        font-weight: 700;
-        color: var(--app-text);
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: var(--weight-semibold);
+        font-variant-numeric: lining-nums tabular-nums;
+        color: var(--text);
     }
 
-.ts-day__entries {
+.ts-day__empty {
+    max-width: 62ch;
     margin: 0;
-    padding: 0;
-    list-style: none;
+    padding: var(--space-4) 0;
+    line-height: var(--leading-body);
+    color: var(--text-2);
 }
 
-.ts-empty {
-    margin: 0;
-    padding: 20px;
-    font-size: 14px;
-    color: var(--ts-muted);
-}
-
-/* ---------- Entries ---------- */
-
+/* one row per entry: time, category, project, note, duration */
 .ts-entry {
     display: grid;
-    grid-template-columns: var(--ts-columns);
-    grid-template-areas: "category company description time total";
-    align-items: center;
-    padding: 9.5px 20px;
-    font-size: 14px;
-    line-height: 20px;
+    grid-template-columns: 6.75rem 7.5rem 10.5rem minmax(0, 1fr) 3.5rem;
+    grid-template-areas: "time cat proj note dur";
+    align-items: baseline;
+    column-gap: var(--space-4);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--line);
 }
 
-    .ts-entry + .ts-entry {
-        border-top: 1px solid var(--ts-divider);
-    }
-
-.ts-entry__category {
-    display: flex;
-    grid-area: category;
-    align-items: center;
-    gap: 9px;
-    min-width: 0;
-    padding-right: 12px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--ts-strong);
-}
-
-.ts-dot {
-    flex: none;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--ts-muted);
-}
-
-.ts-entry__company {
-    grid-area: company;
-    min-width: 0;
-    padding-right: 12px;
-    font-size: 13px;
-    color: var(--ts-muted);
-    overflow-wrap: anywhere;
-}
-
-/* the project and whether it is billable, under the company */
-.ts-entry__company small {
-    display: block;
-    font-size: 11.5px;
-    line-height: 1.3;
-    color: var(--ts-faint);
-}
-
-.ts-entry__description {
-    grid-area: description;
-    min-width: 0;
-    padding-right: 16px;
-    color: var(--app-text);
-    overflow-wrap: anywhere;
-}
-
-.ts-entry__voice {
-    position: relative;
-    display: inline-block;
-    width: 15px;
-    height: 15px;
-    margin-left: 9px;
-    vertical-align: -2px;
-    background-color: var(--ts-icon);
-    -webkit-mask: var(--ts-icon-voice) center / contain no-repeat;
-    mask: var(--ts-icon-voice) center / contain no-repeat;
+.ts-entry--head {
+    padding: var(--space-2) 0;
+    font-size: var(--text-xs);
+    color: var(--text-3);
 }
 
 .ts-entry__time {
     grid-area: time;
-    font-size: 12px;
-    color: var(--ts-faint);
-    text-align: right;
-    white-space: nowrap;
-}
-
-.ts-entry__total {
-    grid-area: total;
-    font-size: 13.5px;
-    font-weight: 700;
-    color: var(--app-text);
-    text-align: right;
     font-variant-numeric: tabular-nums;
+    color: var(--text-2);
 }
 
-/* ---------- Narrow windows ----------
-   The columns no longer fit, so each entry stacks: category and total, then the
-   description, then company and time. The column headings are dropped */
+.ts-entry__cat {
+    display: flex;
+    grid-area: cat;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-weight: var(--weight-medium);
+    overflow-wrap: anywhere;
+}
 
-@media (max-width: 759.98px) {
-    .ts-columns {
+/* a short bar in the category's colour (data-colour) */
+.ts-entry__swatch {
+    flex: none;
+    align-self: center;
+    width: 3px;
+    height: 1.1em;
+    background: var(--logged);
+    border-radius: 2px;
+}
+
+.ts-entry__proj {
+    grid-area: proj;
+    overflow-wrap: anywhere;
+}
+
+    .ts-entry__proj small {
+        display: block;
+        font-size: var(--text-xs);
+        color: var(--text-3);
+    }
+
+.ts-entry__note {
+    grid-area: note;
+    line-height: var(--leading-body);
+    overflow-wrap: anywhere;
+}
+
+.ts-entry__dur {
+    grid-area: dur;
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.ts-entry--head .ts-entry__cat,
+.ts-entry--head .ts-entry__dur {
+    font-weight: var(--weight-medium);
+}
+
+/* ---------- Narrower windows: the project moves under the category ---------- */
+
+@media (max-width: 60rem) {
+    .ts-entry {
+        grid-template-columns: 6.25rem 11rem minmax(0, 1fr) 3.5rem;
+        grid-template-areas:
+            "time cat note dur"
+            "time proj note dur";
+    }
+
+    .ts-entry__proj {
+        font-size: var(--text-xs);
+        color: var(--text-2);
+    }
+
+        .ts-entry__proj small {
+            display: inline;
+            font-size: inherit;
+        }
+
+            .ts-entry__proj small::before {
+                content: "/ ";
+            }
+
+    .ts-entry--head .ts-entry__proj {
+        display: none;
+    }
+}
+
+/* ---------- Phones ----------
+   The controls stack, the calendar tiles shrink to the day number and total, and each entry becomes a small card */
+
+@media (max-width: 40rem) {
+    .ts-hero {
+        padding: var(--space-4) 0 var(--space-5);
+    }
+
+    .ts-hero__unit {
+        font-size: var(--text-xl);
+    }
+
+    .ts-hero__sub,
+    .ts-hero__note {
+        font-size: var(--text-sm);
+    }
+
+    .ts-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ts-period {
+        justify-content: space-between;
+    }
+
+    .ts-period__label {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .ts-icon-button {
+        width: var(--target-touch);
+        height: var(--target-touch);
+    }
+
+    .ts-toggle {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .ts-toggle__option {
+        min-height: var(--target-touch);
+    }
+
+    .ts-cal__grid {
+        gap: 4px;
+    }
+
+    .ts-tile,
+    .ts-cal--week .ts-tile {
+        min-height: 56px;
+        padding: 6px;
+    }
+
+    .ts-tile__num {
+        font-size: 0.9375rem;
+    }
+
+    .ts-tile__hours,
+    .ts-cal--week .ts-tile__hours {
+        font-family: var(--font-sans);
+        font-size: 0.6875rem;
+    }
+
+    .ts-tile__meta,
+    .ts-cal--week .ts-tile__label {
         display: none;
     }
 
-    .ts-header {
-        margin-bottom: 20px;
+    .ts-cal--week .ts-tile__num,
+    .ts-cal--week .ts-cal__dow {
+        display: block;
     }
 
-    .ts-day__head {
-        padding: 0 16px;
+    .ts-day__total {
+        justify-content: space-between;
+        width: 100%;
+        margin-left: 0;
     }
 
     .ts-entry {
         grid-template-columns: minmax(0, 1fr) auto;
         grid-template-areas:
-            "category total"
-            "description description"
-            "company time";
+            "cat dur"
+            "proj proj"
+            "note note"
+            "time time";
         row-gap: 2px;
-        padding: 10px 16px;
     }
 
-    .ts-entry__description {
-        padding-right: 0;
+    .ts-entry--head {
+        display: none;
+    }
+
+    .ts-entry__time {
+        margin-top: 2px;
+        font-size: var(--text-xs);
+    }
+}
+
+@media (pointer: coarse) {
+    .ts-toggle__option {
+        min-height: var(--target-touch);
     }
 }

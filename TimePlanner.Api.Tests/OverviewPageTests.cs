@@ -217,22 +217,65 @@ namespace TimePlanner.Api.Tests
             await _factory.SubmitAsync(person.ProfileId, ClockedFactory.Monday);
 
             var html = await person.Browser.GetStringAsync("/Timesheet");
+            var lastWeek = await person.Browser.GetStringAsync("/Timesheet?date=2026-09-07");
 
             Assert.Contains("14 Sep to 20 Sep 2026", html);
+            Assert.Contains("<span class=\"ts-hero__num\">1:30</span> <span class=\"ts-hero__unit\">submitted this week</span>", html);
+            Assert.Contains("From 1 submitted day. Today joins once you submit it from the widget.", Text(html));
+            //the missed day is named and links to its place below
+            Assert.Contains("<a class=\"ts-hero__link\" href=\"#day-2026-09-15\" data-select=\"2026-09-15\">Tue 15 Sep</a>", html);
+            Assert.Contains("wasn't submitted.", html);
+
+            //a calendar tile for each day of the week: done, missed, today, then days to come
+            Assert.Contains("<a class=\"ts-tile ts-tile--done\" href=\"#day-2026-09-14\" aria-label=\"Monday 14 September, 1:30, submitted\">", html);
+            Assert.Contains("<a class=\"ts-tile ts-tile--missed\" href=\"#day-2026-09-15\" aria-label=\"Tuesday 15 September, not submitted\">", html);
+            Assert.Contains("<a class=\"ts-tile ts-tile--today\" href=\"#day-2026-09-16\" aria-label=\"Wednesday 16 September, today, not submitted yet\" aria-current=\"date\">", html);
+            Assert.Contains("<div class=\"ts-tile ts-tile--future\" role=\"img\" aria-label=\"Thursday 17 September\">", html);
+
+            //each day that has entries or still needs submitting, oldest first. Days still to come with nothing logged are left out
             Assert.Contains("ts-day--submitted", html);
             Assert.Contains("Submitted at 17:05", html);
             Assert.Contains("ts-day--missing", html);
             Assert.Contains("ts-day--pending", html);
-            Assert.Contains("Not submitted yet", html);
-            //days still to come with nothing logged are left out
+            Assert.Contains("Today, not submitted yet", html);
             Assert.DoesNotContain("ts-day--notdue", html);
-            Assert.Contains("1:30</strong> logged, 1 day submitted, 1 missing", Text(html));
-            //the entry is one row: activity, company with project, note, times and length
-            Assert.Matches(@"<span class=""ts-dot""></span>Coding</span>\s*<span class=""ts-entry__company"">Acme <small>Web · Billable</small></span>\s*" +
-                           @"<span class=""ts-entry__description"">login page</span>\s*<span class=""ts-entry__time"">09:00 – 10:30</span>\s*<span class=""ts-entry__total"">1:30</span>", html);
-            Assert.Contains("Read only", html);
+            Assert.True(html.IndexOf("id=\"day-2026-09-14-h\"", StringComparison.Ordinal) < html.IndexOf("id=\"day-2026-09-16-h\"", StringComparison.Ordinal));
+
+            //the entry is one row: times, category in its colour, project with company and billing, note and length
+            Assert.Matches(@"<span class=""ts-entry__time"" role=""cell"">09:00–10:30</span>\s*<span class=""ts-entry__cat"" role=""cell""><span class=""ts-entry__swatch"" data-colour=""#7C3AED""></span>Coding</span>\s*" +
+                           @"<span class=""ts-entry__proj"" role=""cell"">Web <small>Acme · Billable</small></span>\s*<span class=""ts-entry__note"" role=""cell"">login page</span>\s*<span class=""ts-entry__dur"" role=""cell"">1:30</span>", html);
+            Assert.Contains("Entries can't be edited here.", html);
+
+            //the previous week opens, the next one does not exist yet. An earlier week can step forward
             Assert.Contains("href=\"/Timesheet?view=week&amp;date=2026-09-07\"", html);
-            Assert.Contains("href=\"/Timesheet?view=week&amp;date=2026-09-21\"", html);
+            Assert.DoesNotContain("date=2026-09-21", html);
+            Assert.Contains("aria-disabled=\"true\"", html);
+            Assert.Contains("href=\"/Timesheet?view=week&amp;date=2026-09-14\"", lastWeek);
+            Assert.Contains("submitted that week", lastWeek);
+        }
+
+        [Fact]
+        public async Task Timesheet_AMonthIsACalendar_ThatOpensTheLatestSubmittedDayFirst()
+        {
+            var person = await SignedInAsync();
+            await Add(person.ProfileId, ClockedFactory.Monday.AddHours(9), 90);
+            await _factory.SubmitAsync(person.ProfileId, ClockedFactory.Monday);
+
+            var html = await person.Browser.GetStringAsync("/Timesheet?view=month");
+
+            Assert.Contains("ts-cal ts-cal--month", html);
+            Assert.Contains("submitted in September", html);
+            //1 September 2026 is a Tuesday, so the grid starts with one blank Monday and ends with four blanks after Wednesday the 30th
+            Assert.Equal(5, Regex.Matches(html, "ts-tile ts-tile--blank").Count);
+            Assert.Contains("1 of 11 working days so far.", html);
+            //more than a few missed days are counted rather than listed
+            Assert.Contains("10 days weren't submitted. They're ringed in amber on the calendar.", Text(html));
+            Assert.DoesNotContain("ts-hero__link", html);
+            //the days that can be opened are buttons, the latest submitted one starts chosen
+            Assert.Contains("<button class=\"ts-tile ts-tile--done\" type=\"button\" data-date=\"2026-09-14\" aria-pressed=\"true\" tabindex=\"0\"", html);
+            Assert.Contains("<button class=\"ts-tile ts-tile--missed\" type=\"button\" data-date=\"2026-09-15\" aria-pressed=\"false\" tabindex=\"-1\"", html);
+            Assert.Contains("data-selected=\"2026-09-14\"", html);
+            Assert.Contains("src=\"/js/timesheet.js", html);
         }
 
         [Fact]
