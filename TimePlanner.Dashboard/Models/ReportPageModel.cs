@@ -3,16 +3,12 @@ using TimePlanner.Dashboard.Services.Reports;
 namespace TimePlanner.Dashboard.Models
 {
     //-----------------------------
-    //everything the report page shows: the filter that was applied, the people a privileged user may pick, and the result
+    //everything My Reports shows: the signed in person's own week, month or range, with the billable split and the breakdowns.
+    //the detailed report (any grouping, any person) is an admin tool and lives on the team's Submissions page
     public class ReportPageModel
     {
         public DateTime From { get; set; }
         public DateTime To { get; set; }
-        public ReportGrouping GroupBy { get; set; } = ReportGrouping.Project;
-        public int? UserId { get; set; }
-
-        public bool CanPickUser { get; set; }
-        public List<(int Id, string Name)> Users { get; set; } = new();
 
         //set when the page was opened for a whole week or month (?view=week|month&date=), null for a custom range
         public string? View { get; set; }
@@ -23,12 +19,11 @@ namespace TimePlanner.Dashboard.Models
         //totals, billable against non-billable, and the breakdowns by category and project for the same range
         public ReportSummary? Summary { get; set; }
 
-        //null when the filter was not valid, Error then says why
-        public HoursReport? Report { get; set; }
-        public string? Error { get; set; }
+        //how many days of the range the person submitted
+        public int SubmittedDays { get; set; }
 
-        //a timesheet is one person's, so the export needs a single user in scope
-        public bool CanExport => Report != null && (!CanPickUser || UserId != null);
+        //null when the range was not valid, Error then says why
+        public string? Error { get; set; }
     }
 }
 //------------------------------EOF-----------------------------\\

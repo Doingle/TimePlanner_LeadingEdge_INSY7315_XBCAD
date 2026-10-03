@@ -1,0 +1,1652 @@
+/* Team pages
+
+   The ink header the Team pages share (their own tabs, the period controls), the team overview (Views/Admin/Index.cshtml),
+   the submissions grid with the detailed report under it (Views/Admin/Submissions.cshtml), the exports form (Views/Admin/Exports.cshtml)
+   and the accounts page (Views/Users/Index.cshtml).
+   The colours, type and spacing come from tokens.css. Bar widths and category colours are applied by app.js from data-percent and
+   data-colour, because the content security policy blocks inline styles */
+
+/* ---------- Header on ink ---------- */
+
+.tm-hero {
+    padding: var(--space-6) 0;
+    color: var(--on-ink);
+    background: var(--ink);
+}
+
+    .tm-hero :focus-visible {
+        outline: var(--focus-ring-on-ink);
+        outline-offset: var(--focus-offset);
+    }
+
+.tm-hero__inner {
+    max-width: var(--app-frame);
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+}
+
+/* the Team pages' own tabs. They scroll sideways rather than wrap on a narrow screen */
+.tm-subnav {
+    display: flex;
+    gap: var(--space-1);
+    margin: calc(-1 * var(--space-3)) 0 var(--space-5);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+    .tm-subnav::-webkit-scrollbar {
+        display: none;
+    }
+
+.tm-subnav__link {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 var(--space-3);
+    font-weight: var(--weight-medium);
+    color: var(--on-ink-2);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+}
+
+    .tm-subnav__link:first-child {
+        margin-left: calc(-1 * var(--space-3));
+    }
+
+    .tm-subnav__link:hover,
+    .tm-subnav__link[aria-current="page"] {
+        color: var(--on-ink);
+        background: var(--ink-raised);
+    }
+
+    .tm-subnav__link[aria-current="page"] {
+        box-shadow: inset 0 -2px 0 var(--lilac);
+    }
+
+/* a link that does not point to a period the page can show */
+.tm-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+    padding: var(--space-3) var(--space-4);
+    line-height: var(--leading-body);
+    background: rgba(255, 155, 143, 0.12);
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 0 0 1px rgba(255, 155, 143, 0.5);
+}
+
+    .tm-banner p {
+        margin: 0;
+    }
+
+.tm-banner__icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 3px;
+    color: var(--danger-on-ink);
+}
+
+.tm-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.tm-period {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.tm-period__label {
+    min-width: 11.5rem;
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.tm-icon-button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    color: var(--on-ink);
+    border-radius: var(--radius-sm);
+}
+
+    .tm-icon-button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .tm-icon-button[href]:hover {
+        background: var(--ink-raised);
+    }
+
+    /* there is nothing after the current week or month yet */
+    .tm-icon-button[aria-disabled="true"] {
+        color: var(--lilac-dim);
+        cursor: not-allowed;
+    }
+
+/* week or month as links: the current one gets a lilac ring, solid lilac is kept for the primary button */
+.tm-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 0 0 1px var(--ink-line);
+}
+
+.tm-toggle__option {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 var(--space-4);
+    font-weight: var(--weight-medium);
+    color: var(--on-ink-2);
+    text-decoration: none;
+    border-radius: 4px;
+}
+
+    .tm-toggle__option:hover:not([aria-current]) {
+        color: var(--on-ink);
+        background: var(--ink-raised);
+    }
+
+    .tm-toggle__option[aria-current] {
+        font-weight: var(--weight-semibold);
+        color: var(--on-ink);
+        background: var(--ink-raised);
+        box-shadow: inset 0 0 0 2px var(--lilac);
+    }
+
+/* a page's own title under the controls, on the pages without a big figure */
+.tm-hero__title {
+    margin: var(--space-5) 0 0;
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    letter-spacing: -0.015em;
+}
+
+.tm-hero__intro {
+    max-width: 62ch;
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-md);
+    line-height: var(--leading-body);
+    color: var(--on-ink-2);
+}
+
+/* ---------- Overview: the team's total, the submission rates and the billable split ---------- */
+
+.tm-hero__top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--space-5) var(--space-7);
+}
+
+.tm-hero__figure {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-3);
+    margin: var(--space-5) 0 0;
+    font-family: var(--font-display);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+}
+
+.tm-hero__num {
+    font-size: var(--text-hero);
+    font-variant-numeric: lining-nums tabular-nums;
+}
+
+.tm-hero__unit {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-regular);
+    letter-spacing: 0;
+    color: var(--on-ink-2);
+}
+
+.tm-hero__sub {
+    max-width: 62ch;
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-md);
+    line-height: var(--leading-body);
+    color: var(--on-ink-2);
+}
+
+.tm-rates {
+    display: flex;
+    gap: var(--space-6);
+    margin: 0;
+}
+
+.tm-rate {
+    display: grid;
+    gap: 2px;
+}
+
+    .tm-rate dt {
+        color: var(--on-ink-2);
+    }
+
+    .tm-rate dd {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-2);
+        margin: 0;
+    }
+
+.tm-rate__value {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: var(--weight-semibold);
+    line-height: 1.1;
+    font-variant-numeric: lining-nums tabular-nums;
+}
+
+.tm-rate__of {
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-regular);
+    color: var(--on-ink-2);
+}
+
+.tm-rate__pct,
+.tm-rate__note {
+    font-variant-numeric: tabular-nums;
+    color: var(--on-ink-3);
+}
+
+.tm-billing {
+    margin-top: var(--space-6);
+}
+
+.tm-billing__groups {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin: 0 0 var(--space-3);
+}
+
+.tm-billing__group {
+    display: grid;
+    gap: 2px;
+}
+
+    .tm-billing__group dt {
+        color: var(--on-ink-2);
+    }
+
+    .tm-billing__group dd {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-2);
+        margin: 0;
+    }
+
+.tm-billing__group--nb {
+    justify-items: end;
+    text-align: right;
+}
+
+.tm-billing__hours {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: var(--weight-semibold);
+    line-height: 1.1;
+    font-variant-numeric: lining-nums tabular-nums;
+}
+
+.tm-billing__pct {
+    font-variant-numeric: tabular-nums;
+    color: var(--on-ink-3);
+}
+
+.tm-billing__bar {
+    display: flex;
+    height: 32px;
+}
+
+/* each part's width is its share, the parts shrink a little to make room for the gap between them */
+.tm-seg {
+    flex: 0 1 auto;
+    min-width: 3px;
+    background: var(--lilac);
+    border-radius: var(--radius-xs);
+}
+
+.tm-seg--nb {
+    background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(185, 169, 239, 0.5) 5px 6.5px), var(--ink-raised);
+    box-shadow: inset 0 0 0 1px #8a7bb8;
+}
+
+.tm-seg--apart {
+    margin-left: 6px;
+}
+
+/* ---------- Overview: the breakdowns on paper ---------- */
+
+.tm-section {
+    padding-top: var(--space-5);
+}
+
+    .tm-section + .tm-section {
+        padding-top: var(--space-7);
+    }
+
+.tm-section__title {
+    margin: 0 0 var(--space-4);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    letter-spacing: -0.01em;
+}
+
+/* by category and by project side by side, by person on its own full width */
+.tm-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--line);
+}
+
+.tm-cols__col {
+    padding: var(--space-5) var(--space-6) 0 0;
+}
+
+    .tm-cols__col + .tm-cols__col {
+        padding: var(--space-5) 0 0 var(--space-6);
+        border-left: 1px solid var(--line);
+    }
+
+.tm-cols__title {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+}
+
+.tm-people {
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
+}
+
+.tm-nothing {
+    margin: 0;
+    padding: var(--space-3) 0;
+    color: var(--text-2);
+}
+
+.tm-bars {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tm-bar-row {
+    display: grid;
+    grid-template-columns: minmax(6rem, 10rem) 1fr 4rem 2.75rem;
+    grid-template-areas: "label bar time pct";
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 2.75rem;
+}
+
+.tm-bar-row__label {
+    grid-area: label;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+    .tm-bar-row__label small {
+        display: block;
+        font-size: var(--text-xs);
+        color: var(--text-3);
+    }
+
+.tm-bar-row__bar {
+    grid-area: bar;
+    height: 6px;
+}
+
+/* as long as its share of the largest row (data-percent): a category in its colour, a project by billing, a person in plain grey */
+.tm-bar-row__fill {
+    display: block;
+    width: 0;
+    min-width: 2px;
+    height: 100%;
+    background: var(--logged);
+    border-radius: 0 3px 3px 0;
+}
+
+.tm-bar-row__fill--billable {
+    background: var(--billable);
+}
+
+.tm-bar-row__fill--non-billable {
+    background: var(--non-billable);
+}
+
+.tm-bar-row__fill--person {
+    background: var(--text-2);
+}
+
+.tm-bar-row__time {
+    grid-area: time;
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.tm-bar-row__pct {
+    grid-area: pct;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--text-2);
+}
+
+/* ---------- Submissions: who sent which working day ----------
+   Normal days are a quiet tick, only a missing day gets colour and a word */
+
+.tm-panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+}
+
+.tm-panel__empty {
+    margin: 0;
+    padding: var(--space-6);
+    line-height: var(--leading-body);
+}
+
+    .tm-panel__empty a {
+        font-weight: var(--weight-semibold);
+        color: var(--brand-600);
+        text-underline-offset: 3px;
+    }
+
+/* positioned, so the screen-reader-only text stays inside the scroll area */
+.tm-grid-wrap {
+    position: relative;
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+}
+
+    .tm-grid-wrap:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+.tm-grid {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+    .tm-grid th,
+    .tm-grid td {
+        padding: 0;
+        text-align: center;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .tm-grid tbody tr:last-child > * {
+        border-bottom: 0;
+    }
+
+    .tm-grid thead th {
+        height: 52px;
+        font-size: var(--text-xs);
+        font-weight: var(--weight-medium);
+        color: var(--text-2);
+        white-space: nowrap;
+    }
+
+    .tm-grid thead b {
+        display: block;
+        font-size: var(--text-sm);
+        font-weight: var(--weight-semibold);
+        color: var(--text);
+    }
+
+    .tm-grid td {
+        height: 52px;
+    }
+
+    /* the names stay put while the days scroll under them */
+    .tm-grid .tm-grid__person {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        min-width: 11rem;
+        padding: 0 var(--space-4);
+        font-weight: var(--weight-medium);
+        text-align: left;
+        white-space: nowrap;
+        background: var(--surface);
+    }
+
+    .tm-grid tbody .tm-grid__person {
+        font-size: var(--text-sm);
+        color: var(--text);
+    }
+
+    .tm-grid .tm-grid__num {
+        width: 5.5rem;
+        padding: 0 var(--space-4);
+        font-weight: var(--weight-semibold);
+        text-align: right;
+    }
+
+    .tm-grid thead .tm-grid__num {
+        font-weight: var(--weight-medium);
+    }
+
+    .tm-grid .tm-grid__num--first {
+        border-left: 1px solid var(--line);
+    }
+
+    .tm-grid .tm-grid__num--missing {
+        color: var(--warning-800);
+    }
+
+    .tm-grid .tm-grid__num--zero {
+        font-weight: var(--weight-regular);
+        color: var(--text-3);
+    }
+
+    .tm-grid .tm-grid__cell--missing {
+        background: var(--warning-50);
+        box-shadow: inset 0 0 0 1px var(--warning-200);
+    }
+
+    .tm-grid .tm-grid__day--today,
+    .tm-grid .tm-grid__cell--today {
+        background: var(--brand-50);
+    }
+
+    .tm-grid thead .tm-grid__day--today b {
+        color: var(--brand-700);
+    }
+
+/* a week has wide days with the time each was sent, a month has narrow ones with the marks only */
+.tm-grid--week .tm-grid__cell {
+    min-width: 7.5rem;
+}
+
+.tm-grid--month .tm-grid__day,
+.tm-grid--month .tm-grid__cell {
+    width: 34px;
+    min-width: 34px;
+}
+
+.tm-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 100%;
+    height: 100%;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+}
+
+    .tm-mark svg {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        color: var(--text-3);
+    }
+
+.tm-mark--missing {
+    font-weight: var(--weight-semibold);
+    color: var(--warning-800);
+}
+
+    .tm-mark--missing svg {
+        color: var(--warning-700);
+    }
+
+/* in a month the words are still read out, just not shown */
+.tm-grid--month .tm-mark__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
+
+.tm-key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-5);
+    margin-top: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--text-2);
+}
+
+.tm-key__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+    .tm-key__item svg {
+        width: 14px;
+        height: 14px;
+        color: var(--text-3);
+    }
+
+.tm-key__item--missing svg {
+    color: var(--warning-700);
+}
+
+/* phones: one block per person instead of the table */
+.tm-plist {
+    display: none;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tm-pcard {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--line);
+}
+
+    .tm-pcard:last-child {
+        border-bottom: 0;
+    }
+
+.tm-pcard__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-3);
+}
+
+.tm-pcard__name {
+    font-weight: var(--weight-semibold);
+    overflow-wrap: anywhere;
+}
+
+.tm-pcard__counts {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+    white-space: nowrap;
+}
+
+.tm-pcard__miss {
+    margin-left: var(--space-2);
+    font-weight: var(--weight-semibold);
+    color: var(--warning-800);
+}
+
+.tm-pcard__days {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    margin-top: var(--space-3);
+}
+
+.tm-pcard__missing {
+    margin: var(--space-2) 0 0;
+    line-height: 1.5;
+    color: var(--warning-800);
+}
+
+.tm-pday {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    padding: 6px 0;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    background: var(--paper);
+    border-radius: var(--radius-sm);
+}
+
+    .tm-pday svg,
+    .tm-pday__blank {
+        display: block;
+        width: 16px;
+        height: 16px;
+    }
+
+.tm-pday--submitted svg {
+    color: var(--text-3);
+}
+
+.tm-pday--today {
+    background: var(--brand-50);
+}
+
+.tm-pday--missing {
+    background: var(--warning-50);
+    box-shadow: inset 0 0 0 1px var(--warning-200);
+}
+
+    .tm-pday--missing svg {
+        color: var(--warning-700);
+    }
+
+/* ---------- Detailed report ---------- */
+
+/* the filters sit in one row and wrap on a narrow screen, the button lines up with the boxes */
+.tm-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border-bottom: 1px solid var(--line);
+}
+
+.tm-field {
+    display: grid;
+    gap: 6px;
+}
+
+.tm-label {
+    font-weight: var(--weight-medium);
+}
+
+.tm-input {
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    font: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+}
+
+    .tm-input:hover {
+        border-color: var(--text-3);
+    }
+
+    .tm-input:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 0;
+        border-color: var(--brand-600);
+    }
+
+    .tm-input[type="date"] {
+        width: 10.5rem;
+    }
+
+/* a select with its own arrow: an svg next to it, since the content security policy blocks a data: background image */
+.tm-select {
+    position: relative;
+    display: grid;
+}
+
+.tm-input--select {
+    width: 12rem;
+    padding-right: var(--space-6);
+    appearance: none;
+    cursor: pointer;
+}
+
+.tm-select__icon {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    width: 16px;
+    height: 16px;
+    color: var(--text-2);
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.tm-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 44px;
+    padding: 0 var(--space-4);
+    font: inherit;
+    font-weight: var(--weight-semibold);
+    color: #ffffff;
+    text-decoration: none;
+    background: var(--brand-600);
+    border: 1px solid var(--brand-600);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+    .tm-button:hover {
+        background: var(--brand-700);
+        border-color: var(--brand-700);
+    }
+
+    .tm-button:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+.tm-button--secondary {
+    color: var(--text);
+    background: var(--surface);
+    border-color: var(--line-strong);
+}
+
+    .tm-button--secondary:hover {
+        background: var(--paper);
+        border-color: var(--text-3);
+    }
+
+.tm-button__icon {
+    width: 16px;
+    height: 16px;
+}
+
+.tm-alert {
+    max-width: 62ch;
+    margin: var(--space-5);
+    padding: var(--space-3);
+    line-height: 1.5;
+    color: var(--danger-700);
+    background: var(--danger-50);
+    border: 1px solid var(--danger-200);
+    border-radius: var(--radius-sm);
+}
+
+/* who and when on the left, the download (or how to get one) on the right */
+.tm-report__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-5);
+    padding: var(--space-5) var(--space-5) var(--space-3);
+}
+
+.tm-report__caption,
+.tm-report__hint {
+    margin: 0;
+    color: var(--text-2);
+}
+
+    .tm-report__caption strong {
+        font-weight: var(--weight-semibold);
+        color: var(--text);
+    }
+
+.tm-report__empty {
+    margin: 0;
+    padding: var(--space-2) var(--space-5) var(--space-5);
+    color: var(--text-2);
+}
+
+.tm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+}
+
+    .tm-table th,
+    .tm-table td {
+        padding: var(--space-3) var(--space-5);
+        text-align: right;
+        border-top: 1px solid var(--line);
+    }
+
+        .tm-table th:first-child,
+        .tm-table td:first-child {
+            text-align: left;
+        }
+
+    .tm-table thead th {
+        padding-top: 0;
+        font-size: var(--text-xs);
+        font-weight: var(--weight-medium);
+        color: var(--text-3);
+        border-top: 0;
+    }
+
+    .tm-table tbody th {
+        font-weight: var(--weight-regular);
+        overflow-wrap: anywhere;
+    }
+
+    /* the hours stand out from the billable part and the count */
+    .tm-table tbody td:nth-child(2) {
+        font-weight: var(--weight-semibold);
+    }
+
+    .tm-table tfoot th,
+    .tm-table tfoot td {
+        font-weight: var(--weight-semibold);
+        border-top: 1px solid var(--text);
+    }
+
+.tm-table__total {
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+}
+
+/* ---------- Exports: one choice, one button, and a line saying what you'll get ---------- */
+
+.tm-panel--form {
+    max-width: 36rem;
+    padding: var(--space-6);
+}
+
+.tm-export {
+    display: grid;
+    gap: var(--space-5);
+}
+
+    .tm-export .tm-select {
+        max-width: 20rem;
+    }
+
+    .tm-export .tm-input--select {
+        width: 100%;
+    }
+
+.tm-you-get {
+    margin: 0;
+    padding: var(--space-4);
+    line-height: var(--leading-body);
+    background: var(--paper);
+    border-radius: var(--radius-sm);
+}
+
+.tm-you-get__item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+}
+
+    .tm-you-get__item svg {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        color: var(--text-3);
+    }
+
+    .tm-you-get__item strong {
+        font-weight: var(--weight-semibold);
+    }
+
+    .tm-you-get__item small {
+        display: block;
+        font-size: var(--text-sm);
+        color: var(--text-2);
+    }
+
+.tm-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    line-height: var(--leading-body);
+    background: var(--warning-50);
+    border: 1px solid var(--warning-200);
+    border-radius: var(--radius-sm);
+}
+
+    .tm-notice svg {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        margin-top: 3px;
+        color: var(--warning-700);
+    }
+
+.tm-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+/* while the file is being prepared */
+.tm-button[aria-disabled="true"] {
+    cursor: progress;
+    opacity: 0.85;
+}
+
+.tm-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .tm-spinner {
+        animation: tm-spin 0.8s linear infinite;
+    }
+}
+
+@keyframes tm-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ---------- Users: messages, creating an account, and everyone ---------- */
+
+.tm-hero__counts {
+    margin: var(--space-3) 0 0;
+    font-variant-numeric: tabular-nums;
+    color: var(--on-ink-3);
+}
+
+/* one status line, and the temporary password when there is one */
+.tm-messages {
+    display: grid;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+}
+
+.tm-status {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    line-height: var(--leading-body);
+    border-radius: var(--radius-sm);
+}
+
+    .tm-status svg {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        margin-top: 3px;
+    }
+
+.tm-status--ok {
+    background: var(--success-50);
+    border: 1px solid var(--success-200);
+}
+
+    .tm-status--ok svg {
+        color: var(--success-700);
+    }
+
+.tm-status--error {
+    background: var(--danger-50);
+    border: 1px solid var(--danger-200);
+}
+
+    .tm-status--error svg {
+        color: var(--danger-700);
+    }
+
+.tm-temp {
+    max-width: 40rem;
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--brand-600);
+    border-radius: var(--radius-md);
+}
+
+.tm-temp__title {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    overflow-wrap: anywhere;
+}
+
+/* one click selects the whole password */
+.tm-temp__code {
+    display: inline-block;
+    margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 1.25rem;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+
+.tm-temp__warn {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    line-height: var(--leading-body);
+    color: var(--text-2);
+}
+
+    .tm-temp__warn svg {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        margin-top: 3px;
+        color: var(--warning-700);
+    }
+
+.tm-create {
+    padding: var(--space-5);
+}
+
+.tm-create__form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-4);
+}
+
+.tm-input--name {
+    width: 14rem;
+}
+
+.tm-input--email {
+    width: 18rem;
+}
+
+/* the role as a pair of options: the radio sits invisibly over its label, the checked one gets the selected tint */
+.tm-choice {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+}
+
+.tm-choice__option {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 var(--space-4);
+    font-weight: var(--weight-medium);
+    color: var(--text-2);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+    .tm-choice__option input {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .tm-choice__option:has(input:checked) {
+        font-weight: var(--weight-semibold);
+        color: var(--brand-700);
+        background: var(--brand-50);
+        box-shadow: inset 0 0 0 1px var(--brand-600);
+    }
+
+    .tm-choice__option:has(input:focus-visible) {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+.tm-people-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+
+    .tm-people-head .tm-section__title {
+        margin: 0;
+    }
+
+    .tm-people-head p {
+        margin: 0;
+        color: var(--text-2);
+    }
+
+.tm-users {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .tm-users th,
+    .tm-users td {
+        padding: var(--space-3) var(--space-4);
+        font-weight: var(--weight-regular);
+        text-align: left;
+        vertical-align: middle;
+        border-top: 1px solid var(--line);
+    }
+
+    .tm-users thead th {
+        font-size: var(--text-xs);
+        font-weight: var(--weight-medium);
+        color: var(--text-3);
+        border-top: 0;
+    }
+
+.tm-users__who strong {
+    display: block;
+    font-weight: var(--weight-semibold);
+    overflow-wrap: anywhere;
+}
+
+.tm-users__who > span {
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    overflow-wrap: anywhere;
+}
+
+.tm-users__you {
+    margin-left: 6px;
+    font-weight: var(--weight-regular);
+    color: var(--text-3);
+}
+
+.tm-users__when {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+    white-space: nowrap;
+}
+
+.tm-users__when--never {
+    color: var(--text-3);
+}
+
+.tm-users .tm-users__acts {
+    text-align: right;
+    white-space: nowrap;
+}
+
+    .tm-users__acts form {
+        display: inline;
+    }
+
+        .tm-users__acts form + form {
+            margin-left: var(--space-1);
+        }
+
+/* a deactivated person is greyed, their buttons are not */
+.tm-users__row--off .tm-users__who,
+.tm-users__row--off td:not(.tm-users__acts) {
+    color: var(--text-3);
+}
+
+    .tm-users__row--off .tm-users__who strong {
+        color: var(--text-2);
+    }
+
+.tm-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tm-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 8px;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    line-height: 1.6;
+    border-radius: var(--radius-pill);
+}
+
+    .tm-tag svg {
+        width: 12px;
+        height: 12px;
+    }
+
+.tm-tag--plain {
+    padding-left: 0;
+    color: var(--text-2);
+}
+
+.tm-tag--off {
+    color: var(--text-2);
+    background: var(--paper);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.tm-tag--temp {
+    color: var(--brand-700);
+    background: var(--brand-50);
+}
+
+.tm-tag--locked {
+    color: var(--danger-700);
+    background: var(--danger-50);
+    box-shadow: inset 0 0 0 1px var(--danger-200);
+}
+
+.tm-small-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 var(--space-3);
+    font: inherit;
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+    .tm-small-button:hover {
+        background: var(--paper);
+        border-color: var(--text-3);
+    }
+
+    .tm-small-button:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+/* quiet until hovered: a column of red buttons would shout */
+.tm-small-button--quiet {
+    color: var(--text-2);
+    background: none;
+    border-color: transparent;
+}
+
+    .tm-small-button--quiet:hover {
+        color: var(--danger-700);
+        background: var(--danger-50);
+        border-color: transparent;
+    }
+
+/* narrower windows: one block per person, the table's headings are still read out */
+@media (max-width: 52rem) {
+    .tm-users thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+    }
+
+    .tm-users,
+    .tm-users tbody,
+    .tm-users th,
+    .tm-users td {
+        display: block;
+    }
+
+    .tm-users tbody tr {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: var(--space-2) var(--space-3);
+        padding: var(--space-4);
+        border-top: 1px solid var(--line);
+    }
+
+        .tm-users tbody tr:first-child {
+            border-top: 0;
+        }
+
+    .tm-users tbody th,
+    .tm-users tbody td {
+        padding: 0;
+        border: 0;
+    }
+
+    .tm-users .tm-users__who {
+        grid-column: 1;
+    }
+
+    .tm-users .tm-users__role {
+        grid-column: 2;
+        grid-row: 1;
+        color: var(--text-2);
+    }
+
+    .tm-users .tm-users__state,
+    .tm-users .tm-users__when {
+        grid-column: 1 / -1;
+    }
+
+        .tm-users .tm-users__when::before {
+            content: "Last sign in: ";
+            color: var(--text-3);
+        }
+
+    .tm-users .tm-users__acts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        grid-column: 1 / -1;
+        margin-top: var(--space-1);
+        text-align: left;
+    }
+
+        .tm-users__acts form + form {
+            margin-left: 0;
+        }
+}
+
+/* ---------- Narrower windows: the rates go under the figure, the breakdowns stack ---------- */
+
+@media (max-width: 56rem) {
+    .tm-hero__top {
+        grid-template-columns: 1fr;
+    }
+
+    .tm-cols {
+        grid-template-columns: 1fr;
+    }
+
+    .tm-cols__col,
+    .tm-cols__col + .tm-cols__col {
+        padding: var(--space-5) 0 0;
+        border-left: 0;
+    }
+
+        .tm-cols__col + .tm-cols__col {
+            margin-top: var(--space-5);
+            border-top: 1px solid var(--line);
+        }
+}
+
+/* ---------- Phones ---------- */
+
+@media (max-width: 40rem) {
+    .tm-hero {
+        padding: var(--space-4) 0 var(--space-5);
+    }
+
+    .tm-hero__unit {
+        font-size: var(--text-xl);
+    }
+
+    .tm-hero__sub,
+    .tm-hero__intro {
+        font-size: var(--text-sm);
+    }
+
+    .tm-hero__title {
+        font-size: 1.875rem;
+    }
+
+    .tm-subnav {
+        margin-top: 0;
+    }
+
+    .tm-subnav__link {
+        min-height: var(--target-touch);
+    }
+
+    .tm-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tm-period {
+        justify-content: space-between;
+    }
+
+    .tm-period__label {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .tm-icon-button {
+        width: var(--target-touch);
+        height: var(--target-touch);
+    }
+
+    .tm-toggle {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .tm-toggle__option {
+        min-height: var(--target-touch);
+    }
+
+    .tm-rates {
+        gap: var(--space-5);
+    }
+
+    .tm-rate__value,
+    .tm-billing__hours {
+        font-size: 1.375rem;
+    }
+
+    .tm-section + .tm-section {
+        padding-top: var(--space-6);
+    }
+
+    /* the table makes way for one block per person, the key is only for the table */
+    .tm-grid-wrap,
+    .tm-key {
+        display: none;
+    }
+
+    .tm-plist {
+        display: block;
+    }
+
+    .tm-filters {
+        padding: var(--space-4);
+    }
+
+        .tm-filters .tm-field,
+        .tm-filters .tm-button {
+            width: 100%;
+        }
+
+    .tm-input,
+    .tm-button {
+        min-height: var(--target-touch);
+    }
+
+        .tm-input[type="date"],
+        .tm-input--select {
+            width: 100%;
+        }
+
+    .tm-alert {
+        margin: var(--space-4);
+    }
+
+    .tm-report__head {
+        padding: var(--space-4) var(--space-4) var(--space-2);
+    }
+
+    .tm-report__empty {
+        padding: var(--space-2) var(--space-4) var(--space-4);
+    }
+
+    .tm-table th,
+    .tm-table td {
+        padding: var(--space-3) var(--space-4);
+    }
+
+        /* the entries count goes first on a phone */
+        .tm-table th:nth-child(4),
+        .tm-table td:nth-child(4) {
+            display: none;
+        }
+
+    .tm-panel--form {
+        padding: var(--space-4);
+    }
+
+    .tm-export .tm-select {
+        max-width: none;
+    }
+
+    .tm-actions .tm-button {
+        width: 100%;
+    }
+
+    .tm-create {
+        padding: var(--space-4);
+    }
+
+        .tm-create__form .tm-field,
+        .tm-create__form .tm-button,
+        .tm-input--name,
+        .tm-input--email {
+            width: 100%;
+        }
+
+    .tm-choice {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .tm-choice__option,
+    .tm-small-button {
+        min-height: 44px;
+    }
+
+    .tm-temp {
+        padding: var(--space-4);
+    }
+
+    .tm-temp__code {
+        font-size: 1.125rem;
+    }
+}
+
+/* ---------- Small phones: a row's bar moves under its name ---------- */
+
+@media (max-width: 30rem) {
+    .tm-bar-row {
+        grid-template-columns: 1fr auto auto;
+        grid-template-areas:
+            "label time pct"
+            "bar bar bar";
+        row-gap: 6px;
+        padding: var(--space-2) 0;
+    }
+}

@@ -2,42 +2,78 @@
     //the account menu shows the login name and its initials
     var userName = User.Identity?.Name ?? string.Empty;
     var initials = string.Concat(userName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(word => char.ToUpperInvariant(word[0])));
+    //and the open menu lists the person's role under their name
+    var roles = string.Join(", ", Enum.GetNames<TimePlanner.Core.Domain.Enums.UserRole>().Where(User.IsInRole));
 
     //each page names its tab with ViewData["Nav"], that tab is marked as the current page
     string? Current(string tab) => ViewData["Nav"] as string == tab ? "page" : null;
+
+    //someone on a temporary password can only reach settings until they choose their own, so the tabs are left out
+    var choosingPassword = User.HasClaim(TimePlanner.Dashboard.Security.AppClaimsPrincipalFactory.MustChangePasswordClaim, "1");
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Time Tracker</title>
+    <meta name="color-scheme" content="light" />
+    <title>@ViewData["Title"] - Time Planner</title>
     <link rel="preload" href="~/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="~/fonts/lora-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="~/css/fonts.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/fonts-lora.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="app-body">
+    <a class="app-skip" href="#main">Skip to content</a>
+
     <header class="app-header">
         <div class="app-header__inner">
             <span class="app-brand">
-                <svg class="app-brand__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <svg class="app-brand__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <line x1="10" y1="2" x2="14" y2="2" />
                     <line x1="12" y1="14" x2="15" y2="11" />
                     <circle cx="12" cy="14" r="8" />
                 </svg>
-                Time Tracker
+                Time Planner
             </span>
 
-            <nav class="app-nav" aria-label="Main">
-                <a class="app-nav__link" asp-controller="Home" asp-action="Index" aria-current="@Current("Home")">Home</a>
-                <a class="app-nav__link" asp-controller="Timesheet" asp-action="Index" aria-current="@Current("Timesheet")">My Timesheet</a>
-                <a class="app-nav__link" asp-controller="Report" asp-action="Index" asp-route-view="week" aria-current="@Current("Reports")">My Reports</a>
-                @if (User.IsInRole("Admin"))
-                {
-                    <a class="app-nav__link" asp-controller="Admin" asp-action="Index" aria-current="@Current("Admin")">Team</a>
-                }
-            </nav>
+            @* the icons only show on a phone, where the tabs move to a bar along the bottom of the screen *@
+            @if (!choosingPassword)
+            {
+                <nav class="app-nav" aria-label="Main">
+                    <a class="app-nav__link" asp-controller="Home" asp-action="Index" aria-current="@Current("Home")">Home
+                        <svg class="app-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 10.5 12 3l9 7.5" />
+                            <path d="M5 9.5V21h14V9.5" />
+                        </svg>
+                    </a>
+                    <a class="app-nav__link" asp-controller="Timesheet" asp-action="Index" aria-current="@Current("Timesheet")">My Timesheet
+                        <svg class="app-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="18" rx="2" />
+                            <path d="M16 2v4M8 2v4M3 10h18" />
+                        </svg>
+                    </a>
+                    <a class="app-nav__link" asp-controller="Report" asp-action="Index" asp-route-view="week" aria-current="@Current("Reports")">My Reports
+                        <svg class="app-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 3v18h18" />
+                            <path d="M8 16v-5M13 16V8M18 16v-3" />
+                        </svg>
+                    </a>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a class="app-nav__link" asp-controller="Admin" asp-action="Index" aria-current="@Current("Admin")">Team
+                            <svg class="app-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                            </svg>
+                        </a>
+                    }
+                </nav>
+            }
 
             @if (User.Identity?.IsAuthenticated == true)
             {
@@ -50,18 +86,47 @@
                         </svg>
                     </summary>
                     <div class="app-user__menu">
-                        <a class="app-user__item" asp-controller="Settings" asp-action="Index">Settings</a>
-                        <form asp-controller="Account" asp-action="Logout" method="post">
-                            <button class="app-user__item" type="submit">Sign out</button>
-                        </form>
+                        <div class="app-user__card">
+                            <span class="app-user__avatar app-user__avatar--large" aria-hidden="true">@initials</span>
+                            <div class="app-user__details">
+                                <span class="app-user__card-name">@userName</span>
+                                @if (roles.Length > 0)
+                                {
+                                    <span class="app-user__meta">@roles</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="app-user__items">
+                            <a class="app-user__item" asp-controller="Settings" asp-action="Index" aria-current="@Current("Settings")">
+                                <svg class="app-user__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                Settings
+                            </a>
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                <button class="app-user__item" type="submit">
+                                    <svg class="app-user__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                        <polyline points="16 17 21 12 16 7" />
+                                        <line x1="21" y1="12" x2="9" y2="12" />
+                                    </svg>
+                                    Log out
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </details>
             }
         </div>
     </header>
 
-    <main class="app-main">
-        @RenderBody()
+    @* a page can put a full width band (Home's day hero) straight under the top bar, the rest sits in the page frame *@
+    <main class="app-content" id="main">
+        @await RenderSectionAsync("Hero", required: false)
+        <div class="app-main">
+            @RenderBody()
+        </div>
     </main>
 
     <script src="~/js/app.js" asp-append-version="true"></script>

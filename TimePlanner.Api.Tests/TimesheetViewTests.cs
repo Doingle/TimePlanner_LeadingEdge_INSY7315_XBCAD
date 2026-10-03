@@ -96,6 +96,9 @@ namespace TimePlanner.Api.Tests
             Assert.Equal("login page", items[0].GetProperty("note").GetString());
             Assert.True(items[0].GetProperty("billable").GetBoolean());
             Assert.False(items[1].GetProperty("billable").GetBoolean());
+            //each entry carries its category's colour, the same one Home uses
+            Assert.Equal("#7C3AED", items[0].GetProperty("colour").GetString());
+            Assert.Equal("#EA580C", items[1].GetProperty("colour").GetString());
         }
 
         [Fact]

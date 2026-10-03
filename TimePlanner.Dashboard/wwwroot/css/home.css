@@ -1,447 +1,586 @@
 /* Home page
 
-   Today's timeline and where the time went (Views/Home/Index.cshtml). Builds on the
-   colours in app.css. Inline styles are blocked by the content security policy, so
-   timeline positions are set by home.js and bar widths and data colours by app.js, from data attributes */
+   The latest submitted day on the brand ink, straight under the top bar, then where the time went on paper (Views/Home/Index.cshtml).
+   The colours, type and spacing come from tokens.css. Inline styles are blocked by the content security policy, so
+   ribbon positions are set by home.js and bar widths and data colours by app.js, from data attributes */
 
-:root {
-    --home-track: #f2f4f7;
-    --home-success: #067647;
-    --home-warning: #b54708;
-    --home-alert-bg: #fffaeb;
-    --home-alert-border: #fedf89;
-    --home-billable: #344054;
-    --home-non-billable: #98a2b3;
-    --home-hatch: #d0d5dd;
-    --home-toggle-border: #e4e7ec;
-    --home-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
-    --home-icon-clock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
-    --home-icon-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 7.5v5M12 16.5h.01'/%3E%3C/svg%3E");
-}
-
-/* An icon drawn in the element's text colour, picked with --home-icon */
-.home-status__item::before,
-.home-alert::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    background-color: currentColor;
-    -webkit-mask: var(--home-icon) center / contain no-repeat;
-    mask: var(--home-icon) center / contain no-repeat;
-}
-
-/* ---------- Page heading ---------- */
+/* ---------- A login without a profile ---------- */
 
 .home-title {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-    line-height: 1.35;
+    margin: 0 0 var(--space-4);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
     letter-spacing: -0.01em;
 }
 
-.home-status {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 22px;
-    margin: 6px 0 0;
-    padding: 0;
-    font-size: 13px;
-    color: var(--app-muted);
-    list-style: none;
+.home-alert {
+    max-width: 60ch;
+    margin: 0;
+    padding: var(--space-3);
+    line-height: 1.5;
+    color: var(--warning-800);
+    background: var(--warning-50);
+    border: 1px solid var(--warning-200);
+    border-radius: var(--radius-sm);
 }
 
-.home-status__item {
-    position: relative;
-    padding-left: 21px;
+/* ---------- Hero: the latest submitted day ---------- */
+
+.home-hero {
+    padding: var(--space-7) 0 var(--space-6);
+    color: var(--on-ink);
+    background: var(--ink);
 }
 
-    .home-status__item::before {
-        top: calc((1.45em - 13px) / 2);
-        width: 13px;
-        height: 13px;
+    .home-hero :focus-visible {
+        outline: var(--focus-ring-on-ink);
+        outline-offset: var(--focus-offset);
     }
 
-    .home-status__item strong {
-        font-weight: 600;
-        color: var(--app-text);
-    }
-
-.home-status__item--done::before {
-    --home-icon: var(--home-icon-check);
-    color: var(--home-success);
+.home-hero__inner {
+    max-width: var(--app-frame);
+    margin: 0 auto;
+    padding: 0 var(--gutter);
 }
 
-.home-status__item--pending::before {
-    --home-icon: var(--home-icon-clock);
-    color: var(--home-warning);
+.home-hero__date {
+    margin: 0;
+    font-size: var(--text-md);
+    color: var(--on-ink-2);
 }
 
-/* ---------- Cards ---------- */
-
-.home-card {
-    background: var(--app-surface);
-    border: 1px solid var(--app-border);
-    border-radius: var(--app-radius);
-}
-
-/* ---------- Today's timeline ---------- */
-
-.home-timeline {
-    margin-top: 20px;
-    padding: 24px 22px 22px;
-}
-
-/* the gap under the header leaves room for the now marker's label */
-.home-timeline__header {
+.home-hero__figure {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    justify-content: space-between;
-    gap: 4px 16px;
-    margin-bottom: 38px;
+    column-gap: var(--space-3);
+    margin: var(--space-1) 0 0;
+    font-family: var(--font-display);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
 }
 
-.home-timeline__title {
+.home-hero__num {
+    font-size: var(--text-hero);
+    font-variant-numeric: lining-nums tabular-nums;
+}
+
+.home-hero__unit {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-regular);
+    letter-spacing: 0;
+    color: var(--on-ink-2);
+}
+
+.home-hero__meta {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-md);
+    color: var(--on-ink-2);
+}
+
+/* time left unlogged on the day */
+.home-hero__note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    max-width: 62ch;
+    margin: var(--space-5) 0 0;
+    font-size: var(--text-md);
+    line-height: var(--leading-body);
+    color: var(--on-ink);
+}
+
+.home-hero__note-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 4px;
+    color: var(--warning-on-ink);
+}
+
+/* ---------- The day ribbon: the one bold thing on the page ----------
+   Each entry is a block on a track that spans the working day, its name underneath.
+   home.js sets --left and --width on each block and --at on each axis label */
+
+.home-ribbon {
+    --track-h: 32px;
+    --label-h: 24px;
+    position: relative;
+    margin-top: var(--space-6);
+}
+
+.home-ribbon__track {
+    position: relative;
+    height: calc(var(--track-h) + var(--label-h));
     margin: 0;
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 1.4;
+    padding: 0;
+    list-style: none;
 }
 
-.home-timeline__range {
-    font-size: 13px;
-    font-weight: 400;
-    color: var(--app-muted);
-}
-
-.home-timeline__summary {
-    margin: 0;
-    font-size: 14px;
-    color: var(--app-muted);
-}
-
-    .home-timeline__summary strong {
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--app-text);
+    .home-ribbon__track::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: var(--track-h);
+        background: var(--ink-raised);
+        border-radius: var(--radius-xs);
     }
 
-/* the margin under the track is the row the block labels sit in */
-.home-track {
-    position: relative;
-    height: 42px;
-    margin-bottom: 29px;
-    background: var(--home-track);
-}
-
-.home-track__empty {
+/* a day with nothing on it keeps its empty track, with a line inside saying why */
+.home-ribbon__empty {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
     display: flex;
     align-items: center;
-    height: 100%;
+    height: var(--track-h);
     margin: 0;
-    padding: 0 38px;
-    font-size: 13px;
-    color: var(--app-muted);
+    padding: 0 var(--space-3);
+    overflow: hidden;
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--on-ink-2);
 }
 
-/* one logged entry, coloured with its category. The white edge keeps neighbours apart */
 .home-block {
     position: absolute;
     top: 0;
-    bottom: 0;
-    background: var(--app-muted);
-    border-right: 2px solid var(--app-surface);
+    left: var(--left, 0);
+    width: var(--width, 0);
+    height: 100%;
 }
 
-.home-block__label {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-    max-width: 100%;
+/* the entry's colour comes from its category (data-colour), the right border keeps neighbours apart */
+.home-block__bar {
+    display: block;
+    height: var(--track-h);
+    background: var(--logged);
+    border-right: 2px solid var(--ink);
+    transform-origin: left center;
+}
+
+.home-block__name {
+    display: block;
+    margin-top: 6px;
     overflow: hidden;
-    font-size: 11.5px;
-    line-height: 1.2;
-    color: var(--app-text);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
     white-space: nowrap;
     text-overflow: ellipsis;
+    color: var(--on-ink-2);
 }
 
-/* time nobody logged, hatched so it reads as missing rather than as a category */
-.home-block--unlogged {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    background: repeating-linear-gradient(135deg, var(--app-surface) 0 6px, var(--home-hatch) 6px 7.5px);
-    border: 1px dashed var(--home-non-billable);
-}
-
-.home-block__text {
-    max-width: 100%;
-    overflow: hidden;
-    padding: 2px 7px;
-    font-size: 12px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    background: var(--app-surface);
-}
-
-.home-now {
+/* the times and the project are read out but only shown in the phone list (the times) or the tooltip (the project) */
+.home-block__detail,
+.home-block__more {
     position: absolute;
-    top: -5px;
-    bottom: -5px;
-    z-index: 1;
-    width: 2px;
-    margin-left: -1px;
-    background: var(--app-text);
-    pointer-events: none;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
 }
 
-.home-now__label {
+/* time nobody logged: hatched amber, labelled inside the block */
+.home-block--gap .home-block__bar {
+    background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(251, 199, 95, 0.5) 5px 6.5px), var(--ink-raised);
+    box-shadow: inset 0 0 0 1.5px var(--warning-on-ink);
+}
+
+.home-block--gap .home-block__name {
     position: absolute;
-    bottom: calc(100% + 4px);
-    left: 50%;
-    padding: 2px 6px;
-    font-size: 11.5px;
-    font-weight: 700;
-    line-height: 15px;
-    color: #ffffff;
-    white-space: nowrap;
-    background: var(--app-text);
-    border-radius: 1px;
-    transform: translateX(-50%);
+    top: 8px;
+    left: 8px;
+    max-width: calc(100% - 18px);
+    margin: 0;
+    padding: 1px 6px;
+    font-weight: var(--weight-semibold);
+    color: var(--warning-on-ink);
+    background: var(--ink-raised);
+    border-radius: 3px;
 }
 
-/* The hour labels are zero width and spread evenly, so each one centres on its hour.
-   The first and last are pulled inside the card instead */
-.home-axis {
-    display: flex;
-    justify-content: space-between;
-    padding-top: 8px;
-    font-size: 11.5px;
-    line-height: 1.2;
-    color: var(--app-muted);
-    border-top: 1px solid var(--home-track);
-}
-
-.home-axis__tick {
-    width: 0;
-}
-
-.home-axis__label {
-    display: inline-block;
-    white-space: nowrap;
-    transform: translateX(-50%);
-}
-
-.home-axis__tick:first-child .home-axis__label {
-    transform: none;
-}
-
-.home-axis__tick:last-child .home-axis__label {
-    transform: translateX(-100%);
-}
-
-.home-alert {
-    position: relative;
-    margin: 16px 0 0;
-    padding: 11px 14px 11px 40px;
-    font-size: 13.5px;
-    color: var(--app-text);
-    background: var(--home-alert-bg);
-    border: 1px solid var(--home-alert-border);
-    border-radius: var(--app-radius);
-}
-
-    .home-alert::before {
-        --home-icon: var(--home-icon-alert);
-        top: calc(11px + (1.45em - 16px) / 2);
-        left: 14px;
-        width: 16px;
-        height: 16px;
-        color: var(--home-warning);
+@media (hover: hover) {
+    .home-block[data-tip]:hover::after {
+        content: attr(data-tip);
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 0;
+        z-index: 4;
+        width: max-content;
+        max-width: 20rem;
+        padding: 4px 8px;
+        font-size: var(--text-xs);
+        font-weight: var(--weight-semibold);
+        font-variant-numeric: tabular-nums;
+        color: var(--ink);
+        background: var(--on-ink);
+        border-radius: 4px;
     }
 
-    .home-alert strong {
-        font-weight: 600;
+    .home-block--late[data-tip]:hover::after {
+        right: 0;
+        left: auto;
+    }
+
+    .home-block[data-tip]:hover .home-block__bar {
+        filter: brightness(1.15);
+    }
+}
+
+/* one orchestrated moment: the day fills in from left to right on load, home.js staggers the blocks */
+@media (prefers-reduced-motion: no-preference) {
+    .home-block__bar {
+        animation: home-fill-in 520ms var(--ease-out) both;
+    }
+}
+
+@keyframes home-fill-in {
+    from {
+        transform: scaleX(0);
+    }
+}
+
+.home-axis {
+    position: relative;
+    height: 22px;
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--on-ink-3);
+}
+
+/* the first label starts at the left edge and the last one ends at the right edge */
+.home-axis__tick {
+    position: absolute;
+    top: 6px;
+    left: var(--at, 0);
+    transform: translateX(-50%);
+}
+
+    .home-axis__tick:first-child {
+        transform: none;
+    }
+
+    .home-axis__tick:last-child {
+        transform: translateX(-100%);
     }
 
 /* ---------- Where the time went ---------- */
 
-.home-split {
-    margin-top: 36px;
+.home-where {
+    padding: var(--space-5) 0 var(--space-6);
 }
 
-.home-split__header {
+.home-where__head {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-start;
+    align-items: flex-end;
     justify-content: space-between;
-    gap: 12px 24px;
-    margin-bottom: 12px;
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
 }
 
-.home-split__title {
+.home-where__title {
     margin: 0;
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 1.4;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    letter-spacing: -0.01em;
+    color: var(--text);
 }
 
-.home-split__subtitle {
-    margin: 2px 0 0;
-    font-size: 13px;
-    color: var(--app-muted);
+.home-where__sub {
+    margin: var(--space-1) 0 0;
+    color: var(--text-2);
 }
 
+.home-where__period {
+    margin: 0;
+}
+
+/* the day or the week, the chosen one is tinted */
 .home-toggle {
     display: inline-flex;
-    padding: 1px;
-    background: var(--app-surface);
-    border: 1px solid var(--home-toggle-border);
-    border-radius: var(--app-radius);
+    gap: 2px;
+    padding: 2px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
 }
 
 .home-toggle__option {
-    height: 31px;
-    padding: 0 12px;
+    min-height: 34px;
+    padding: 0 var(--space-4);
     font: inherit;
-    font-size: 13.5px;
-    font-weight: 500;
-    color: var(--app-text);
-    background: none;
-    border: none;
-    border-radius: 1px;
+    font-weight: var(--weight-medium);
+    color: var(--text-2);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
     cursor: pointer;
 }
 
+    .home-toggle__option:hover:not([aria-pressed="true"]) {
+        color: var(--text);
+        background: var(--paper);
+    }
+
     .home-toggle__option[aria-pressed="true"] {
-        font-weight: 600;
-        color: #ffffff;
-        background: var(--app-purple);
+        font-weight: var(--weight-semibold);
+        color: var(--brand-700);
+        background: var(--brand-50);
+        border-color: var(--brand-600);
     }
 
     .home-toggle__option:focus-visible {
-        outline: 2px solid var(--app-purple);
-        outline-offset: 2px;
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
     }
 
-.home-split__cards {
+/* by category and by project, side by side with a hairline between them */
+.home-split {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 22px;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--line);
 }
 
-.home-breakdown {
-    padding: 22px 22px 26px;
+.home-split__col {
+    padding: var(--space-5) var(--space-6) 0 0;
 }
 
-.home-breakdown__title {
-    margin: 0 0 10px;
-    font-size: 13.5px;
-    font-weight: 600;
-    line-height: 1.4;
+    .home-split__col + .home-split__col {
+        padding: var(--space-5) 0 0 var(--space-6);
+        border-left: 1px solid var(--line);
+    }
+
+.home-split__title {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
 }
 
-.home-breakdown__empty {
-    margin: 0 0 7px;
-    font-size: 13.5px;
-    color: var(--app-muted);
+.home-split__empty {
+    max-width: 60ch;
+    margin: 0;
+    line-height: var(--leading-body);
+    color: var(--text-2);
 }
 
-.home-breakdown__list {
-    display: grid;
-    gap: 14px;
-    margin: 8px 0 0;
+.home-bars {
+    margin: 0;
     padding: 0;
     list-style: none;
 }
 
-    /* rows with a note under the name are taller, so they sit closer together */
-    .home-breakdown__list:has(.home-breakdown__note) {
-        gap: 7px;
-    }
-
-/* name, bar, then the time and share */
-.home-breakdown__row {
+.home-bar-row {
     display: grid;
-    grid-template-columns: 88px minmax(0, 1fr) 92px;
+    grid-template-columns: minmax(5.5rem, 8.5rem) 1fr 3.25rem 2.75rem;
+    grid-template-areas: "label bar time pct";
     align-items: center;
-    column-gap: 14px;
-    font-size: 13.5px;
+    gap: var(--space-3);
+    min-height: 2.75rem;
 }
 
-.home-breakdown__name {
-    min-width: 0;
+.home-bar-row__label {
+    grid-area: label;
+    line-height: 1.3;
     overflow-wrap: anywhere;
 }
 
-.home-breakdown__note {
-    display: block;
-    font-size: 11.5px;
-    line-height: 1.3;
-    color: var(--app-muted);
-}
-
-.home-breakdown__value {
-    color: var(--app-muted);
-    text-align: right;
-    white-space: nowrap;
-}
-
-    .home-breakdown__value strong {
-        font-weight: 700;
-        color: var(--app-text);
+    .home-bar-row__label small {
+        display: block;
+        font-size: var(--text-xs);
+        color: var(--text-3);
     }
 
-.home-bar {
-    display: block;
-    height: 11px;
-    background: var(--home-track);
+.home-bar-row__bar {
+    grid-area: bar;
+    height: 6px;
 }
 
-.home-bar__fill {
+/* as long as its share of the largest row (data-percent), coloured by its category or by billing */
+.home-bar-row__fill {
     display: block;
     width: 0;
+    min-width: 2px;
     height: 100%;
-    background: var(--app-muted);
+    background: var(--logged);
+    border-radius: 0 3px 3px 0;
 }
 
-.home-bar__fill--billable {
-    background: var(--home-billable);
+.home-bar-row__fill--billable {
+    background: var(--billable);
 }
 
-.home-bar__fill--non-billable {
-    background: var(--home-non-billable);
+.home-bar-row__fill--non-billable {
+    background: var(--non-billable);
 }
 
-/* ---------- Narrow windows ---------- */
+.home-bar-row__time {
+    grid-area: time;
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
 
-@media (max-width: 859.98px) {
-    .home-split__cards {
-        grid-template-columns: minmax(0, 1fr);
+.home-bar-row__pct {
+    grid-area: pct;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--text-2);
+}
+
+/* ---------- Narrower windows: the two breakdowns stack ---------- */
+
+@media (max-width: 56rem) {
+    .home-split {
+        grid-template-columns: 1fr;
+    }
+
+    .home-split__col,
+    .home-split__col + .home-split__col {
+        padding: var(--space-5) 0 0;
+        border-left: 0;
+    }
+
+        .home-split__col + .home-split__col {
+            margin-top: var(--space-5);
+            border-top: 1px solid var(--line);
+        }
+}
+
+/* ---------- Phones ----------
+   The ribbon becomes a list of entries with their times showing, each with a short colour bar */
+
+@media (max-width: 40rem) {
+    .home-hero {
+        padding: var(--space-5) 0;
+    }
+
+    .home-hero__unit {
+        font-size: var(--text-xl);
+    }
+
+    .home-hero__note {
+        font-size: var(--text-sm);
+    }
+
+    .home-ribbon {
+        margin-top: var(--space-5);
+    }
+
+    .home-axis,
+    .home-ribbon__track::before {
+        display: none;
+    }
+
+    .home-ribbon__track {
+        height: auto;
+    }
+
+    .home-ribbon__empty {
+        position: static;
+        display: block;
+        height: auto;
+        padding: 0;
+        font-size: var(--text-sm);
+        white-space: normal;
+    }
+
+    .home-block {
+        position: static;
+        display: grid;
+        grid-template-columns: 4px 1fr auto auto;
+        align-items: center;
+        gap: var(--space-3);
+        width: auto;
+        height: auto;
+        min-height: var(--target-touch);
+        border-bottom: 1px solid var(--ink-line);
+    }
+
+        .home-block:last-child {
+            border-bottom: 0;
+        }
+
+    .home-block__bar {
+        height: 22px;
+        border: 0;
+        border-radius: 2px;
+    }
+
+    .home-block__name {
+        margin: 0;
+        font-size: var(--text-sm);
+        color: var(--on-ink);
+    }
+
+    .home-block__detail {
+        position: static;
+        width: auto;
+        height: auto;
+        margin: 0;
+        overflow: visible;
+        clip-path: none;
+    }
+
+    .home-block__time {
+        font-variant-numeric: tabular-nums;
+        color: var(--on-ink-2);
+    }
+
+    .home-block__dur {
+        min-width: 3.25rem;
+        font-weight: var(--weight-semibold);
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+    }
+
+    .home-block--gap .home-block__bar {
+        background: var(--warning-on-ink);
+        box-shadow: none;
+    }
+
+    .home-block--gap .home-block__name {
+        position: static;
+        max-width: none;
+        padding: 0;
+        background: none;
+    }
+
+    .home-block--gap .home-block__detail {
+        color: var(--warning-on-ink);
+    }
+
+    .home-toggle__option {
+        min-height: var(--target-touch);
     }
 }
 
-@media (max-width: 759.98px) {
-    .home-timeline,
-    .home-breakdown {
-        padding-right: 16px;
-        padding-left: 16px;
-    }
+/* ---------- Small phones: a row's bar moves under its name ---------- */
 
-    .home-track__empty {
-        padding: 0 16px;
+@media (max-width: 30rem) {
+    .home-bar-row {
+        grid-template-columns: 1fr auto auto;
+        grid-template-areas:
+            "label time pct"
+            "bar bar bar";
+        row-gap: 6px;
+        padding: var(--space-2) 0;
     }
+}
 
-    /* every other hour, the labels do not fit side by side */
-    .home-axis__tick:nth-child(even) .home-axis__label {
-        visibility: hidden;
-    }
-
-    .home-breakdown__row {
-        grid-template-columns: 76px minmax(0, 1fr) 84px;
-        column-gap: 10px;
+@media (pointer: coarse) {
+    .home-toggle__option {
+        min-height: var(--target-touch);
     }
 }

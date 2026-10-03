@@ -1,7 +1,7 @@
 /* App shell
 
    The top bar and page frame shared by the signed in pages (Views/Shared/_AppLayout.cshtml).
-   Page styles such as home.css build on the colours defined here */
+   The top bar uses the redesign's tokens (tokens.css). Pages not redesigned yet, such as report.css, build on the --app colours here */
 
 :root {
     --app-purple: #7747ee;
@@ -11,10 +11,9 @@
     --app-surface: #ffffff;
     --app-border: #ebedf1;
     --app-radius: 2px;
-    --app-bar: #131417;
-    --app-bar-muted: #c3c7cf;
-    --app-avatar: #2b2e35;
-    --app-frame: 1440px;
+    --app-avatar: var(--lilac);
+    --app-avatar-text: var(--ink);
+    --app-frame: var(--page-max);
 }
 
 *,
@@ -56,67 +55,100 @@ body.app-body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* ---------- Top bar ---------- */
+/* only shown while it has keyboard focus, it jumps past the top bar */
+.app-skip {
+    position: absolute;
+    top: -100px;
+    left: var(--space-4);
+    z-index: 30;
+    padding: var(--space-2) var(--space-3);
+    font-weight: var(--weight-semibold);
+    color: var(--brand-600);
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+}
+
+    .app-skip:focus {
+        top: var(--space-2);
+    }
+
+/* ---------- Top bar ----------
+   The brand ink. On Home it runs straight into the day hero below, so the two read as one block */
 
 .app-header {
-    color: #ffffff;
-    background: var(--app-bar);
+    color: var(--on-ink);
+    background: var(--ink);
 }
+
+    .app-header :focus-visible {
+        outline: var(--focus-ring-on-ink);
+        outline-offset: var(--focus-offset);
+    }
 
 .app-header__inner {
     display: flex;
     align-items: stretch;
+    gap: var(--space-6);
     max-width: var(--app-frame);
-    height: 52px;
+    height: var(--nav-height);
     margin: 0 auto;
-    padding: 0 32px;
+    padding: 0 var(--gutter);
 }
 
 .app-brand {
     display: flex;
     flex: none;
     align-items: center;
-    gap: 11px;
-    margin-right: 28px;
-    font-size: 15.5px;
-    font-weight: 700;
+    gap: var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
     letter-spacing: -0.01em;
     white-space: nowrap;
 }
 
 .app-brand__icon {
-    width: 19px;
-    height: 19px;
+    width: 20px;
+    height: 20px;
+    color: var(--lilac);
 }
 
 .app-nav {
     display: flex;
     align-items: stretch;
+    gap: var(--space-1);
+    min-width: 0;
 }
 
 /* the 3px top border balances the underline so the text stays centred */
 .app-nav__link {
     display: flex;
     align-items: center;
-    padding: 0 12px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--app-bar-muted);
+    gap: var(--space-2);
+    padding: 0 var(--space-3);
+    font-weight: var(--weight-medium);
+    color: var(--on-ink-2);
     text-decoration: none;
     white-space: nowrap;
     border-top: 3px solid transparent;
     border-bottom: 3px solid transparent;
 }
 
-    .app-nav__link[href]:hover {
-        color: #ffffff;
+    .app-nav__link:hover {
+        color: var(--on-ink);
     }
 
     .app-nav__link[aria-current="page"] {
-        font-weight: 600;
-        color: #ffffff;
-        border-bottom-color: var(--app-purple);
+        font-weight: var(--weight-semibold);
+        color: var(--on-ink);
+        border-bottom-color: var(--lilac);
     }
+
+.app-nav__icon {
+    display: none;
+    width: 20px;
+    height: 20px;
+}
 
 /* ---------- Account menu ----------
    A details element, so it opens without script. app.js closes it on an outside click or Escape */
@@ -131,10 +163,12 @@ body.app-body {
 .app-user__toggle {
     display: flex;
     align-items: center;
-    gap: 9px;
-    padding: 4px 2px 4px 4px;
+    gap: var(--space-2);
+    min-height: 40px;
+    padding: var(--space-1) var(--space-2);
+    font-weight: var(--weight-medium);
     list-style: none;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
 }
 
@@ -142,9 +176,9 @@ body.app-body {
         display: none;
     }
 
-    .app-user__toggle:focus-visible {
-        outline: 2px solid var(--app-purple);
-        outline-offset: 2px;
+    .app-user__toggle:hover,
+    .app-user[open] .app-user__toggle {
+        background: var(--ink-raised);
     }
 
 .app-user__avatar {
@@ -152,29 +186,32 @@ body.app-body {
     flex: none;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
-    font-size: 11.5px;
-    font-weight: 600;
+    width: 28px;
+    height: 28px;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--app-avatar-text);
     border-radius: 50%;
     background: var(--app-avatar);
+}
+
+.app-user__avatar--large {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
 }
 
 .app-user__name {
     max-width: 220px;
     overflow: hidden;
-    font-size: 14px;
-    font-weight: 600;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
 .app-user__chevron {
     flex: none;
-    width: 15px;
-    height: 15px;
-    margin-left: 4px;
-    color: var(--app-bar-muted);
+    width: 16px;
+    height: 16px;
     transition: transform 0.15s ease;
 }
 
@@ -184,11 +221,12 @@ body.app-body {
 
 .app-user__menu {
     position: absolute;
-    top: calc(100% - 4px);
+    top: calc(100% + 2px);
     right: 0;
     z-index: 10;
-    min-width: 180px;
-    padding: 6px;
+    width: 288px;
+    max-width: calc(100vw - 32px);
+    color: var(--app-text);
     background: var(--app-surface);
     border: 1px solid var(--app-border);
     border-radius: 8px;
@@ -199,13 +237,52 @@ body.app-body {
         margin: 0;
     }
 
+/* who is signed in, above the menu items */
+.app-user__card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--app-border);
+}
+
+.app-user__details {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding-top: 1px;
+}
+
+.app-user__card-name {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.app-user__meta {
+    margin-top: 3px;
+    font-size: 13px;
+    color: var(--app-muted);
+    overflow-wrap: anywhere;
+}
+
+.app-user__items {
+    padding: 6px;
+}
+
 .app-user__item {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     width: 100%;
-    padding: 8px 10px;
+    height: 42px;
+    padding: 0 10px;
     font: inherit;
     font-size: 14px;
+    font-weight: 500;
     text-align: left;
+    text-decoration: none;
     color: var(--app-text);
     background: none;
     border: none;
@@ -218,6 +295,18 @@ body.app-body {
         background: #f2f4f7;
         outline: none;
     }
+
+    /* the settings link while on the settings page */
+    .app-user__item[aria-current="page"] {
+        font-weight: var(--weight-semibold);
+    }
+
+.app-user__icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--app-muted);
+}
 
 /* ---------- Buttons ----------
    For a button or a link. A link without an href is a placeholder and does not react to the mouse */
@@ -271,32 +360,13 @@ body.app-body {
 .app-main {
     max-width: var(--app-frame);
     margin: 0 auto;
-    padding: 22px 32px 48px;
+    padding: 22px var(--gutter) 48px;
 }
 
-/* ---------- Narrow windows ----------
-   The tabs move to their own row under the brand and scroll sideways if they still do not fit */
+/* ---------- Narrower windows ----------
+   The account name makes way for the tabs, it is still read out as the menu's name */
 
-@media (max-width: 759.98px) {
-    .app-header__inner {
-        flex-wrap: wrap;
-        height: auto;
-        padding: 0 16px;
-    }
-
-    .app-brand {
-        height: 52px;
-    }
-
-    .app-nav {
-        order: 3;
-        width: calc(100% + 24px);
-        height: 44px;
-        margin: 0 -12px;
-        overflow-x: auto;
-    }
-
-    /* hidden from view, still read out as the menu's name */
+@media (max-width: 56rem) {
     .app-user__name {
         position: absolute;
         width: 1px;
@@ -304,8 +374,61 @@ body.app-body {
         overflow: hidden;
         clip-path: inset(50%);
     }
+}
+
+/* ---------- Phones ----------
+   The tabs become a bar along the bottom of the screen, in reach of a thumb, with an icon above each name.
+   The page leaves room at the bottom so the bar never covers the end of it */
+
+@media (max-width: 40rem) {
+    .app-header__inner {
+        gap: var(--space-4);
+    }
+
+    .app-nav {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 20;
+        gap: 0;
+        padding-bottom: env(safe-area-inset-bottom);
+        background: var(--ink);
+        border-top: 1px solid var(--ink-line);
+    }
+
+    .app-nav__link {
+        flex: 1;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+        min-width: 0;
+        min-height: 60px;
+        padding: 0 var(--space-1);
+        font-size: var(--text-xs);
+        line-height: 1.2;
+        text-align: center;
+        /* a long name wraps onto a second line rather than running into the next tab on a very narrow screen */
+        white-space: normal;
+        border-bottom: 0;
+    }
+
+        .app-nav__link[aria-current="page"] {
+            border-top-color: var(--lilac);
+        }
+
+    .app-nav__icon {
+        display: block;
+        order: -1;
+    }
+
+    .app-user__toggle {
+        justify-content: center;
+        min-width: var(--target-touch);
+        min-height: var(--target-touch);
+    }
 
     .app-main {
-        padding: 20px 16px 40px;
+        padding: 20px var(--gutter) calc(60px + 40px + env(safe-area-inset-bottom));
     }
 }

@@ -222,6 +222,32 @@ namespace TimePlanner.Api.Tests
         }
 
         [Fact]
+        public async Task TheSettingsPage_OnATemporaryPassword_ShowsOnlyThatTask_WithoutTheTabs()
+        {
+            var admin = await AdminAsync();
+            var created = await CreateAsync(admin);
+            var browser = await BrowserAsync(created.Email, created.TemporaryPassword);
+
+            var before = await browser.GetStringAsync("/Settings");
+            await PostFormAsync(browser, "/Settings", "/Settings/Password",
+                new() { ["currentPassword"] = created.TemporaryPassword, ["newPassword"] = Chosen, ["confirmPassword"] = Chosen });
+            var after = await browser.GetStringAsync("/Settings");
+
+            Assert.Contains("Choose your own password", before);
+            Assert.Contains($"You're signed in as {created.Email} with a temporary password from your admin.", WebUtility.HtmlDecode(before));
+            Assert.Contains(">Temporary password</label>", before);
+            Assert.Contains(">Set password</button>", before);
+            //no name to change and no tabs to wander off to until the task is done, signing out still works
+            Assert.DoesNotContain("Your name", before);
+            Assert.DoesNotContain("class=\"app-nav\"", before);
+            Assert.Contains("/Account/Logout", before);
+            //once chosen, the page is the usual one again
+            Assert.Contains("class=\"app-nav\"", after);
+            Assert.Contains("Your name", after);
+            Assert.DoesNotContain("temporary password", after);
+        }
+
+        [Fact]
         public async Task TheCreatePage_ShowsTheTemporaryPasswordOnce_AndNeverAgain()
         {
             var browser = await BrowserAsync(ApiFactory.AdminEmail, ApiFactory.AdminPassword);
@@ -232,7 +258,7 @@ namespace TimePlanner.Api.Tests
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             //the page shows the password HTML-encoded (a & becomes &amp;), so decode it the way a browser would before using it
-            var password = WebUtility.HtmlDecode(Regex.Match(html, "<code>([^<]+)</code>").Groups[1].Value);
+            var password = WebUtility.HtmlDecode(Regex.Match(html, "<code class=\"tm-temp__code\">([^<]+)</code>").Groups[1].Value);
             Assert.Equal(PasswordGenerator.Length, password.Length);
             // the password on the page is the real one: the account exists and is waiting for its first password change
             Assert.Equal(HttpStatusCode.Forbidden, (await ApiLogin(_factory.NewClient(), email, password)).StatusCode);
@@ -247,7 +273,9 @@ namespace TimePlanner.Api.Tests
             var html = await (await PostFormAsync(browser, "/Users", "/Users/Create", new() { ["name"] = "X", ["email"] = "bad", ["role"] = "Developer" })).Content.ReadAsStringAsync();
 
             Assert.Contains("valid email", html);
-            Assert.DoesNotContain("Temporary password", html);
+            //no password block (the list may still tag other people as having a temporary password)
+            Assert.DoesNotContain("Temporary password for", html);
+            Assert.DoesNotContain("<code", html);
         }
 
         // ---------- resetting a password ----------
@@ -437,6 +465,50 @@ namespace TimePlanner.Api.Tests
 
             Assert.DoesNotContain("<script>alert(1)</script>", html);
             Assert.Contains("&lt;script&gt;alert(1)&lt;/script&gt;", html);
+        }
+
+        [Fact]
+        public async Task TheUsersPage_ShowsEachPersonsState_AndTheButtonsThatApply()
+        {
+            var admin = await AdminAsync();
+            var fresh = await CreateAsync(admin, name: "Fresh Person");
+            var gone = await ReadyAsync(admin);
+            await admin.PostAsync($"/api/v1/users/{gone.Id}/deactivate", null);
+            var browser = await BrowserAsync(ApiFactory.AdminEmail, ApiFactory.AdminPassword);
+
+            var html = await browser.GetStringAsync("/Users");
+            //one person's row of the table
+            string Row(string email) => Regex.Match(html, $"<tr class=\"tm-users__row[^\"]*\">(?:(?!</tr>).)*{Regex.Escape(email)}(?:(?!</tr>).)*</tr>", RegexOptions.Singleline).Value;
+
+            //the Team tab and the Users tab are the current ones, the other tabs open the current week
+            Assert.Contains("aria-current=\"page\" href=\"/Admin\">Team", html);
+            Assert.Contains("aria-current=\"page\" href=\"/Users\">Users", html);
+            Assert.Contains("href=\"/Admin/Submissions\">Submissions", html);
+            Assert.Matches(@"\d+ active, \d+ deactivated", html);
+            //every form posts to this page's own actions, never to the api's users endpoints that share the controller name
+            Assert.Contains("action=\"/Users/Create\"", html);
+            Assert.Contains("action=\"/Users/ResetPassword\"", html);
+            Assert.Contains("action=\"/Users/Deactivate\"", html);
+            Assert.Contains("action=\"/Users/Reactivate\"", html);
+            Assert.DoesNotContain("action=\"/api/", html);
+            //a new account is waiting for its first sign in
+            var freshRow = Row(fresh.Email);
+            Assert.Contains(">Temporary password</span>", freshRow);
+            Assert.Contains(">Never</td>", freshRow);
+            Assert.Contains("aria-label=\"Reset password for Fresh Person\"", freshRow);
+            Assert.Contains("aria-label=\"Deactivate Fresh Person\"", freshRow);
+            //a deactivated person can be reactivated or given a new password, not deactivated again
+            var goneRow = Row(gone.Email);
+            Assert.Contains("tm-users__row--off", goneRow);
+            Assert.Contains(">Deactivated</span>", goneRow);
+            Assert.Contains(">Reactivate</button>", goneRow);
+            Assert.Contains(">Reset password</button>", goneRow);
+            Assert.DoesNotContain(">Deactivate</button>", goneRow);
+            //the admin's own row says so and has no deactivate button, the server would refuse it anyway
+            var mine = Row(ApiFactory.AdminEmail);
+            Assert.Contains("(you)", mine);
+            Assert.Contains(" UTC</td>", mine);
+            Assert.DoesNotContain(">Deactivate</button>", mine);
         }
 
         // ---------- everything is audited, and no password is ever written down ----------

@@ -3,7 +3,7 @@ using System.Net;
 namespace TimePlanner.Api.Tests
 {
     //-----------------------------
-    //covers the dashboard report page: login required, own hours for developers, a person picker for admin and billing, and safe output
+    //covers My Reports: login required, always the person's own hours (the admins' detailed report is tested with the team pages), the download, and safe output
     [Collection("Api")]
     public class ReportPageTests
     {
@@ -35,20 +35,28 @@ namespace TimePlanner.Api.Tests
         }
 
         [Fact]
-        public async Task ReportPage_ShowsADevelopersOwnHours_WithoutAPersonPicker()
+        public async Task MyReports_ShowsOnlyTheirOwnHours_EvenForAnAdmin()
         {
             var dev = await SignedInAsync();
+            var admin = await SignedInAsync("Admin");
             var other = await _factory.CreateLinkedUserAsync();
             var acme = "Acme " + Tag();
             await _factory.AddEntryAsync(dev.UserId, acme, "Web", Coding, Day.AddHours(9), 90);
             await _factory.AddEntryAsync(other.AppUserId, acme, "Web", Coding, Day.AddHours(9), 600);
 
             var html = await dev.Browser.GetStringAsync(Page(Day, Day));
+            var adminHtml = await admin.Browser.GetStringAsync(Page(Day, Day));
 
             Assert.Contains($"{acme} / Web", html);
-            Assert.Contains("<strong>1:30</strong> in", html);
-            Assert.DoesNotContain("Everyone", html);
+            Assert.Contains("<span class=\"rp-hero__num\">1:30</span>", html);
             Assert.Contains("Download CSV", html);
+            Assert.Contains("<span class=\"rp-hero__num\">0:00</span>", adminHtml);
+            //picking a person and grouping the hours is the detailed report, an admin tool on the team's Submissions page
+            foreach (var page in new[] { html, adminHtml })
+            {
+                Assert.DoesNotContain("Everyone", page);
+                Assert.DoesNotContain("Detailed report", page);
+            }
         }
 
         [Fact]
@@ -65,36 +73,19 @@ namespace TimePlanner.Api.Tests
         }
 
         [Fact]
-        public async Task ReportPage_ADeveloperCannotPickSomeoneElse()
+        public async Task MyReports_IgnoresAPersonInTheAddress_AndTheExportStaysTheirOwn()
         {
             var dev = await SignedInAsync();
             var other = await _factory.CreateLinkedUserAsync();
-            await _factory.AddEntryAsync(other.AppUserId, "Acme " + Tag(), "Web", Coding, Day.AddHours(9), 60, "not yours");
+            var secret = "Secret " + Tag();
+            await _factory.AddEntryAsync(other.AppUserId, secret, "Web", Coding, Day.AddHours(9), 60, "not yours");
 
-            var page = await (await dev.Browser.GetAsync(Page(Day, Day, $"&userId={other.AppUserId}"))).Content.ReadAsStringAsync();
+            var page = await dev.Browser.GetStringAsync(Page(Day, Day, $"&userId={other.AppUserId}"));
             var export = await dev.Browser.GetAsync($"/Report/Export?from={Day:yyyy-MM-dd}&to={Day:yyyy-MM-dd}&userId={other.AppUserId}");
 
-            Assert.Contains("only view your own hours", page);
-            Assert.DoesNotContain("not yours", page);
+            Assert.DoesNotContain(secret, page);
+            Assert.Contains("<span class=\"rp-hero__num\">0:00</span>", page);
             Assert.NotEqual(HttpStatusCode.OK, export.StatusCode);
-        }
-
-        [Fact]
-        public async Task ReportPage_AnAdminCanPickAPersonAndDownloadTheirTimesheet()
-        {
-            var viewer = await SignedInAsync("Admin");
-            var dev = await _factory.CreateLinkedUserAsync();
-            await _factory.AddEntryAsync(dev.AppUserId, "Acme " + Tag(), "Web", Coding, Day.AddHours(9), 60, "devs work");
-
-            var everyone = await viewer.Browser.GetStringAsync(Page(Day, Day));
-            var one = await viewer.Browser.GetStringAsync(Page(Day, Day, $"&userId={dev.AppUserId}"));
-            var export = await viewer.Browser.GetAsync($"/Report/Export?from={Day:yyyy-MM-dd}&to={Day:yyyy-MM-dd}&userId={dev.AppUserId}");
-
-            Assert.Contains("Everyone", everyone);
-            Assert.Contains(dev.Email, everyone);
-            Assert.Contains("Pick a person to download", everyone);
-            Assert.Contains("Download CSV", one);
-            Assert.Contains("devs work", await export.Content.ReadAsStringAsync());
         }
 
         [Fact]
@@ -109,14 +100,16 @@ namespace TimePlanner.Api.Tests
         }
 
         [Fact]
-        public async Task ReportPage_DefaultsToTheMonthSoFar()
+        public async Task MyReports_OpensOnTheCurrentMonth()
         {
             var dev = await SignedInAsync();
 
             var response = await dev.Browser.GetAsync("/Report");
+            var html = await response.Content.ReadAsStringAsync();
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Contains($"value=\"{new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1):yyyy-MM-dd}\"", await response.Content.ReadAsStringAsync());
+            Assert.Contains("value=\"month\" aria-pressed=\"true\"", html);
+            Assert.Contains("submitted in ", html);
         }
 
         [Fact]

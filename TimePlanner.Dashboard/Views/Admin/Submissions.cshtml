@@ -1,21 +1,31 @@
 @using System.Globalization
+@using TimePlanner.Dashboard.Services
 @using TimePlanner.Dashboard.Services.Overview
+@using TimePlanner.Dashboard.Services.Reports
 @model AdminPageModel
+@inject CompanyClock Clock
 @{
     ViewData["Title"] = "Submissions";
     ViewData["Nav"] = "Admin";
     Layout = "_AppLayout";
     var culture = CultureInfo.InvariantCulture;
     var grid = Model.Grid!;
+    var today = Clock.Today;
+    var week = grid.View == "week";
 
-    //a short mark for each cell, the full status is also written as a class (grid-cell--submitted and so on) and as the cell's title
-    string Mark(GridCell cell) => cell.Status switch
+    //hours as H:MM, the way the design shows them
+    string Hm(double hours)
     {
-        TimesheetViewService.Submitted => "✓",
-        TimesheetViewService.Missing => "✗",
-        TimesheetViewService.Pending => "…",
-        _ => "·"
-    };
+        var minutes = (int)Math.Round(hours * 60);
+        return $"{minutes / 60}:{(minutes % 60).ToString("00", culture)}";
+    }
+    //how each grouping reads on the page
+    string Grouping(ReportGrouping grouping) => grouping == ReportGrouping.User ? "Person" : grouping.ToString();
+    //a day row as "Mon 28 Sep" rather than the report's 2026-09-28
+    string RowLabel(string label) => Model.GroupBy == ReportGrouping.Day && DateTime.TryParseExact(label, "yyyy-MM-dd", culture, DateTimeStyles.None, out var day)
+        ? day.ToString("ddd d MMM", culture) : label;
+
+    //the full status of a cell: its tooltip and what a screen reader hears
     string Words(GridCell cell) => cell.Status switch
     {
         TimesheetViewService.Submitted => cell.SubmittedAt == null ? "Submitted" : $"Submitted at {cell.SubmittedAt.Value.ToString("HH:mm", culture)}",
@@ -23,58 +33,294 @@
         TimesheetViewService.Pending => "Not submitted yet",
         _ => "Not due yet"
     };
-}
 
-<h1 class="h3 mb-3">Submissions</h1>
+    //"3, 10 and 15"
+    string DayList(IReadOnlyList<int> days) => days.Count == 1 ? days[0].ToString(culture) : $"{string.Join(", ", days.Take(days.Count - 1))} and {days[^1]}";
 
-<nav class="admin-nav mb-3" aria-label="Admin">
-    <a asp-controller="Admin" asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.From.ToString("yyyy-MM-dd", culture)">Overview</a> |
-    <a asp-controller="Admin" asp-action="Submissions" aria-current="page">Submissions</a> |
-    <a asp-controller="Admin" asp-action="Exports" asp-route-view="@Model.View" asp-route-date="@Model.From.ToString("yyyy-MM-dd", culture)">Exports</a> |
-    <a asp-controller="Users" asp-action="Index">Users</a>
-</nav>
+    //the report's range, the first year left out when both ends are in the same one
+    string Range(DateTime from, DateTime to) => $"{from.ToString(from.Year == to.Year ? "d MMM" : "d MMM yyyy", culture)} to {to.ToString("d MMM yyyy", culture)}";
 
-@if (Model.Error != null)
-{
-    <div class="alert alert-danger" role="alert">@Model.Error</div>
-}
+    //the mark for a submitted, missing or not yet submitted day. Sent days stay quiet, only missing ones get colour
+    void Icon(string status)
+    {
+        if (status == TimesheetViewService.Submitted)
+        {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+        }
+        else if (status == TimesheetViewService.Missing)
+        {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+        }
+        else
+        {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+        }
+    }
 
-<partial name="_PeriodNav" model="@("Admin", "Submissions", Model.View, Model.Label, Model.Previous, Model.Next)" />
-
-<p>A record of which working days each person has submitted. Nothing here needs approving.</p>
-
-@if (grid.Rows.Count == 0)
-{
-    <p class="text-muted">There is nobody to show yet.</p>
-}
-else
-{
-    <table class="table table-sm submissions-grid">
-        <caption class="visually-hidden">Submissions per person and working day, @grid.Label</caption>
-        <thead>
-            <tr>
-                <th scope="col">Person</th>
-                @foreach (var day in grid.Days)
-                {
-                    <th scope="col" class="text-center">@day.ToString("ddd", culture)<br /><small>@day.ToString("d MMM", culture)</small></th>
-                }
-                <th scope="col" class="text-end">Sent</th>
-                <th scope="col" class="text-end">Missing</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var row in grid.Rows)
+    //one person's day in the table. A week has room for the time it was sent, a month shows the mark only and keeps the words for screen readers
+    void Cell(GridCell cell)
+    {
+        var status = cell.Status;
+        <td class="tm-grid__cell tm-grid__cell--@status.ToLowerInvariant() @(cell.Date == today ? "tm-grid__cell--today" : null)" title="@Words(cell)">
+            @if (status == TimesheetViewService.Submitted && week && cell.SubmittedAt != null)
             {
-                <tr>
-                    <th scope="row" class="fw-normal">@row.Name</th>
-                    @foreach (var cell in row.Cells)
-                    {
-                        <td class="text-center grid-cell grid-cell--@cell.Status.ToLowerInvariant()" title="@Words(cell)"><span aria-hidden="true">@Mark(cell)</span><span class="visually-hidden">@Words(cell)</span></td>
-                    }
-                    <td class="text-end">@row.Submitted</td>
-                    <td class="text-end">@row.Missing</td>
-                </tr>
+                <span class="tm-mark tm-mark--sent">@{ Icon(status); }<span class="tm-mark__text"><span class="app-sr-only">Submitted at </span>@cell.SubmittedAt.Value.ToString("HH:mm", culture)</span></span>
             }
-        </tbody>
-    </table>
+            else if (status == TimesheetViewService.Submitted)
+            {
+                <span class="tm-mark tm-mark--sent">@{ Icon(status); }<span class="tm-mark__text">@Words(cell)</span></span>
+            }
+            else if (status == TimesheetViewService.Missing)
+            {
+                <span class="tm-mark tm-mark--missing">@{ Icon(status); }<span class="tm-mark__text">Missing</span></span>
+            }
+            else if (status == TimesheetViewService.Pending)
+            {
+                <span class="tm-mark tm-mark--wait">@{ Icon(status); }<span class="tm-mark__text">Not<span class="app-sr-only"> submitted</span> yet</span></span>
+            }
+            else
+            {
+                <span class="app-sr-only">@Words(cell)</span>
+            }
+        </td>
+    }
+
+    var report = Model.Report;
+    var who = Model.ReportUserId == null ? "Everyone" : Model.People.Where(p => p.Id == Model.ReportUserId).Select(p => p.Name).FirstOrDefault() ?? "Unknown person";
 }
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/team.css" asp-append-version="true" />
+}
+
+@section Hero {
+    <section class="tm-hero" aria-labelledby="tm-page-title">
+        <div class="tm-hero__inner">
+            <partial name="_TeamNav" model="@("Submissions", Model.View, (DateTime?)Model.From)" />
+
+            @if (Model.Error != null)
+            {
+                <div class="tm-banner" role="alert">
+                    <svg class="tm-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" /></svg>
+                    <p>@Model.Error</p>
+                </div>
+            }
+
+            <partial name="_TeamPeriod" model="@("Submissions", Model.View, Model.Label, Model.Previous, Model.Next)" />
+
+            <h1 class="tm-hero__title" id="tm-page-title">Submissions</h1>
+            <p class="tm-hero__intro">Which working days each person sent from the widget. Nothing here needs approving.</p>
+        </div>
+    </section>
+}
+
+<section class="tm-section" aria-label="Submissions by person and day">
+    <div class="tm-panel">
+        @if (grid.Rows.Count == 0)
+        {
+            <p class="tm-panel__empty">There is nobody to show yet. Create accounts on the <a asp-controller="Users" asp-action="Index">Users</a> page, and each person appears here with one row.</p>
+        }
+        else
+        {
+            @* the table on a wide screen. The names stay put while the days scroll sideways *@
+            <div class="tm-grid-wrap" role="region" aria-label="Submissions table, scrolls sideways" tabindex="0">
+                <table class="tm-grid tm-grid--@grid.View">
+                    <caption class="app-sr-only">Submissions for @grid.Label</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col" class="tm-grid__person">Person</th>
+                            @foreach (var day in grid.Days)
+                            {
+                                var isToday = day == today;
+                                if (week)
+                                {
+                                    <th scope="col" class="tm-grid__day @(isToday ? "tm-grid__day--today" : null)"><b>@day.ToString("ddd d", culture)</b><span class="app-sr-only"> @day.ToString("MMMM", culture)</span>@if (isToday) {<span> Today</span>}</th>
+                                }
+                                else
+                                {
+                                    <th scope="col" class="tm-grid__day @(isToday ? "tm-grid__day--today" : null)" title="@day.ToString("ddd d MMM", culture)@(isToday ? ", today" : null)"><span aria-hidden="true">@(day.ToString("ddd", culture)[0])<b>@day.Day</b></span><span class="app-sr-only">@day.ToString("ddd d MMMM", culture)@(isToday ? ", today" : null)</span></th>
+                                }
+                            }
+                            <th scope="col" class="tm-grid__num tm-grid__num--first">Sent</th>
+                            <th scope="col" class="tm-grid__num">Missing</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in grid.Rows)
+                        {
+                            <tr>
+                                <th scope="row" class="tm-grid__person">@row.Name</th>
+                                @foreach (var cell in row.Cells)
+                                {
+                                    Cell(cell);
+                                }
+                                <td class="tm-grid__num tm-grid__num--first">@row.Submitted</td>
+                                <td class="tm-grid__num @(row.Missing > 0 ? "tm-grid__num--missing" : "tm-grid__num--zero")">@row.Missing</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* on a phone, one block per person: a week shows its five days, a month lists the missing dates *@
+            <ul class="tm-plist">
+                @foreach (var row in grid.Rows)
+                {
+                    <li class="tm-pcard">
+                        <div class="tm-pcard__top">
+                            <span class="tm-pcard__name">@row.Name</span>
+                            <span class="tm-pcard__counts">Sent @(row.Submitted)@if (week && row.Missing > 0) {<span class="tm-pcard__miss">Missing @row.Missing</span>}</span>
+                        </div>
+                        @if (week)
+                        {
+                            <div class="tm-pcard__days">
+                                @foreach (var cell in row.Cells)
+                                {
+                                    <div class="tm-pday tm-pday--@cell.Status.ToLowerInvariant() @(cell.Date == today ? "tm-pday--today" : null)">
+                                        <span aria-hidden="true">@(cell.Date.ToString("ddd", culture)[0]) @cell.Date.Day</span>
+                                        @if (cell.Status is TimesheetViewService.Submitted or TimesheetViewService.Missing or TimesheetViewService.Pending)
+                                        {
+                                            Icon(cell.Status);
+                                        }
+                                        else
+                                        {
+                                            <span class="tm-pday__blank"></span>
+                                        }
+                                        <span class="app-sr-only">@cell.Date.ToString("ddd d MMMM", culture): @Words(cell)</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            //in a month the missing dates are listed, so the count would say it twice
+                            var missed = row.Cells.Where(c => c.Status == TimesheetViewService.Missing).Select(c => c.Date.Day).ToList();
+                            if (missed.Count > 0)
+                            {
+                                <p class="tm-pcard__missing">Missing @DayList(missed) @grid.From.ToString("MMM", culture)</p>
+                            }
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    @if (grid.Rows.Count > 0)
+    {
+        <div class="tm-key" aria-hidden="true">
+            <span class="tm-key__item">@{ Icon(TimesheetViewService.Submitted); }@(week ? "Submitted, with the time it was sent" : "Submitted (hover for the time)")</span>
+            <span class="tm-key__item tm-key__item--missing">@{ Icon(TimesheetViewService.Missing); }Missing</span>
+            <span class="tm-key__item">@{ Icon(TimesheetViewService.Pending); }Not submitted yet (today)</span>
+            <span class="tm-key__item">Blank: not due yet</span>
+        </div>
+    }
+</section>
+
+@* the detailed report: hours for any range and grouping, for everyone or one person. A get form, so a report can be bookmarked and nothing is changed.
+   it keeps the grid's week or month, and comes back to this section *@
+<section class="tm-section" id="detailed-report" aria-labelledby="detailed-report-title">
+    <h2 class="tm-section__title" id="detailed-report-title">Detailed report</h2>
+    <div class="tm-panel">
+        <form class="tm-filters" method="get" asp-controller="Admin" asp-action="Submissions" asp-fragment="detailed-report">
+            <input type="hidden" name="view" value="@Model.View" />
+            <input type="hidden" name="date" value="@Model.From.ToString("yyyy-MM-dd", culture)" />
+            <div class="tm-field">
+                <label class="tm-label" for="from">From</label>
+                <input class="tm-input" type="date" id="from" name="from" value="@Model.ReportFrom.ToString("yyyy-MM-dd", culture)" required />
+            </div>
+            <div class="tm-field">
+                <label class="tm-label" for="to">To</label>
+                <input class="tm-input" type="date" id="to" name="to" value="@Model.ReportTo.ToString("yyyy-MM-dd", culture)" required />
+            </div>
+            <div class="tm-field">
+                <label class="tm-label" for="groupBy">Group by</label>
+                <span class="tm-select">
+                    <select class="tm-input tm-input--select" id="groupBy" name="groupBy">
+                        @foreach (var option in Enum.GetValues<ReportGrouping>())
+                        {
+                            <option value="@option" selected="@(option == Model.GroupBy)">@Grouping(option)</option>
+                        }
+                    </select>
+                    <svg class="tm-select__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                </span>
+            </div>
+            <div class="tm-field">
+                <label class="tm-label" for="userId">Person</label>
+                <span class="tm-select">
+                    <select class="tm-input tm-input--select" id="userId" name="userId">
+                        <option value="">Everyone</option>
+                        @foreach (var person in Model.People)
+                        {
+                            <option value="@person.Id" selected="@(person.Id == Model.ReportUserId)">@person.Name</option>
+                        }
+                    </select>
+                    <svg class="tm-select__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                </span>
+            </div>
+            <button class="tm-button" type="submit">Show report</button>
+        </form>
+
+        @if (Model.ReportError != null)
+        {
+            <p class="tm-alert" role="alert">@Model.ReportError</p>
+        }
+
+        @if (report != null)
+        {
+            <div class="tm-report__head">
+                <p class="tm-report__caption"><strong>@who</strong>, @Range(report.From, report.To)@(report.Rows.Count == 0 ? null : $", by {Grouping(Model.GroupBy).ToLowerInvariant()}")</p>
+                @if (Model.CanExport)
+                {
+                    <a class="tm-button tm-button--secondary" asp-controller="Report" asp-action="Export" asp-route-from="@Model.ReportFrom.ToString("yyyy-MM-dd", culture)"
+                       asp-route-to="@Model.ReportTo.ToString("yyyy-MM-dd", culture)" asp-route-userId="@Model.ReportUserId">
+                        <svg class="tm-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
+                        Download CSV
+                    </a>
+                }
+                else
+                {
+                    <p class="tm-report__hint">Pick a person to download their timesheet.</p>
+                }
+            </div>
+
+            @if (report.Rows.Count == 0)
+            {
+                <p class="tm-report__empty">No time was logged in this period.</p>
+            }
+            else
+            {
+                <table class="tm-table">
+                    <caption class="app-sr-only">Hours grouped by @Grouping(Model.GroupBy).ToLowerInvariant()</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">@Grouping(Model.GroupBy)</th>
+                            <th scope="col">Hours</th>
+                            <th scope="col">Billable</th>
+                            <th scope="col">Entries</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in report.Rows)
+                        {
+                            <tr>
+                                <th scope="row">@RowLabel(row.Label)</th>
+                                <td>@Hm(row.Hours)</td>
+                                <td>@Hm(row.BillableHours)</td>
+                                <td>@row.Entries</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row" class="tm-table__total">Total</th>
+                            <td>@Hm(report.TotalHours)</td>
+                            <td>@Hm(report.BillableHours)</td>
+                            <td>@report.Entries</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+        }
+    </div>
+</section>
