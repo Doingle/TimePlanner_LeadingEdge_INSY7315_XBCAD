@@ -82,6 +82,7 @@ builder.Services.ConfigureApplicationCookie(o =>
 // API clients authenticate with a bearer token, the pages keep using the cookie above. AddIdentity already set the
 // cookie as the default scheme, so api controllers opt in with AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme.
 builder.Services.AddSingleton<JwtTokenService>();
+builder.Services.AddScoped<RefreshTokenService>();
 builder.Services.AddScoped<TimesheetImportService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddSingleton(TimeProvider.System);

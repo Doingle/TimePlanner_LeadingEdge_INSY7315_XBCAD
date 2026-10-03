@@ -19,15 +19,17 @@ namespace TimePlanner.Dashboard.Controllers.Api
         private readonly UserManager<ApplicationUser> _users;
         private readonly SignInManager<ApplicationUser> _signIn;
         private readonly JwtTokenService _tokens;
+        private readonly RefreshTokenService _refresh;
         private readonly AuditLogger _audit;
         private readonly ILogger<AuthApiController> _logger;
 
         public AuthApiController(UserManager<ApplicationUser> users, SignInManager<ApplicationUser> signIn,
-            JwtTokenService tokens, AuditLogger audit, ILogger<AuthApiController> logger)
+            JwtTokenService tokens, RefreshTokenService refresh, AuditLogger audit, ILogger<AuthApiController> logger)
         {
             _users = users;
             _signIn = signIn;
             _tokens = tokens;
+            _refresh = refresh;
             _audit = audit;
             _logger = logger;
         }
@@ -36,7 +38,10 @@ namespace TimePlanner.Dashboard.Controllers.Api
             [Required, EmailAddress, StringLength(256)] string Email,
             [Required, StringLength(128)] string Password);
 
-        public record TokenResponse(string AccessToken, string TokenType, DateTime ExpiresAtUtc);
+        public record RefreshRequest([Required, StringLength(200)] string RefreshToken);
+
+        //the refresh token is what keeps a client signed in, the access token only lasts minutes
+        public record TokenResponse(string AccessToken, string TokenType, DateTime ExpiresAtUtc, string RefreshToken, DateTime RefreshExpiresAtUtc);
 
         //-----------------------------
         //every failure returns the same 401 whether the email is unknown, the password is wrong or the account is locked out,
@@ -70,7 +75,40 @@ namespace TimePlanner.Dashboard.Controllers.Api
 
             await _audit.LogAsync(AuditActions.LoginSucceeded, "api", request.Email, user.Id);
             var (token, expires) = _tokens.Create(user!, await _users.GetRolesAsync(user!));
-            return Ok(new TokenResponse(token, "Bearer", expires));
+            var (refresh, refreshExpires) = await _refresh.IssueAsync(user!);
+            return Ok(new TokenResponse(token, "Bearer", expires, refresh, refreshExpires));
+        }
+
+        //-----------------------------
+        //swaps a refresh token for a new access token and a new refresh token, the old one stops working.
+        //every failure is the same 401 and the reason only goes to the audit log
+        [AllowAnonymous]
+        [HttpPost("refresh")]
+        [EnableRateLimiting(SecurityExtensions.LoginLimiter)]
+        public async Task<IActionResult> Refresh(RefreshRequest request)
+        {
+            var result = await _refresh.RotateAsync(request.RefreshToken);
+            if (result.Outcome != RefreshTokenService.Outcome.Ok)
+            {
+                await _audit.LogAsync(result.Reason == "reuse" ? AuditActions.RefreshTokenReuse : AuditActions.RefreshFailed, "api, " + result.Reason);
+                return Problem(title: "Sign in again.", statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            var (token, expires) = _tokens.Create(result.User!, await _users.GetRolesAsync(result.User!));
+            return Ok(new TokenResponse(token, "Bearer", expires, result.Token!, result.ExpiresUtc!.Value));
+        }
+
+        //-----------------------------
+        //ends the session a refresh token belongs to, so the client can sign out for real. Always 204, it does not say whether the token was known
+        [AllowAnonymous]
+        [HttpPost("logout")]
+        [EnableRateLimiting(SecurityExtensions.LoginLimiter)]
+        public async Task<IActionResult> Logout(RefreshRequest request)
+        {
+            var userId = await _refresh.RevokeAsync(request.RefreshToken);
+            if (userId != null)
+                await _audit.LogAsync(AuditActions.Logout, "api", userId: userId);
+            return NoContent();
         }
 
         //-----------------------------

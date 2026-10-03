@@ -26,6 +26,8 @@ namespace TimePlanner.Dashboard.Data
         public const string LoginLockedOut = "LoginLockedOut";
         public const string LoginBlocked = "LoginBlocked";
         public const string Logout = "Logout";
+        public const string RefreshFailed = "RefreshFailed";
+        public const string RefreshTokenReuse = "RefreshTokenReuse";
         public const string UserCreated = "UserCreated";
         public const string PasswordReset = "PasswordReset";
         public const string UserDeactivated = "UserDeactivated";
