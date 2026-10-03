@@ -13,7 +13,8 @@
     --app-radius: 2px;
     --app-bar: #131417;
     --app-bar-muted: #c3c7cf;
-    --app-avatar: #2b2e35;
+    --app-avatar: #bba8f0;
+    --app-avatar-text: #2a1f4a;
     --app-frame: 1440px;
 }
 
@@ -132,14 +133,19 @@ body.app-body {
     display: flex;
     align-items: center;
     gap: 9px;
-    padding: 4px 2px 4px 4px;
+    padding: 4px 10px 4px 4px;
     list-style: none;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
 }
 
     .app-user__toggle::-webkit-details-marker {
         display: none;
+    }
+
+    .app-user__toggle:hover,
+    .app-user[open] .app-user__toggle {
+        background: rgba(255, 255, 255, 0.1);
     }
 
     .app-user__toggle:focus-visible {
@@ -156,8 +162,15 @@ body.app-body {
     height: 30px;
     font-size: 11.5px;
     font-weight: 600;
+    color: var(--app-avatar-text);
     border-radius: 50%;
     background: var(--app-avatar);
+}
+
+.app-user__avatar--large {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
 }
 
 .app-user__name {
@@ -184,11 +197,12 @@ body.app-body {
 
 .app-user__menu {
     position: absolute;
-    top: calc(100% - 4px);
+    top: calc(100% + 2px);
     right: 0;
     z-index: 10;
-    min-width: 180px;
-    padding: 6px;
+    width: 288px;
+    max-width: calc(100vw - 32px);
+    color: var(--app-text);
     background: var(--app-surface);
     border: 1px solid var(--app-border);
     border-radius: 8px;
@@ -199,13 +213,52 @@ body.app-body {
         margin: 0;
     }
 
+/* who is signed in, above the menu items */
+.app-user__card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--app-border);
+}
+
+.app-user__details {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding-top: 1px;
+}
+
+.app-user__card-name {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.app-user__meta {
+    margin-top: 3px;
+    font-size: 13px;
+    color: var(--app-muted);
+    overflow-wrap: anywhere;
+}
+
+.app-user__items {
+    padding: 6px;
+}
+
 .app-user__item {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     width: 100%;
-    padding: 8px 10px;
+    height: 42px;
+    padding: 0 10px;
     font: inherit;
     font-size: 14px;
+    font-weight: 500;
     text-align: left;
+    text-decoration: none;
     color: var(--app-text);
     background: none;
     border: none;
@@ -218,6 +271,13 @@ body.app-body {
         background: #f2f4f7;
         outline: none;
     }
+
+.app-user__icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--app-muted);
+}
 
 /* ---------- Buttons ----------
    For a button or a link. A link without an href is a placeholder and does not react to the mouse */

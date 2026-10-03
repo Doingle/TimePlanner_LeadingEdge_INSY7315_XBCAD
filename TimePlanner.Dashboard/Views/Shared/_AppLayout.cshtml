@@ -2,6 +2,8 @@
     //the account menu shows the login name and its initials
     var userName = User.Identity?.Name ?? string.Empty;
     var initials = string.Concat(userName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(word => char.ToUpperInvariant(word[0])));
+    //and the open menu lists the person's role under their name
+    var roles = string.Join(", ", Enum.GetNames<TimePlanner.Core.Domain.Enums.UserRole>().Where(User.IsInRole));
 
     //each page names its tab with ViewData["Nav"], that tab is marked as the current page
     string? Current(string tab) => ViewData["Nav"] as string == tab ? "page" : null;
@@ -50,10 +52,35 @@
                         </svg>
                     </summary>
                     <div class="app-user__menu">
-                        <a class="app-user__item" asp-controller="Settings" asp-action="Index">Settings</a>
-                        <form asp-controller="Account" asp-action="Logout" method="post">
-                            <button class="app-user__item" type="submit">Sign out</button>
-                        </form>
+                        <div class="app-user__card">
+                            <span class="app-user__avatar app-user__avatar--large" aria-hidden="true">@initials</span>
+                            <div class="app-user__details">
+                                <span class="app-user__card-name">@userName</span>
+                                @if (roles.Length > 0)
+                                {
+                                    <span class="app-user__meta">@roles</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="app-user__items">
+                            <a class="app-user__item" asp-controller="Settings" asp-action="Index">
+                                <svg class="app-user__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                Settings
+                            </a>
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                <button class="app-user__item" type="submit">
+                                    <svg class="app-user__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                        <polyline points="16 17 21 12 16 7" />
+                                        <line x1="21" y1="12" x2="9" y2="12" />
+                                    </svg>
+                                    Log out
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </details>
             }
