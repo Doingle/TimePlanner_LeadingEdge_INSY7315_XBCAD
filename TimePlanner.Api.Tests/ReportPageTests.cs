@@ -65,7 +65,7 @@ namespace TimePlanner.Api.Tests
             var dev = await SignedInAsync();
             await _factory.AddEntryAsync(dev.UserId, "Acme " + Tag(), "Web", Coding, Day.AddHours(9), 60, "my work");
 
-            var response = await dev.Browser.GetAsync($"/Report/Export?from={Day:yyyy-MM-dd}&to={Day:yyyy-MM-dd}");
+            var response = await dev.Browser.GetAsync($"/Report/Export?from={Day:yyyy-MM-dd}&to={Day:yyyy-MM-dd}&format=csv");
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Equal("text/csv", response.Content.Headers.ContentType!.MediaType);
