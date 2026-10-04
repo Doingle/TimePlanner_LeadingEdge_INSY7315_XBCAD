@@ -10,9 +10,12 @@
 
     //someone on a temporary password can only reach settings until they choose their own, so the tabs are left out
     var choosingPassword = User.HasClaim(TimePlanner.Dashboard.Security.AppClaimsPrincipalFactory.MustChangePasswordClaim, "1");
+
+    //the text size, bold and italic picked under Accessibility, on <html> so tokens.css applies them to the whole page
+    var text = TextPreferences.From(Context.Request);
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-text-size="@text.Size" data-bold="@text.BoldValue" data-italic="@text.ItalicValue">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -103,6 +106,13 @@
                                     <circle cx="12" cy="12" r="3" />
                                 </svg>
                                 Settings
+                            </a>
+                            <a class="app-user__item" asp-controller="Settings" asp-action="Accessibility" aria-current="@Current("Accessibility")">
+                                <svg class="app-user__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M4 20 9 6l5 14M5.8 15h6.4" />
+                                    <path d="M15 13.5c.6-1 1.6-1.5 2.8-1.5 1.8 0 3.2 1.2 3.2 3V20M21 17.2c-.8-.5-1.8-.7-3-.7-1.9 0-3 .9-3 2.1s1 1.9 2.4 1.9c1.4 0 2.6-.8 3.6-2" />
+                                </svg>
+                                Accessibility
                             </a>
                             <form asp-controller="Account" asp-action="Logout" method="post">
                                 <button class="app-user__item" type="submit">

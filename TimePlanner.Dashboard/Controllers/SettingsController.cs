@@ -9,7 +9,7 @@ using TimePlanner.Dashboard.Services.Users;
 namespace TimePlanner.Dashboard.Controllers
 {
     //-----------------------------
-    //the signed in person's own account settings: display name and password. Tracking settings live in the widget, not here
+    //the signed in person's own account settings: display name and password, and how text looks (accessibility). Tracking settings live in the widget, not here
     public class SettingsController : Controller
     {
         private readonly UserManager<ApplicationUser> _users;
@@ -25,6 +25,12 @@ namespace TimePlanner.Dashboard.Controllers
 
         [HttpGet]
         public async Task<IActionResult> Index() => View(await PageAsync());
+
+        //-----------------------------
+        //text size, bold and italic for the whole site. The choice is kept in this browser (see TextPreferences), so nothing is posted here.
+        //it lives under /Settings so someone still on a temporary password can make text easier to read before choosing their own
+        [HttpGet]
+        public IActionResult Accessibility() => View(TextPreferences.From(Request));
 
         [HttpPost]
         [ValidateAntiForgeryToken]

@@ -1,0 +1,333 @@
+/* Accessibility
+
+   Text size, bold and italic for the whole site (Views/Settings/Accessibility.cshtml). The page sits in the same centred column as Settings
+   and borrows its header and panel from settings.css. The rules that actually change the site are at the end of tokens.css.
+   The colours, type and spacing come from tokens.css */
+
+/* ---------- Text size: four choices as cards, each one drawn at its own size ---------- */
+
+.ax-sizes {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-2);
+}
+
+.ax-size {
+    position: relative;
+    display: grid;
+    align-content: end;
+    justify-items: start;
+    gap: 2px;
+    min-height: 7rem;
+    padding: var(--space-3);
+    background: var(--surface);
+    border: 1px solid var(--line-control);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+    .ax-size:hover {
+        border-color: var(--text-3);
+    }
+
+    /* the radio covers the whole card, unseen, so the card is what gets clicked and focused */
+    .ax-size input {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .ax-size:has(input:checked) {
+        background: var(--brand-50);
+        border-color: var(--brand-600);
+        box-shadow: inset 0 0 0 1px var(--brand-600);
+    }
+
+    .ax-size:has(input:focus-visible) {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+/* the tick in the corner of the chosen card */
+.ax-size__tick {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: none;
+    width: 16px;
+    height: 16px;
+    padding: 3px;
+    color: #ffffff;
+    background: var(--brand-600);
+    border-radius: 50%;
+}
+
+.ax-size:has(input:checked) .ax-size__tick {
+    display: block;
+}
+
+.ax-size__aa {
+    font-family: var(--font-display);
+    font-weight: var(--weight-semibold);
+    line-height: 1;
+    color: var(--text);
+}
+
+.ax-size__aa--default {
+    font-size: 1rem;
+}
+
+.ax-size__aa--large {
+    font-size: 1.25rem;
+}
+
+.ax-size__aa--larger {
+    font-size: 1.5rem;
+}
+
+.ax-size__aa--largest {
+    font-size: 1.875rem;
+}
+
+.ax-size__name {
+    font-weight: var(--weight-medium);
+}
+
+.ax-size:has(input:checked) .ax-size__name {
+    font-weight: var(--weight-semibold);
+    color: var(--brand-700);
+}
+
+.ax-size__pct {
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+}
+
+/* ---------- Text style: switches ---------- */
+
+.ax-toggle {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) 0;
+}
+
+    .ax-toggle + .ax-toggle {
+        border-top: 1px solid var(--line);
+    }
+
+.ax-toggle__label {
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+}
+
+.ax-toggle__hint {
+    margin: 2px 0 0;
+    line-height: 1.5;
+    color: var(--text-2);
+}
+
+/* a native checkbox drawn as a switch: grey track when off, brand when on, the knob slides across */
+.ax-switch {
+    position: relative;
+    flex: none;
+    width: 48px;
+    height: 28px;
+    margin: 0;
+    background: var(--line-control);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    appearance: none;
+    transition: background 120ms ease;
+}
+
+    .ax-switch::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 22px;
+        height: 22px;
+        background: #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 1px 2px rgba(36, 26, 62, 0.25);
+        transition: transform 120ms ease;
+    }
+
+    .ax-switch:checked {
+        background: var(--brand-600);
+    }
+
+        .ax-switch:checked::after {
+            transform: translateX(20px);
+        }
+
+    .ax-switch:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+@media (prefers-reduced-motion: reduce) {
+    .ax-switch,
+    .ax-switch::after {
+        transition: none;
+    }
+}
+
+/* ---------- Preview: a day of the timesheet ---------- */
+
+.ax-sample {
+    padding: var(--space-4);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.ax-sample__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-1) var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--text);
+}
+
+    .ax-sample__head strong {
+        font-family: var(--font-display);
+        font-size: var(--text-lg);
+        font-weight: var(--weight-semibold);
+    }
+
+    .ax-sample__head span {
+        color: var(--text-2);
+    }
+
+.ax-sample__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px var(--space-3);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--line);
+}
+
+    .ax-sample__row:last-child {
+        padding-bottom: 0;
+        border-bottom: 0;
+    }
+
+/* each entry's category as a short bar in its own colour */
+.ax-sample__cat {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: var(--weight-medium);
+}
+
+    .ax-sample__cat::before {
+        content: "";
+        width: 3px;
+        height: 1.1em;
+        background: var(--ax-cat);
+        border-radius: 2px;
+    }
+
+.ax-sample__row--coding {
+    --ax-cat: var(--cat-coding);
+}
+
+.ax-sample__row--meeting {
+    --ax-cat: var(--cat-meeting);
+}
+
+.ax-sample__dur {
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+}
+
+.ax-sample__note {
+    grid-column: 1 / -1;
+    line-height: 1.5;
+}
+
+.ax-sample__time {
+    grid-column: 1 / -1;
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+}
+
+/* ---------- Footer: what was saved, and the way back to the defaults ---------- */
+
+.ax-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-6);
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.ax-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 1.5em;
+    margin: 0;
+    color: var(--success-700);
+}
+
+.ax-status__icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+}
+
+.ax-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 var(--space-4);
+    font: inherit;
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line-control);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+    .ax-button:hover {
+        background: var(--paper);
+        border-color: var(--text-3);
+    }
+
+    .ax-button:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+/* ---------- Phones ---------- */
+
+@media (max-width: 40rem) {
+    .ax-sizes {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .ax-footer {
+        padding: var(--space-4);
+    }
+
+        .ax-footer .ax-button {
+            width: 100%;
+            min-height: var(--target-touch);
+        }
+}
