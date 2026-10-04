@@ -1,4 +1,4 @@
-﻿<!-- SHELL: the card every screen sits in, and the small shared pieces inside it. -->
+<!-- SHELL: the card every screen sits in, and the small shared pieces inside it. -->
     
     <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -37,17 +37,37 @@
                     <Grid>
                         <!-- Raised -->
                         <Border x:Name="RaisedDrop" Visibility="Collapsed" CornerRadius="{StaticResource RadiusShell}"
-                            Background="{StaticResource SurfaceBrush}" Effect="{StaticResource ShadowRaisedDrop}" />
+                            Background="{StaticResource SurfaceBrush}" Effect="{StaticResource ShadowRaisedDrop}">
+                            <Border.CacheMode>
+                                <BitmapCache EnableClearType="False" SnapsToDevicePixels="True" />
+                            </Border.CacheMode>
+                        </Border>
                         <Border x:Name="RaisedHalo" Visibility="Collapsed" CornerRadius="{StaticResource RadiusShell}"
-                            Background="{StaticResource SurfaceBrush}" Effect="{StaticResource ShadowRaisedHalo}" />
+                            Background="{StaticResource SurfaceBrush}" Effect="{StaticResource ShadowRaisedHalo}">
+                            <Border.CacheMode>
+                                <BitmapCache EnableClearType="False" SnapsToDevicePixels="True" />
+                            </Border.CacheMode>
+                        </Border>
                         <Border x:Name="RaisedGlow" Visibility="Collapsed" CornerRadius="{StaticResource RadiusShell}"
-                            Background="{StaticResource SurfaceBrush}" Effect="{StaticResource ShadowRaisedGlow}" />
+                            Background="{StaticResource SurfaceBrush}" Effect="{StaticResource ShadowRaisedGlow}">
+                            <Border.CacheMode>
+                                <BitmapCache EnableClearType="False" SnapsToDevicePixels="True" />
+                            </Border.CacheMode>
+                        </Border>
                         <Border x:Name="RaisedGlowEdge" Visibility="Collapsed" CornerRadius="{StaticResource RadiusShell}"
-                            Background="{StaticResource SurfaceBrush}" Effect="{StaticResource ShadowRaisedGlowEdge}" />
+                            Background="{StaticResource SurfaceBrush}" Effect="{StaticResource ShadowRaisedGlowEdge}">
+                            <Border.CacheMode>
+                                <BitmapCache EnableClearType="False" SnapsToDevicePixels="True" />
+                            </Border.CacheMode>
+                        </Border>
                         
                         <!-- Everyday shell shadow -->
                         <Border x:Name="Shadow" CornerRadius="{StaticResource RadiusShell}"
-                            Background="{StaticResource SurfaceBrush}" Effect="{StaticResource ShadowShell}" />
+                            Background="{StaticResource SurfaceBrush}" Effect="{StaticResource ShadowShell}">
+                            <Border.CacheMode>
+                                <BitmapCache EnableClearType="False" SnapsToDevicePixels="True" />
+                            </Border.CacheMode>
+                        </Border>
 
                         <Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource RadiusShell}"
