@@ -8,16 +8,19 @@ namespace TimePlanner.Core.Sync
     {
         private readonly string _path;
 
+        //one read or write of the file at a time
+        private readonly SemaphoreSlim _gate = new(1, 1);
+
         public FileSendHistoryStore(string path) => _path = path;
 
         //-----------------------------
-        //reads sent days newest first
-        public async Task<IReadOnlyList<SentDay>> GetAsync()
+        //reads sent days from disk newest first
+        private async Task<List<SentDay>> ReadAsync()
         {
             //missing history means no days sent yet
             if (!File.Exists(_path))
             {
-                return Array.Empty<SentDay>();
+                return new List<SentDay>();
             }
 
             try
@@ -28,7 +31,7 @@ namespace TimePlanner.Core.Sync
                 //null json body returns empty history
                 if (days == null)
                 {
-                    return Array.Empty<SentDay>();
+                    return new List<SentDay>();
                 }
 
                 return days.OrderByDescending(d => d.Day).ToList();
@@ -36,7 +39,23 @@ namespace TimePlanner.Core.Sync
             //corrupted history file returns empty history
             catch (JsonException)
             {
-                return Array.Empty<SentDay>();
+                return new List<SentDay>();
+            }
+        }
+
+        //-----------------------------
+        //reads sent days newest first
+        public async Task<IReadOnlyList<SentDay>> GetAsync()
+        {
+            await _gate.WaitAsync();
+            try
+            {
+                return await ReadAsync();
+            }
+            //the gate opens even when reading fails
+            finally
+            {
+                _gate.Release();
             }
         }
 
@@ -44,38 +63,18 @@ namespace TimePlanner.Core.Sync
         //adds a day or replaces an earlier entry for that day
         public async Task AddAsync(SentDay sent)
         {
-            var existing = (await GetAsync()).ToList();
-
-            //re-sent days update the existing record
-            existing.RemoveAll(d => d.Day == sent.Day);
-            existing.Add(sent);
-
-            var ordered = existing.OrderByDescending(d => d.Day).Take(366).ToList();
-            var json = JsonSerializer.SerializeToUtf8Bytes(ordered);
-
-            var dir = Path.GetDirectoryName(_path);
-
-            //creates the local storage directory when missing
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            await _gate.WaitAsync();
+            try
             {
-                Directory.CreateDirectory(dir);
-            }
+                var existing = await ReadAsync();
 
-            await File.WriteAllBytesAsync(_path, json);
-        }
+                //re-sent days update the existing record
+                existing.RemoveAll(d => d.Day == sent.Day);
+                existing.Add(sent);
 
-        //-----------------------------
-        //notes that a sent day was edited afterwards
-        public async Task MarkChangedAsync(DateOnly day, DateTime at)
-        {
-            var existing = (await GetAsync()).ToList();
-            var index = existing.FindIndex(d => d.Day == day);
+                var ordered = existing.OrderByDescending(d => d.Day).Take(366).ToList();
+                var json = JsonSerializer.SerializeToUtf8Bytes(ordered);
 
-            //if the day is in history it gets marked changed
-            if (index >= 0)
-            {
-                existing[index] = existing[index] with { ChangedAt = at };
-                var json = JsonSerializer.SerializeToUtf8Bytes(existing);
                 var dir = Path.GetDirectoryName(_path);
 
                 //creates the local storage directory when missing
@@ -85,6 +84,44 @@ namespace TimePlanner.Core.Sync
                 }
 
                 await File.WriteAllBytesAsync(_path, json);
+            }
+            //the gate opens even when saving fails
+            finally
+            {
+                _gate.Release();
+            }
+        }
+
+        //-----------------------------
+        //notes that a sent day was edited afterwards
+        public async Task MarkChangedAsync(DateOnly day, DateTime at)
+        {
+            await _gate.WaitAsync();
+            try
+            {
+                var existing = await ReadAsync();
+                var index = existing.FindIndex(d => d.Day == day);
+
+                //if the day is in history it gets marked changed
+                if (index >= 0)
+                {
+                    existing[index] = existing[index] with { ChangedAt = at };
+                    var json = JsonSerializer.SerializeToUtf8Bytes(existing);
+                    var dir = Path.GetDirectoryName(_path);
+
+                    //creates the local storage directory when missing
+                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    await File.WriteAllBytesAsync(_path, json);
+                }
+            }
+            //the gate opens even when saving fails
+            finally
+            {
+                _gate.Release();
             }
         }
     }
