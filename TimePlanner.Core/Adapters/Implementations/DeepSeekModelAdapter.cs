@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace TimePlanner.Core.Asapters.Implementations
+namespace TimePlanner.Core.Adapters.Implementations
 {
     internal class DeepSeekModelAdapter
     {

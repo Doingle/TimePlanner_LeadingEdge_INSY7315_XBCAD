@@ -1,0 +1,42 @@
+@using TimePlanner.Dashboard.Services.TimesheetImport
+@model ImportResult?
+@{
+    ViewData["Title"] = "Upload timesheet";
+}
+
+<h1 class="h3 mb-3">Upload timesheet</h1>
+
+@if (Model != null && Model.Success)
+{
+    <div class="alert alert-success" role="status">
+        Imported @Model.Created entr@(Model.Created == 1 ? "y" : "ies")@(Model.Skipped > 0 ? $", skipped {Model.Skipped} that were already stored" : "").
+    </div>
+}
+else if (Model != null)
+{
+    <div class="alert alert-danger" role="alert">
+        <p class="mb-2">Nothing was imported. Fix the following and upload the file again:</p>
+        <ul class="mb-0">
+            @foreach (var error in Model.Errors.Take(50))
+            {
+                <li>@(error.Row > 0 ? $"Row {error.Row}: " : "")@error.Message</li>
+            }
+        </ul>
+        @if (Model.Errors.Count > 50)
+        {
+            <p class="mt-2 mb-0">and @(Model.Errors.Count - 50) more.</p>
+        }
+    </div>
+}
+
+<form method="post" enctype="multipart/form-data" asp-action="Index">
+    <div class="mb-3">
+        <label for="file" class="form-label">CSV file exported from the widget</label>
+        <input type="file" id="file" name="file" class="form-control" accept=".csv,text/csv" required />
+        <div class="form-text">
+            Columns: Company, Project, Activity, Start, End, and optionally Note, Method. Times look like 2026-09-28 09:30.
+            Maximum 1 MB. <a asp-action="Template">Download an example file</a>.
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Upload</button>
+</form>

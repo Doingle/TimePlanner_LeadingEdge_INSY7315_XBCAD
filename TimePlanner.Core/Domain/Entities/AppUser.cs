@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using TimePlanner.Core.Domain.Enums;
@@ -14,6 +14,12 @@ namespace TimePlanner.Core.Domain.Entities
         public string Email { get; set; } = string.Empty;
         public UserRole Role { get; set; }
 
+        //the windows account name of a local user, null for users that only exist on the dashboard
+        public string? LocalAccountName { get; set; }
+
+        //this user's check in preferences, at most one settings row per user
+        public UserSettings? Settings { get; set; }
+
         public ICollection<WorkTask> AssignedTasks { get; set; } = new List<WorkTask>();
         public ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();
         public ICollection<TimeSheet> TimeSheets { get; set; } = new List<TimeSheet>();
@@ -23,8 +29,7 @@ namespace TimePlanner.Core.Domain.Entities
         public List<WorkTask> GetActiveTasks()
         {
             return AssignedTasks
-                .Where(t => !string.Equals(t.Status, "Done", StringComparison.OrdinalIgnoreCase)
-                         && !string.Equals(t.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                .Where(t => t.Status != WorkTaskStatus.Done)
                 .ToList();
         }
 

@@ -1,12 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using TimePlanner.Core.Domain.Enums;
 
 namespace TimePlanner.Core.Domain.Entities
 {
     //-----------------------------
     //this class represents a task which is connected to a project and company within TimePlanner
-    //design decision to change planned name Task to WorkTask avoiding system naming conflict
     public class WorkTask
     {
         public int TaskID { get; set; }
@@ -14,8 +14,16 @@ namespace TimePlanner.Core.Domain.Entities
         public Project? Project { get; set; }
         public int AssignedUserID { get; set; }
         public AppUser? AssignedUser { get; set; }
-        public string Category { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
+
+        //short display name shown in the check in task picker
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+
+        //the kind of work this task represents, automatic tasks are named after their category
+        public int CategoryId { get; set; }
+        public Category? Category { get; set; }
+
+        public WorkTaskStatus Status { get; set; } = WorkTaskStatus.Open;
 
         //this collection holds the time entries associated with each task
         public ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();

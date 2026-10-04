@@ -1,0 +1,166 @@
+@using System.Globalization
+@using TimePlanner.Dashboard.Services
+@using TimePlanner.Dashboard.Services.Overview
+@using TimePlanner.Dashboard.Services.Reports
+@model AdminPageModel
+@inject CompanyClock Clock
+@{
+    ViewData["Title"] = "Team overview";
+    ViewData["Nav"] = "Admin";
+    Layout = "_AppLayout";
+    var culture = CultureInfo.InvariantCulture;
+    var o = Model.Overview!;
+    var summary = o.Summary;
+
+    //minutes as H:MM, the way the design shows them
+    string Hm(int minutes) => $"{minutes / 60}:{(minutes % 60).ToString("00", culture)}";
+
+    //shares as whole percents that always add up to 100: each is rounded down, then the largest remainders get the points left over
+    int[] Shares(IReadOnlyList<int> values)
+    {
+        var total = values.Sum();
+        if (total == 0)
+            return values.Select(_ => 0).ToArray();
+        var exact = values.Select(v => v * 100.0 / total).ToArray();
+        var shares = exact.Select(e => (int)Math.Floor(e)).ToArray();
+        var order = exact.Select((e, i) => (Remainder: e - Math.Floor(e), Index: i)).OrderByDescending(x => x.Remainder).Select(x => x.Index);
+        foreach (var i in order.Take(100 - shares.Sum()))
+            shares[i]++;
+        return shares;
+    }
+
+    var today = Clock.Today;
+    var week = Model.View == "week";
+    var current = Model.From <= today && today <= Model.To;
+    var inPeriod = week ? (current ? "this week" : "that week") : $"in {Model.From.ToString("MMMM", culture)}";
+    var periodRate = week ? (current ? "Submitted this week" : "Submitted that week") : (current ? "Submitted this month" : $"Submitted in {Model.From.ToString("MMMM", culture)}");
+
+    var billable = (int)Math.Round(summary.BillableHours * 60);
+    var nonBillable = Math.Max(0, summary.TotalMinutes - billable);
+    var billing = Shares(new[] { billable, nonBillable });
+
+    //one list of bars, the same shape for category, project and person. Each bar is as long as its share of the largest row
+    void Bars(IReadOnlyList<BreakdownRow> rows, string kind)
+    {
+        if (rows.Count == 0)
+        {
+            <p class="tm-nothing">Nothing logged.</p>
+            return;
+        }
+        var max = rows.Max(r => r.Minutes);
+        var shares = Shares(rows.Select(r => r.Minutes).ToList());
+        <ul class="tm-bars">
+            @for (var i = 0; i < rows.Count; i++)
+            {
+                var row = rows[i];
+                var fill = kind == "project" ? (row.Billable == true ? "tm-bar-row__fill--billable" : "tm-bar-row__fill--non-billable") : kind == "person" ? "tm-bar-row__fill--person" : null;
+                <li class="tm-bar-row">
+                    <span class="tm-bar-row__label">@row.Label@if (kind == "project") { <small>@(row.Billable == true ? "Billable" : "Non-billable")</small> }</span>
+                    <span class="tm-bar-row__bar" aria-hidden="true"><span class="tm-bar-row__fill @fill" data-percent="@(max <= 0 ? "0" : (row.Minutes * 100.0 / max).ToString("0.#", culture))" data-colour="@(kind == "category" ? row.Colour : null)"></span></span>
+                    <span class="tm-bar-row__time">@Hm(row.Minutes)</span>
+                    <span class="tm-bar-row__pct">@shares[i]%</span>
+                </li>
+            }
+        </ul>
+    }
+
+    //"6 of 8" with its share, or a dash when nobody was expected
+    void Rate(string title, SubmissionRate rate, string whenNobody)
+    {
+        <div class="tm-rate">
+            <dt>@title</dt>
+            @if (rate.Percent == null)
+            {
+                <dd><span class="tm-rate__value">&mdash;</span><span class="tm-rate__note">@whenNobody</span></dd>
+            }
+            else
+            {
+                <dd>
+                    <span class="tm-rate__value">@rate.Submitted <span class="tm-rate__of">of</span> @rate.Expected</span>
+                    <span class="tm-rate__pct">@Math.Round(rate.Percent.Value, 0).ToString("0", culture)%</span>
+                </dd>
+            }
+        </div>
+    }
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/team.css" asp-append-version="true" />
+}
+
+@section Hero {
+    <section class="tm-hero" aria-label="Team summary">
+        <div class="tm-hero__inner">
+            <partial name="_TeamNav" model="@("Overview", Model.View, (DateTime?)Model.From)" />
+
+            @if (Model.Error != null)
+            {
+                <div class="tm-banner" role="alert">
+                    <svg class="tm-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" /></svg>
+                    <p>@Model.Error</p>
+                </div>
+            }
+
+            <partial name="_TeamPeriod" model="@("Index", Model.View, Model.Label, Model.Previous, Model.Next)" />
+
+            <div class="tm-hero__top">
+                <div>
+                    <h1 class="tm-hero__figure"><span class="app-sr-only">Team overview, </span><span class="tm-hero__num">@Hm(summary.TotalMinutes)</span> <span class="tm-hero__unit">logged by the team @inPeriod</span></h1>
+                    <p class="tm-hero__sub">@(summary.Entries == 0 ? "Nothing logged in this period." : $"From {summary.Entries.ToString("N0", CultureInfo.GetCultureInfo("en-GB"))} entr{(summary.Entries == 1 ? "y" : "ies")}.")</p>
+                </div>
+                <dl class="tm-rates">
+                    @{ Rate("Submitted today", o.Today, Period.IsWorkingDay(today) ? "Nobody due" : "Weekend"); }
+                    @{ Rate(periodRate, o.Period, "Nothing due yet"); }
+                </dl>
+            </div>
+
+            @if (summary.TotalMinutes > 0)
+            {
+                @* billable against non-billable, the same as My Reports. app.js sizes each part from data-percent *@
+                <div class="tm-billing">
+                    <dl class="tm-billing__groups">
+                        <div class="tm-billing__group">
+                            <dt>Billable</dt>
+                            <dd><span class="tm-billing__hours">@Hm(billable)</span><span class="tm-billing__pct">@billing[0]%</span></dd>
+                        </div>
+                        <div class="tm-billing__group tm-billing__group--nb">
+                            <dt>Non-billable</dt>
+                            <dd><span class="tm-billing__hours">@Hm(nonBillable)</span><span class="tm-billing__pct">@billing[1]%</span></dd>
+                        </div>
+                    </dl>
+                    <div class="tm-billing__bar" aria-hidden="true">
+                        @if (billable > 0)
+                        {
+                            <span class="tm-seg" data-percent="@((billable * 100.0 / summary.TotalMinutes).ToString("0.#", culture))"></span>
+                        }
+                        @if (nonBillable > 0)
+                        {
+                            <span class="tm-seg tm-seg--nb @(billable > 0 ? "tm-seg--apart" : null)" data-percent="@((nonBillable * 100.0 / summary.TotalMinutes).ToString("0.#", culture))"></span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+<section class="tm-section" aria-labelledby="tm-where-title">
+    <h2 class="tm-section__title" id="tm-where-title">Where the team's time went</h2>
+    <div class="tm-cols">
+        <section class="tm-cols__col" aria-labelledby="tm-category-title">
+            <h3 class="tm-cols__title" id="tm-category-title">By category</h3>
+            @{ Bars(summary.ByCategory, "category"); }
+        </section>
+        <section class="tm-cols__col" aria-labelledby="tm-project-title">
+            <h3 class="tm-cols__title" id="tm-project-title">By project</h3>
+            @{ Bars(summary.ByProject, "project"); }
+        </section>
+    </div>
+</section>
+
+<section class="tm-section" aria-labelledby="tm-people-title">
+    <h2 class="tm-section__title" id="tm-people-title">By person</h2>
+    <div class="tm-people">
+        @{ Bars(summary.ByPerson, "person"); }
+    </div>
+</section>

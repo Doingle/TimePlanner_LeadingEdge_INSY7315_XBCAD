@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Linq;
+using TimePlanner.Core.Domain.Enums;
 
 namespace TimePlanner.Core.Domain.Entities
 {
@@ -10,13 +7,21 @@ namespace TimePlanner.Core.Domain.Entities
     public class Project
     {
         public int ProjectID { get; set; }
+
+        //every project belongs to  one company [internal work] belongs to [internal] company (Ledge)
+        public int CompanyId { get; set; }
         public Company? Company { get; set; }
         public string Name { get; set; } = string.Empty;
-        public string ClientName { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public string Status { get; set; } = string.Empty;
+
+        //optional hex colour in #RRGGBB form for the project dot in the widget, null means a neutral colour is used
+        public string? Colour { get; set; }
+
+        public ProjectStatus Status { get; set; } = ProjectStatus.Active;
         public ICollection<WorkTask> Tasks { get; set; } = new List<WorkTask>();
         public List<WorkTask> GetTasks() => Tasks.ToList();
     }
 }
 //------------------------------EOF-----------------------------\\
+
+

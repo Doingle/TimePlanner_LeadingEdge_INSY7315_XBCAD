@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
@@ -6,12 +6,31 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UseWPF>true</UseWPF>
+		<!-- Per-monitor DPI awareness (see app.manifest), so the widget stays sharp on every display -->
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<ApplicationIcon>Assests\insy.ico</ApplicationIcon>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\TimePlanner.Core\TimePlanner.Core.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The tray icon loads it as Assets/insy.ico -->
+		<Resource Include="Assests\insy.ico" Link="Assets\insy.ico" />
+	</ItemGroup>
+
+	<!-- sample day for testing -->
+	<ItemGroup>
+		<None Update="SampleData\sample-day.csv">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 	</ItemGroup>
 
 </Project>

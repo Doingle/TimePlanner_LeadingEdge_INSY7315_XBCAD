@@ -1,0 +1,51 @@
+# tests then deploys the dashboard to azure
+name: Deploy Dashboard
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dashboard
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Test core
+        run: dotnet test TimePlanner.Core.Tests/TimePlanner.Core.Tests.csproj --configuration Release
+
+      - name: Test api
+        run: dotnet test TimePlanner.Api.Tests/TimePlanner.Api.Tests.csproj --configuration Release
+
+      - name: Publish dashboard
+        run: dotnet publish TimePlanner.Dashboard/TimePlanner.Dashboard.csproj --configuration Release --output publish/dashboard
+
+      - name: Deploy to Azure
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: publish/dashboard
+
+      - name: Check the site is healthy
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.AZURE_WEBAPP_URL }}/health")
+            if [ "$code" = "200" ]; then echo "healthy"; exit 0; fi
+            echo "attempt $i returned $code"
+            sleep 15
+          done
+          echo "site did not become healthy"
+          exit 1

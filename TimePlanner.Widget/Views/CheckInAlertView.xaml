@@ -1,0 +1,33 @@
+﻿<UserControl x:Class="TimePlanner.Widget.Views.CheckInAlertView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
+    
+    <controls:WidgetCard IsRaised="True" Padding="{StaticResource ShellPaddingWithFoot}"
+                         AutomationProperties.Name="Time to check in">
+        <StackPanel>
+            <DockPanel>
+                <Border Style="{StaticResource Badge}" Margin="0,0,16,0">
+                    <controls:Icon Kind="Bell" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Title}" Text="Time to check in" />
+                    <TextBlock x:Name="Subtitle" Style="{StaticResource Text.Subtitle}" Text="Log what you did since 3:05 PM." />
+                </StackPanel>
+            </DockPanel>
+
+            <StackPanel Margin="{StaticResource GapSection}">
+                <Button Style="{StaticResource Button.Primary}" Content="Log time" Click="LogTime_Click" />
+                <Grid Style="{StaticResource FootRow}">
+                    <Button x:Name="SnoozeButton" Style="{StaticResource Button.Text}" Content="Snooze 10m (3 left)" Click="Snooze_Click" />
+                    <StackPanel x:Name="NoSnoozes" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="Collapsed" TextElement.Foreground="{StaticResource TextSecondaryBrush}">
+                        <controls:Icon Kind="Lock" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock Text="No snoozes left" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </StackPanel>
+    </controls:WidgetCard>
+</UserControl>
+

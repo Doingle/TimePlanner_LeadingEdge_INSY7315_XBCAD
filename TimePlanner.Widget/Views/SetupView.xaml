@@ -1,0 +1,118 @@
+﻿<UserControl x:Class="TimePlanner.Widget.Views.SetupView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
+    <controls:WidgetCard x:Name="Card">
+        <controls:WidgetCard.Banner>
+            <Border x:Name="WelcomeBanner" Background="{StaticResource ActionBrush}" CornerRadius="{StaticResource RadiusBanner}"
+                    Padding="16">
+                <StackPanel>
+                    <Border Width="{StaticResource SizeBadge}" Height="{StaticResource SizeBadge}" CornerRadius="{StaticResource RadiusFull}"
+                            Background="{StaticResource SurfaceBrush}" HorizontalAlignment="Center">
+                        <Border Width="{StaticResource SizeIcon}" Height="{StaticResource SizeIcon}" CornerRadius="{StaticResource RadiusMark}"
+                                Background="{StaticResource ActionBrush}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <controls:Icon Kind="ClockHands" Foreground="{StaticResource TextOnActionBrush}" />
+                        </Border>
+                    </Border>
+                    <TextBlock Style="{StaticResource Text.Title}" Text="Welcome to INSY" Margin="0,8,0,0" TextAlignment="Center"
+                               Foreground="{StaticResource TextOnActionBrush}" />
+                    <TextBlock Style="{StaticResource Text.Subtitle}" Text="Runs until you end your day." TextAlignment="Center"
+                               Foreground="{StaticResource TextOnActionSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+        </controls:WidgetCard.Banner>
+
+        <Grid>
+            <StackPanel x:Name="MainView">
+                <DockPanel x:Name="SettingsHeader" Margin="-8,0,0,0" Visibility="Collapsed">
+                    <Button Style="{StaticResource Button.Icon}" ToolTip="Back" AutomationProperties.Name="Back to the timer"
+                            Click="BackToTimer_Click">
+                        <controls:Icon Kind="ChevronLeft" />
+                    </Button>
+                    <TextBlock Style="{StaticResource Text.Title}" Text="Settings" Margin="4,0,0,0" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <StackPanel x:Name="IntervalField">
+                    <TextBlock x:Name="IntervalLabel" Style="{StaticResource Text.Label}" Text="Check in every" />
+                    <ComboBox x:Name="IntervalSelect" Style="{StaticResource Select}"
+                              AutomationProperties.LabeledBy="{Binding ElementName=IntervalLabel}"
+                              SelectionChanged="Interval_SelectionChanged" />
+                    <TextBlock x:Name="IntervalHelp" Style="{StaticResource Text.Help}" Text="First check-in at 10:00 AM" />
+                </StackPanel>
+
+                <Button x:Name="AdvancedRow" Style="{StaticResource NavRow}" Margin="{StaticResource GapFieldToField}"
+                        Click="OpenAdvanced_Click">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <TextBlock x:Name="AdvancedSummary" Text="Pill, visible" Margin="0,0,4,0" VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" />
+                            <controls:Icon Kind="ChevronRight" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
+                        </StackPanel>
+                        <TextBlock Text="Advanced options" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Button>
+
+                <Button x:Name="PrimaryButton" Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}"
+                        Content="Start tracking" Click="Primary_Click" />
+            </StackPanel>
+
+            <StackPanel x:Name="AdvancedView" Visibility="Collapsed">
+                <DockPanel Margin="-8,0,0,0">
+                    <Button x:Name="AdvancedBack" Style="{StaticResource Button.Icon}" ToolTip="Back"
+                            AutomationProperties.Name="Back to setup" Click="CloseAdvanced_Click">
+                        <controls:Icon Kind="ChevronLeft" />
+                    </Button>
+                    <TextBlock Style="{StaticResource Text.Title}" Text="Advanced options" Margin="4,0,0,0" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <StackPanel Margin="{StaticResource GapSection}">
+                    <TextBlock x:Name="VisibilityLabel" Style="{StaticResource Text.Label}" Text="When idle" />
+                    <Grid AutomationProperties.LabeledBy="{Binding ElementName=VisibilityLabel}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <RadioButton x:Name="VisibleOption" Grid.Column="0" Style="{StaticResource Option}" Content="Visible" Checked="Visibility_Checked" />
+                        <RadioButton x:Name="FadedOption" Grid.Column="2" Style="{StaticResource Option}" Content="Faded" Checked="Visibility_Checked" />
+                        <RadioButton x:Name="HiddenOption" Grid.Column="4" Style="{StaticResource Option}" Content="Hidden" Checked="Visibility_Checked" />
+                    </Grid>
+                    <TextBlock x:Name="VisibilityHelp" Style="{StaticResource Text.Help}" Text="Always visible in the corner." />
+                </StackPanel>
+
+                <StackPanel Margin="{StaticResource GapFieldToField}">
+                    <TextBlock x:Name="ShapeLabel" Style="{StaticResource Text.Label}" Text="Idle shape" />
+                    <Grid AutomationProperties.LabeledBy="{Binding ElementName=ShapeLabel}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <RadioButton x:Name="PillOption" Grid.Column="0" Style="{StaticResource Option}" Content="Pill"
+                                     controls:Field.Glyph="ShapePill" Checked="Shape_Checked" />
+                        <RadioButton x:Name="RingOption" Grid.Column="2" Style="{StaticResource Option}" Content="Ring"
+                                     controls:Field.Glyph="ShapeRing" Checked="Shape_Checked" />
+                        <RadioButton x:Name="DotOption" Grid.Column="4" Style="{StaticResource Option}" Content="Dot"
+                                     controls:Field.Glyph="ShapeDot" Checked="Shape_Checked" />
+                    </Grid>
+                    <TextBlock x:Name="ShapeHelp" Style="{StaticResource Text.Help}" Text="Shows the time left." />
+                </StackPanel>
+
+                <DockPanel Margin="{StaticResource GapFieldToField}" MinHeight="{StaticResource SizeControl}">
+                    <ToggleButton x:Name="SoundSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}" Margin="16,0,0,0"
+                                  AutomationProperties.LabeledBy="{Binding ElementName=SoundLabel}"
+                                  Checked="Sound_Changed" Unchecked="Sound_Changed" />
+                    <TextBlock x:Name="SoundLabel" Text="Sound on check-in" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <Button Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}" Content="Done"
+                        Click="CloseAdvanced_Click" />
+            </StackPanel>
+        </Grid>
+    </controls:WidgetCard>
+</UserControl>
+

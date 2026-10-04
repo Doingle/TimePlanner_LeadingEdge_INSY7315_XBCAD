@@ -1,0 +1,228 @@
+@using System.Globalization
+@using TimePlanner.Dashboard.Services
+@using TimePlanner.Dashboard.Services.Reports
+@model ReportPageModel
+@inject CompanyClock Clock
+@{
+    ViewData["Title"] = "My Reports";
+    ViewData["Nav"] = "Reports";
+    Layout = "_AppLayout";
+    var culture = CultureInfo.InvariantCulture;
+
+    //hours as H:MM and shares as whole percents, the way the design shows them
+    string Hm(double hours)
+    {
+        var minutes = (int)Math.Round(hours * 60);
+        return $"{minutes / 60}:{(minutes % 60).ToString("00", culture)}";
+    }
+    string Pct(double percent) => Math.Round(percent, 0).ToString("0", culture) + "%";
+    string Width(double percent) => percent.ToString("0.#", culture);
+
+    var summary = Model.Summary;
+    var today = Clock.Today;
+    var week = Model.View == "week";
+    var month = Model.View == "month";
+    var current = Model.From <= today && today <= Model.To;
+    //nothing has happened after the current week or month yet, so there is no next one to open
+    var hasNext = Model.Next != null && Model.Next <= today;
+    var unit = week ? "week" : month ? "month" : "range";
+    var label = Model.PeriodLabel ?? $"{Model.From.ToString("d MMM yyyy", culture)} to {Model.To.ToString("d MMM yyyy", culture)}";
+
+    //what the period is called in a sentence: this week, that week, in September, or in this range
+    var inPeriod = week ? (current ? "this week" : "that week") : month ? $"in {Model.From.ToString("MMMM", culture)}" : "in this range";
+    var whereTitle = week ? (current ? "Where this week went" : "Where that week went") : month ? $"Where {Model.From.ToString("MMMM", culture)} went" : "Where the time went";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/report.css" asp-append-version="true" />
+}
+
+@section Hero {
+    <section class="rp-hero" aria-label="Report summary">
+        <div class="rp-hero__inner">
+            <div class="rp-controls">
+                @if (Model.View != null && Model.Previous != null)
+                {
+                    <div class="rp-period">
+                        <a class="rp-icon-button" asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.Previous.Value.ToString("yyyy-MM-dd", culture)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+                            <span class="app-sr-only">Previous @unit</span>
+                        </a>
+                        <p class="rp-period__label">@label</p>
+                        @if (hasNext)
+                        {
+                            <a class="rp-icon-button" asp-action="Index" asp-route-view="@Model.View" asp-route-date="@Model.Next!.Value.ToString("yyyy-MM-dd", culture)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                                <span class="app-sr-only">Next @unit</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="rp-icon-button" role="link" aria-disabled="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                                <span class="app-sr-only">Next @unit</span>
+                            </a>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="rp-period__label rp-period__label--range">@label</p>
+                }
+
+                @* switching opens the current week or month *@
+                <form class="rp-toggle" method="get" asp-action="Index" role="group" aria-label="Period length">
+                    <button class="rp-toggle__option" type="submit" name="view" value="week" aria-pressed="@(week ? "true" : "false")">Week</button>
+                    <button class="rp-toggle__option" type="submit" name="view" value="month" aria-pressed="@(month ? "true" : "false")">Month</button>
+                </form>
+            </div>
+
+            @if (Model.Error != null)
+            {
+                <p class="rp-hero__note" role="alert">
+                    <svg class="rp-hero__note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+                    <span>@Model.Error</span>
+                </p>
+            }
+
+            @if (summary != null)
+            {
+                var billableShare = summary.TotalHours > 0 ? summary.BillableHours / summary.TotalHours * 100 : 0;
+                var nonBillableShare = summary.TotalHours > 0 ? 100 - billableShare : 0;
+                var empty = summary.TotalMinutes == 0;
+
+                <div class="rp-hero__top">
+                    <div>
+                        <h1 class="rp-hero__figure"><span class="app-sr-only">My Reports, </span><span class="rp-hero__num">@Hm(summary.TotalHours)</span> <span class="rp-hero__unit">submitted @inPeriod</span></h1>
+                        <p class="rp-hero__sub">
+                            @if (empty)
+                            {
+                                <text>Nothing was submitted @inPeriod. Reports only count days you've submitted from the widget.</text>
+                            }
+                            else if (Model.SubmittedDays > 0)
+                            {
+                                <text>From @Model.SubmittedDays submitted day@(Model.SubmittedDays == 1 ? "" : "s").</text>
+                            }
+                            else
+                            {
+                                <text>From @summary.Entries entr@(summary.Entries == 1 ? "y" : "ies").</text>
+                            }
+                        </p>
+                    </div>
+
+                    <div class="rp-actions">
+                        @if (empty)
+                        {
+                            <a class="rp-button rp-button--primary" role="link" aria-disabled="true" aria-describedby="rp-download-why">
+                                <svg class="rp-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
+                                Download CSV
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="rp-button rp-button--primary" asp-action="Export" asp-route-from="@Model.From.ToString("yyyy-MM-dd", culture)" asp-route-to="@Model.To.ToString("yyyy-MM-dd", culture)">
+                                <svg class="rp-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
+                                Download CSV
+                            </a>
+                        }
+                        <a class="rp-button rp-button--secondary" asp-controller="CsvUpload" asp-action="Index">
+                            <svg class="rp-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5M5 3h14" /></svg>
+                            Upload CSV
+                        </a>
+                        @if (empty)
+                        {
+                            <p class="rp-actions__status" id="rp-download-why">Nothing to download for @label</p>
+                        }
+                    </div>
+                </div>
+
+                @* the one bold thing on this page: billable against non-billable, the non-billable part hatched. app.js sizes each part from data-percent *@
+                <div class="rp-billing">
+                    <dl class="rp-billing__groups">
+                        <div class="rp-billing__group">
+                            <dt>Billable</dt>
+                            <dd><span class="rp-billing__hours">@Hm(summary.BillableHours)</span><span class="rp-billing__pct">@Pct(billableShare)</span></dd>
+                        </div>
+                        <div class="rp-billing__group rp-billing__group--nb">
+                            <dt>Non-billable</dt>
+                            <dd><span class="rp-billing__hours">@Hm(summary.NonBillableHours)</span><span class="rp-billing__pct">@Pct(nonBillableShare)</span></dd>
+                        </div>
+                    </dl>
+                    <div class="rp-billing__bar" aria-hidden="true">
+                        @if (billableShare > 0)
+                        {
+                            <span class="rp-seg" data-percent="@Width(billableShare)"></span>
+                        }
+                        @if (nonBillableShare > 0)
+                        {
+                            <span class="rp-seg rp-seg--nb @(billableShare > 0 ? "rp-seg--apart" : null)" data-percent="@Width(nonBillableShare)"></span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@if (summary != null)
+{
+    //each bar is as long as its share of the largest row, so the biggest one always fills the column
+    var categoryMax = summary.ByCategory.Select(r => r.Minutes).DefaultIfEmpty(0).Max();
+    var projectMax = summary.ByProject.Select(r => r.Minutes).DefaultIfEmpty(0).Max();
+    string Bar(int minutes, int max) => max <= 0 ? "0" : Width(minutes * 100.0 / max);
+
+    <section class="rp-section" aria-labelledby="rp-where-title">
+        <h2 class="rp-section__title" id="rp-where-title">@whereTitle</h2>
+        <div class="rp-split">
+            <section class="rp-split__col" aria-labelledby="rp-category-title">
+                <h3 class="rp-split__title" id="rp-category-title">By category</h3>
+                @if (summary.ByCategory.Count == 0)
+                {
+                    <p class="rp-empty">Categories appear here, largest first, once something is submitted.</p>
+                }
+                else
+                {
+                    <ul class="rp-bars">
+                        @foreach (var row in summary.ByCategory)
+                        {
+                            <li class="rp-bar-row">
+                                <span class="rp-bar-row__label">@row.Label</span>
+                                <span class="rp-bar-row__bar" aria-hidden="true"><span class="rp-bar-row__fill" data-percent="@Bar(row.Minutes, categoryMax)" data-colour="@row.Colour"></span></span>
+                                <span class="rp-bar-row__time">@Hm(row.Hours)</span>
+                                <span class="rp-bar-row__pct">@Pct(row.Percent)</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+
+            <section class="rp-split__col" aria-labelledby="rp-project-title">
+                <h3 class="rp-split__title" id="rp-project-title">By project</h3>
+                @if (summary.ByProject.Count == 0)
+                {
+                    <p class="rp-empty">Projects appear here, largest first, once something is submitted.</p>
+                }
+                else
+                {
+                    <ul class="rp-bars">
+                        @foreach (var row in summary.ByProject)
+                        {
+                            <li class="rp-bar-row">
+                                <span class="rp-bar-row__label">@row.Label <small>@(row.Billable == true ? "Billable" : "Non-billable")</small></span>
+                                <span class="rp-bar-row__bar" aria-hidden="true"><span class="rp-bar-row__fill @(row.Billable == true ? "rp-bar-row__fill--billable" : "rp-bar-row__fill--non-billable")" data-percent="@Bar(row.Minutes, projectMax)"></span></span>
+                                <span class="rp-bar-row__time">@Hm(row.Hours)</span>
+                                <span class="rp-bar-row__pct">@Pct(row.Percent)</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        </div>
+    </section>
+
+    <section class="rp-section" aria-labelledby="rp-files-title">
+        <h2 class="rp-section__title" id="rp-files-title">Past @(week ? "weekly " : month ? "monthly " : "")downloads</h2>
+        @* downloads are not stored yet, so there is no list to show *@
+        <p class="rp-files__empty">Past downloads aren't kept yet. Use Download CSV above to get this @unit's timesheet again at any time.</p>
+    </section>
+}

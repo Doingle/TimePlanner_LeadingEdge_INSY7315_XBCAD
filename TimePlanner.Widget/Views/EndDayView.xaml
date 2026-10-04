@@ -1,0 +1,31 @@
+﻿<UserControl x:Class="TimePlanner.Widget.Views.EndDayView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
+    
+    <controls:WidgetCard AutomationProperties.Name="End your day?">
+        <controls:WidgetCard.CornerContent>
+            <Button Style="{StaticResource Button.Icon}" IsCancel="True" ToolTip="Cancel" AutomationProperties.Name="Cancel"
+                    Click="Cancel_Click">
+                <controls:Icon Kind="Close" />
+            </Button>
+        </controls:WidgetCard.CornerContent>
+
+        <StackPanel>
+            <StackPanel>
+                <TextBlock Style="{StaticResource Text.Title}" Text="End your day?" />
+                <TextBlock x:Name="Subtitle" Style="{StaticResource Text.Subtitle}" Text="1h 12m since 3:05 PM is not logged yet." />
+            </StackPanel>
+
+            <StackPanel x:Name="UnloggedActions" Margin="{StaticResource GapSection}">
+                <Button x:Name="LogLastButton" Style="{StaticResource Button.Primary}" Content="Log the last 1h 12m" Click="LogLast_Click" />
+                <Button Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}" Content="End without logging"
+                        Click="EndDay_Click" />
+            </StackPanel>
+
+            <StackPanel x:Name="LoggedActions" Margin="{StaticResource GapSection}" Visibility="Collapsed">
+                <Button Style="{StaticResource Button.Primary}" Content="End day" Click="EndDay_Click" />
+            </StackPanel>
+        </StackPanel>
+    </controls:WidgetCard>
+</UserControl>

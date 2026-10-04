@@ -1,0 +1,53 @@
+<UserControl x:Class="TimePlanner.Widget.Views.LogEntryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
+             xmlns:models="clr-namespace:TimePlanner.Widget.Models">
+    
+    <controls:WidgetCard x:Name="Card">
+        <controls:WidgetCard.CornerContent>
+            <Button x:Name="CancelButton" Style="{StaticResource Button.Icon}" ToolTip="Cancel"
+                    AutomationProperties.Name="Cancel" Visibility="Collapsed" Click="Cancel_Click">
+                <controls:Icon Kind="Close" />
+            </Button>
+        </controls:WidgetCard.CornerContent>
+
+        <StackPanel>
+            <StackPanel>
+                <TextBlock Style="{StaticResource Text.Title}" Text="What were you doing?" />
+                <TextBlock x:Name="Subtitle" Style="{StaticResource Text.Subtitle}" Text="3:05 – 4:35 PM (1h 30m)" />
+            </StackPanel>
+
+            <StackPanel Margin="{StaticResource GapSection}">
+                <TextBlock x:Name="ProjectLabel" Style="{StaticResource Text.Label}" Text="Client › Project" />
+                <controls:ActivityPicker x:Name="ProjectPicker" SelectionChanged="Project_SelectionChanged" />
+            </StackPanel>
+
+            <StackPanel Margin="{StaticResource GapFieldToField}">
+                <TextBlock x:Name="ActivityLabel" Style="{StaticResource Text.Label}" Text="Activity" />
+                <controls:ActivityPicker x:Name="ActivityPicker" SelectionChanged="Activity_SelectionChanged" />
+            </StackPanel>
+
+            <StackPanel Margin="{StaticResource GapFieldToField}">
+                <TextBlock x:Name="NoteLabel" Style="{StaticResource Text.Label}">
+                    <Run Text="Note " /><Run Style="{StaticResource Run.Optional}" Text="(optional)" />
+                </TextBlock>
+                <TextBox x:Name="NoteBox" Style="{StaticResource TextArea}" controls:Field.Placeholder="What did you work on?"
+                         MaxLength="{x:Static models:InputLimits.Note}"
+                         AutomationProperties.LabeledBy="{Binding ElementName=NoteLabel}" />
+            </StackPanel>
+
+            <StackPanel Margin="{StaticResource GapSection}">
+                <Button x:Name="SaveButton" Style="{StaticResource Button.Primary}" Content="Save entry" Click="Save_Click" />
+                <Grid x:Name="SnoozeRow" Style="{StaticResource FootRow}" Visibility="Collapsed">
+                    <Button x:Name="SnoozeButton" Style="{StaticResource Button.Text}" Content="Snooze 10m (3 left)" Click="Snooze_Click" />
+                    <StackPanel x:Name="NoSnoozes" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="Collapsed" TextElement.Foreground="{StaticResource TextSecondaryBrush}">
+                        <controls:Icon Kind="Lock" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock Text="No snoozes left" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </StackPanel>
+    </controls:WidgetCard>
+</UserControl>

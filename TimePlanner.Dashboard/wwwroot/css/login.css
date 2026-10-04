@@ -1,0 +1,463 @@
+/* Login page
+
+   The brand panel on the left and the form on the right, together filling the window.
+   In a narrow, portrait or very short window the brand panel shrinks to a header and the form takes the screen.
+   The colours and typefaces come from tokens.css.
+
+   Every size is written as calc(N * var(--u)), where N is the size in px on the
+   1000x596 design. --u grows and shrinks with the browser window */
+
+:root {
+    --login-fit: min(100vw / 1000, 100vh / 596);
+    /* How strongly the page follows the window size: 1 = grows with it fully,
+     0 = always stays at the design size. */
+    --login-grow: 0.5;
+    /* 1u = 1 design px, scaled by the window size */
+    --u: calc(1px + (var(--login-fit) - 1px) * var(--login-grow));
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body.login-body {
+    margin: 0;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: calc(14 * var(--u));
+    line-height: var(--leading-ui);
+    color: var(--text);
+    background: var(--surface);
+    -webkit-font-smoothing: antialiased;
+}
+
+    .login-body :focus-visible {
+        outline: max(2px, calc(2 * var(--u))) solid var(--brand-600);
+        outline-offset: max(2px, calc(2 * var(--u)));
+    }
+
+/* the two panels fill the window side by side */
+.login-page {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* ---------- Brand panel ----------
+   The same ink as the app. The heading sits in the middle of the space above the check in graphic,
+   the bottom padding leaves room for the graphic */
+
+.login-brand {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: calc(48 * var(--u)) 10% calc(250 * var(--u));
+    overflow: hidden;
+    color: var(--on-ink);
+    background: var(--ink);
+}
+
+.login-brand__mark {
+    display: grid;
+    place-items: center;
+    width: calc(48 * var(--u));
+    height: calc(48 * var(--u));
+    color: var(--lilac);
+    background: var(--ink-raised);
+    border-radius: 50%;
+}
+
+    .login-brand__mark svg {
+        width: calc(24 * var(--u));
+        height: calc(24 * var(--u));
+    }
+
+.login-brand__title {
+    margin: calc(24 * var(--u)) 0 0;
+    font-family: var(--font-display);
+    font-size: calc(40 * var(--u));
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    letter-spacing: -0.015em;
+}
+
+.login-brand__tagline {
+    max-width: 30ch;
+    margin: calc(12 * var(--u)) 0 0;
+    font-size: calc(16 * var(--u));
+    line-height: var(--leading-body);
+    color: var(--on-ink-2);
+}
+
+/* ---------- Check in graphic ----------
+   The waves stretch to the panel width, the points and labels are HTML on top of them
+   so the text never gets squashed */
+
+.login-wave {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(220 * var(--u));
+}
+
+.login-wave__chart {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.login-wave__back {
+    fill: rgba(185, 169, 239, 0.14);
+}
+
+.login-wave__mid {
+    fill: rgba(185, 169, 239, 0.24);
+}
+
+.login-wave__front {
+    fill: rgba(185, 169, 239, 0.4);
+}
+
+.login-wave__line {
+    fill: none;
+    stroke: var(--on-ink);
+    stroke-width: calc(2.5 * var(--u));
+    stroke-opacity: 0.9;
+    vector-effect: non-scaling-stroke;
+}
+
+.login-wave__point {
+    position: absolute;
+    left: var(--x);
+    top: calc(var(--y) * var(--u));
+    width: calc(11 * var(--u));
+    height: calc(11 * var(--u));
+    background: var(--on-ink);
+    border-radius: 50%;
+    box-shadow: 0 0 0 calc(2 * var(--u)) var(--ink);
+    transform: translate(-50%, -50%);
+}
+
+    /* where each point sits on the line: x = % across the panel,
+   y = design px down from the top of the chart */
+    .login-wave__point:nth-of-type(1) {
+        --x: 8%;
+        --y: 131;
+    }
+
+    .login-wave__point:nth-of-type(2) {
+        --x: 22%;
+        --y: 103.5;
+    }
+
+    .login-wave__point:nth-of-type(3) {
+        --x: 35.91%;
+        --y: 112.5;
+    }
+
+    .login-wave__point:nth-of-type(4) {
+        --x: 49.83%;
+        --y: 82.5;
+    }
+
+    .login-wave__point:nth-of-type(5) {
+        --x: 63.83%;
+        --y: 99;
+    }
+
+    .login-wave__point:nth-of-type(6) {
+        --x: 77.83%;
+        --y: 73.5;
+    }
+
+    .login-wave__point:nth-of-type(7) {
+        --x: 91.74%;
+        --y: 89.5;
+    }
+
+.login-wave__label {
+    position: absolute;
+    bottom: calc(100% + 8 * var(--u));
+    left: 50%;
+    font-size: calc(12 * var(--u));
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    transform: translateX(-50%);
+}
+
+/* ---------- Form panel ---------- */
+
+.login-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: calc(48 * var(--u)) calc(32 * var(--u));
+}
+
+.login-panel__inner {
+    width: 100%;
+    max-width: calc(416 * var(--u));
+}
+
+.login-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: calc(32 * var(--u));
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    letter-spacing: -0.01em;
+}
+
+.login-lead {
+    margin: calc(8 * var(--u)) 0 0;
+    line-height: var(--leading-body);
+    color: var(--text-2);
+}
+
+.login-form {
+    display: grid;
+    gap: calc(24 * var(--u));
+    margin-top: calc(32 * var(--u));
+}
+
+.login-field {
+    display: grid;
+    gap: calc(6 * var(--u));
+}
+
+.login-label {
+    font-weight: var(--weight-medium);
+}
+
+.login-input-wrap {
+    position: relative;
+}
+
+.login-input {
+    width: 100%;
+    min-height: calc(44 * var(--u));
+    padding: 0 calc(12 * var(--u));
+    font: inherit;
+    font-size: calc(16 * var(--u));
+    color: var(--text);
+    background: var(--surface);
+    border: max(1px, var(--u)) solid var(--line-strong);
+    border-radius: calc(6 * var(--u));
+}
+
+    .login-input:hover {
+        border-color: var(--text-3);
+    }
+
+    .login-input:focus-visible {
+        outline-offset: 0;
+        border-color: var(--brand-600);
+    }
+
+    .login-input[aria-invalid="true"] {
+        border-color: var(--danger-700);
+    }
+
+.login-input--password {
+    padding-right: calc(48 * var(--u));
+}
+
+/* the eye button shows the open eye while the password is hidden, and the crossed out eye while it is shown */
+.login-reveal {
+    position: absolute;
+    top: calc(2 * var(--u));
+    right: calc(2 * var(--u));
+    bottom: calc(2 * var(--u));
+    display: grid;
+    place-items: center;
+    width: calc(42 * var(--u));
+    padding: 0;
+    color: var(--text-2);
+    background: none;
+    border: 0;
+    border-radius: calc(4 * var(--u));
+    cursor: pointer;
+}
+
+    .login-reveal:hover {
+        color: var(--text);
+        background: var(--paper);
+    }
+
+    .login-reveal svg {
+        width: calc(18 * var(--u));
+        height: calc(18 * var(--u));
+    }
+
+.login-reveal__hide,
+.login-reveal[aria-pressed="true"] .login-reveal__show {
+    display: none;
+}
+
+.login-reveal[aria-pressed="true"] .login-reveal__hide {
+    display: block;
+}
+
+/* a field's own message, e.g. a missing or badly formed email */
+.login-field-error {
+    color: var(--danger-700);
+}
+
+    .login-field-error:empty {
+        display: none;
+    }
+
+/* a wrong email or password. The validation summary renders its message as a list */
+.login-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: calc(8 * var(--u));
+    padding: calc(12 * var(--u));
+    line-height: 1.5;
+    color: var(--danger-700);
+    background: var(--danger-50);
+    border: max(1px, var(--u)) solid var(--danger-200);
+    border-radius: calc(6 * var(--u));
+}
+
+    .login-alert ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+.login-alert__icon {
+    flex: none;
+    width: calc(16 * var(--u));
+    height: calc(16 * var(--u));
+    margin-top: calc(2 * var(--u));
+}
+
+/* while the form is on its way the button says so, and login.js stops a second press */
+.login-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: calc(48 * var(--u));
+    font: inherit;
+    font-size: calc(16 * var(--u));
+    font-weight: var(--weight-semibold);
+    color: #ffffff;
+    background: var(--brand-600);
+    border: max(1px, var(--u)) solid var(--brand-600);
+    border-radius: calc(6 * var(--u));
+    cursor: pointer;
+}
+
+    .login-submit:hover {
+        background: var(--brand-700);
+        border-color: var(--brand-700);
+    }
+
+    .login-submit[aria-disabled="true"] {
+        cursor: progress;
+        opacity: 0.85;
+    }
+
+.login-submit__busy,
+.login-submit[aria-disabled="true"] .login-submit__idle {
+    display: none;
+}
+
+.login-submit[aria-disabled="true"] .login-submit__busy {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(8 * var(--u));
+}
+
+.login-spinner {
+    width: calc(16 * var(--u));
+    height: calc(16 * var(--u));
+    border: calc(2 * var(--u)) solid rgba(255, 255, 255, 0.4);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .login-spinner {
+        animation: login-spin 0.8s linear infinite;
+    }
+}
+
+@keyframes login-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.login-help {
+    margin: calc(24 * var(--u)) 0 0;
+    font-size: calc(12 * var(--u));
+    text-align: center;
+    color: var(--text-2);
+}
+
+/* ---------- Portrait, narrow or very short windows ----------
+   Side by side no longer fits, so the brand panel becomes a header with the mark and the name
+   and the form takes the screen. The stacked layout is about 420x840 design px, and never shrinks
+   below its 1px design size. The header lines up with the form */
+
+@media (max-width: 767.98px), (max-height: 479.98px), (max-aspect-ratio: 1/1) {
+    :root {
+        --login-fit: max(1px, min(100vw / 420, 100vh / 840));
+    }
+
+    .login-page {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+    }
+
+    .login-brand {
+        padding: calc(16 * var(--u)) 16px;
+    }
+
+    .login-brand__heading {
+        display: flex;
+        align-items: center;
+        gap: calc(12 * var(--u));
+        width: 100%;
+        max-width: calc(416 * var(--u));
+        margin: 0 auto;
+    }
+
+    .login-brand__mark {
+        width: calc(40 * var(--u));
+        height: calc(40 * var(--u));
+    }
+
+    .login-brand__title {
+        margin: 0;
+        font-size: calc(24 * var(--u));
+    }
+
+    .login-brand__tagline,
+    .login-wave {
+        display: none;
+    }
+
+    .login-panel {
+        justify-content: flex-start;
+        padding: calc(32 * var(--u)) 16px;
+    }
+
+    .login-input {
+        min-height: calc(48 * var(--u));
+    }
+}

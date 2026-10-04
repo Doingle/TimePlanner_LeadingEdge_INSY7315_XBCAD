@@ -1,0 +1,330 @@
+@using System.Globalization
+@using TimePlanner.Dashboard.Services
+@using TimePlanner.Dashboard.Services.Overview
+@model TimesheetPageModel
+@inject CompanyClock Clock
+@{
+    ViewData["Title"] = "My Timesheet";
+    ViewData["Nav"] = "Timesheet";
+    Layout = "_AppLayout";
+    var culture = CultureInfo.InvariantCulture;
+
+    //hours as h:mm, the way the design shows totals
+    string Hm(double hours)
+    {
+        var minutes = (int)Math.Round(hours * 60);
+        return $"{minutes / 60}:{minutes % 60:00}";
+    }
+
+    string Id(TimesheetDay day) => "day-" + day.Date.ToString("yyyy-MM-dd", culture);
+
+    //when the day was sent, with the date too if it was sent on a later day
+    string SubmittedText(DateTimeOffset at, DateTime day) =>
+        at.Date == day.Date ? $"Submitted at {at.ToString("HH:mm", culture)}" : $"Submitted {at.ToString("d MMM", culture)} at {at.ToString("HH:mm", culture)}";
+
+    //how a calendar tile looks: done, missed, today, future or weekend
+    string TileKind(TimesheetDay day) => day.Status switch
+    {
+        TimesheetViewService.Submitted => "done",
+        TimesheetViewService.Missing => "missed",
+        TimesheetViewService.Pending => "today",
+        _ => day.IsWorkingDay ? "future" : "weekend"
+    };
+
+    //what a screen reader hears for a tile
+    string TileLabel(TimesheetDay day)
+    {
+        var name = day.Date.ToString("dddd d MMMM", culture);
+        return day.Status switch
+        {
+            TimesheetViewService.Submitted => $"{name}, {Hm(day.Hours)}, submitted",
+            TimesheetViewService.Missing => $"{name}, not submitted",
+            TimesheetViewService.Pending => $"{name}, today, not submitted yet",
+            _ => name
+        };
+    }
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/timesheet.css" asp-append-version="true" />
+}
+
+@if (Model.NoProfile)
+{
+    <h1 class="ts-title">My Timesheet</h1>
+    <p class="ts-alert" role="alert"><strong>Your account is not linked to a time tracking profile.</strong> Ask an administrator to link it, then sign in again.</p>
+    return;
+}
+
+@{
+    var data = Model.Data!;
+    var week = data.View == "week";
+    var unit = week ? "week" : "month";
+    var today = Clock.Today;
+    var current = data.From <= today && today <= data.To;
+    //nothing has happened after the current week or month yet, so there is no next one to open
+    var hasNext = Model.Next <= today;
+
+    //days with entries, plus days that still need submitting, oldest first. Future and weekend days with nothing logged are left out
+    var days = data.Days
+        .Where(d => d.Entries > 0 || d.Status == TimesheetViewService.Missing || d.Status == TimesheetViewService.Pending)
+        .OrderBy(d => d.Date)
+        .ToList();
+    var withSection = days.Select(d => d.Date).ToHashSet();
+    var submitted = data.Days.Where(d => d.Status == TimesheetViewService.Submitted).ToList();
+    var missed = data.Days.Where(d => d.Status == TimesheetViewService.Missing).ToList();
+    var todayPending = data.Days.Any(d => d.Status == TimesheetViewService.Pending);
+
+    //a month shows one day's entries at a time, the latest submitted one to begin with (timesheet.js does the switching)
+    var selected = week ? null : (days.LastOrDefault(d => d.Status == TimesheetViewService.Submitted) ?? days.LastOrDefault())?.Date;
+
+    var figureUnit = week ? (current ? "submitted this week" : "submitted that week") : $"submitted in {data.From.ToString("MMMM", culture)}";
+    var workingSubmitted = submitted.Count(d => d.IsWorkingDay);
+    var workingDue = workingSubmitted + missed.Count;
+}
+
+@section Hero {
+    <section class="ts-hero" aria-label="Period summary">
+        <div class="ts-hero__inner">
+            <div class="ts-controls">
+                <div class="ts-period">
+                    <a class="ts-icon-button" asp-action="Index" asp-route-view="@data.View" asp-route-date="@Model.Previous.ToString("yyyy-MM-dd", culture)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+                        <span class="app-sr-only">Previous @unit</span>
+                    </a>
+                    <p class="ts-period__label">@data.Label</p>
+                    @if (hasNext)
+                    {
+                        <a class="ts-icon-button" asp-action="Index" asp-route-view="@data.View" asp-route-date="@Model.Next.ToString("yyyy-MM-dd", culture)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                            <span class="app-sr-only">Next @unit</span>
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="ts-icon-button" role="link" aria-disabled="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                            <span class="app-sr-only">Next @unit</span>
+                        </a>
+                    }
+                </div>
+
+                @* switching opens the current week or month, the same as the period picker on the admin pages *@
+                <form class="ts-toggle" method="get" asp-action="Index" role="group" aria-label="View">
+                    <button class="ts-toggle__option" type="submit" name="view" value="week" aria-pressed="@(week ? "true" : "false")">Week</button>
+                    <button class="ts-toggle__option" type="submit" name="view" value="month" aria-pressed="@(week ? "false" : "true")">Month</button>
+                </form>
+            </div>
+
+            @if (Model.Error != null)
+            {
+                <p class="ts-hero__note" role="alert">
+                    <svg class="ts-hero__note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 8v4M12 16h.01" />
+                    </svg>
+                    <span>@Model.Error</span>
+                </p>
+            }
+
+            <h1 class="ts-hero__figure"><span class="app-sr-only">My Timesheet, </span><span class="ts-hero__num">@Hm(data.TotalHours)</span> <span class="ts-hero__unit">@figureUnit</span></h1>
+            <p class="ts-hero__sub">
+                @if (week)
+                {
+                    @(submitted.Count == 0 ? (current ? "Nothing submitted yet." : "Nothing was submitted that week.") : $"From {submitted.Count} submitted day{(submitted.Count == 1 ? "" : "s")}.")
+                    if (todayPending)
+                    {
+                        <text> Today joins once you submit it from the widget.</text>
+                    }
+                }
+                else if (workingDue > 0)
+                {
+                    @($"{workingSubmitted} of {workingDue} working day{(workingDue == 1 ? "" : "s")}{(current ? " so far" : "")}.")
+                }
+                else
+                {
+                    @(current ? "Nothing to submit yet this month." : "Nothing was submitted that month.")
+                }
+                @if (missed.Count > 0)
+                {
+                    @* a few missed days are named and link to their place below, more than that are counted and left to the calendar *@
+                    <span class="ts-hero__flag">
+                        <svg class="ts-hero__flag-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 8v4M12 16h.01" />
+                        </svg>
+                        @if (missed.Count > 3)
+                        {
+                            <text>@missed.Count days weren't submitted. They're ringed in amber on the calendar.</text>
+                        }
+                        else
+                        {
+                            if (missed.Count > 1)
+                            {
+                                <text>@missed.Count days weren't submitted:</text>
+                            }
+                            for (var i = 0; i < missed.Count; i++)
+                            {
+                                <a class="ts-hero__link" href="#@Id(missed[i])" data-select="@missed[i].Date.ToString("yyyy-MM-dd", culture)">@missed[i].Date.ToString("ddd d MMM", culture)</a>@(i < missed.Count - 1 ? "," : "")
+                            }
+                            if (missed.Count == 1)
+                            {
+                                <text>wasn't submitted.</text>
+                            }
+                        }
+                    </span>
+                }
+            </p>
+
+            @* the one bold thing on the page: filled tiles were submitted, an amber ring was missed, a light ring is today *@
+            <div class="ts-cal @(week ? "ts-cal--week" : "ts-cal--month")">
+                @if (!week)
+                {
+                    <p class="app-sr-only">Use the arrow keys to move between days. Press Enter to show that day's entries below.</p>
+                }
+                <div class="ts-cal__grid" role="group" aria-label="Days in @data.Label">
+                    @foreach (var name in new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" })
+                    {
+                        <div class="ts-cal__dow" aria-hidden="true">@name</div>
+                    }
+                    @{
+                        var lead = week ? 0 : ((int)data.From.DayOfWeek + 6) % 7;
+                        var trail = week ? 0 : (7 - (lead + data.Days.Count) % 7) % 7;
+                    }
+                    @for (var i = 0; i < lead; i++)
+                    {
+                        <div class="ts-tile ts-tile--blank" aria-hidden="true"></div>
+                    }
+                    @foreach (var day in data.Days)
+                    {
+                        var kind = TileKind(day);
+                        var date = day.Date.ToString("yyyy-MM-dd", culture);
+                        var isToday = day.Date == today ? "date" : null;
+                        var hours = day.Status == TimesheetViewService.Submitted ? Hm(day.Hours) : null;
+                        var meta = kind switch { "missed" => "Not submitted", "today" => "Today", _ => null };
+
+                        if (!withSection.Contains(day.Date))
+                        {
+                            <div class="ts-tile ts-tile--@kind" role="img" aria-label="@TileLabel(day)" aria-current="@isToday">
+                                <span class="ts-tile__num">@day.Date.Day</span><span class="ts-tile__label">@day.Date.ToString("ddd d", culture)</span>
+                                <span class="ts-tile__bottom">@if (hours != null) { <span class="ts-tile__hours">@hours</span> }@if (meta != null) { <span class="ts-tile__meta">@meta</span> }</span>
+                            </div>
+                        }
+                        else if (week)
+                        {
+                            <a class="ts-tile ts-tile--@kind" href="#@Id(day)" aria-label="@TileLabel(day)" aria-current="@isToday">
+                                <span class="ts-tile__num">@day.Date.Day</span><span class="ts-tile__label">@day.Date.ToString("ddd d", culture)</span>
+                                <span class="ts-tile__bottom">@if (hours != null) { <span class="ts-tile__hours">@hours</span> }@if (meta != null) { <span class="ts-tile__meta">@meta</span> }</span>
+                            </a>
+                        }
+                        else
+                        {
+                            var pressed = day.Date == selected;
+                            <button class="ts-tile ts-tile--@kind" type="button" data-date="@date" aria-pressed="@(pressed ? "true" : "false")" tabindex="@(pressed ? "0" : "-1")" aria-label="@TileLabel(day)" aria-current="@isToday">
+                                <span class="ts-tile__num">@day.Date.Day</span><span class="ts-tile__label">@day.Date.ToString("ddd d", culture)</span>
+                                <span class="ts-tile__bottom">@if (hours != null) { <span class="ts-tile__hours">@hours</span> }@if (meta != null) { <span class="ts-tile__meta">@meta</span> }</span>
+                            </button>
+                        }
+                    }
+                    @for (var i = 0; i < trail; i++)
+                    {
+                        <div class="ts-tile ts-tile--blank" aria-hidden="true"></div>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+}
+
+@* in a month only the chosen day shows, timesheet.js hides the rest. Without scripts every day stays listed *@
+<section class="ts-entries" aria-label="Entries" data-selected="@(selected?.ToString("yyyy-MM-dd", culture))">
+    @if (days.Count == 0)
+    {
+        <p class="ts-empty">Nothing was submitted this @unit. Each day you submit from the widget appears here with its entries.</p>
+    }
+
+    @for (var index = 0; index < days.Count; index++)
+    {
+        var day = days[index];
+        var id = Id(day);
+        //in a week the column names show above the first day only, in a month above the one day showing
+        var showHead = !week || index == 0;
+
+        <section class="ts-day ts-day--@day.Status.ToLowerInvariant()" id="@id" data-date="@day.Date.ToString("yyyy-MM-dd", culture)" aria-labelledby="@id-h">
+            <div class="ts-day__head">
+                <h2 class="ts-day__date" id="@id-h">@day.Date.ToString("dddd d MMM", culture)</h2>
+                @if (day.Status == TimesheetViewService.Submitted)
+                {
+                    <span class="ts-day__status ts-day__status--ok">
+                        <svg class="ts-day__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                        @(day.SubmittedAt is { } at ? SubmittedText(at, day.Date) : "Submitted")
+                    </span>
+                }
+                else if (day.Status == TimesheetViewService.Pending)
+                {
+                    <span class="ts-day__status">Today, not submitted yet</span>
+                }
+                else if (day.Status == TimesheetViewService.Missing)
+                {
+                    <span class="ts-day__status ts-day__status--missed">
+                        <svg class="ts-day__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+                        Not submitted
+                    </span>
+                }
+                else
+                {
+                    <span class="ts-day__status">Not submitted</span>
+                }
+                @if (day.Entries > 0)
+                {
+                    <span class="ts-day__total"><strong>@Hm(day.Hours)</strong></span>
+                }
+            </div>
+
+            @if (day.Items.Count > 0)
+            {
+                <div class="ts-table" role="table" aria-labelledby="@id-h">
+                    <div class="@(showHead ? null : "app-sr-only")" role="rowgroup">
+                        <div class="ts-entry ts-entry--head" role="row">
+                            <span class="ts-entry__time" role="columnheader">Time</span>
+                            <span class="ts-entry__cat" role="columnheader">Category</span>
+                            <span class="ts-entry__proj" role="columnheader">Project</span>
+                            <span class="ts-entry__note" role="columnheader">Note</span>
+                            <span class="ts-entry__dur" role="columnheader">Duration</span>
+                        </div>
+                    </div>
+                    <div role="rowgroup">
+                        @foreach (var item in day.Items.OrderBy(i => i.Start, StringComparer.Ordinal))
+                        {
+                            <div class="ts-entry" role="row">
+                                <span class="ts-entry__time" role="cell">@item.Start–@item.End</span>
+                                <span class="ts-entry__cat" role="cell"><span class="ts-entry__swatch" data-colour="@item.Colour"></span>@item.Activity</span>
+                                <span class="ts-entry__proj" role="cell">@item.Project <small>@item.Company · @(item.Billable ? "Billable" : "Non-billable")</small></span>
+                                <span class="ts-entry__note" role="cell">@item.Note</span>
+                                <span class="ts-entry__dur" role="cell">@Hm(item.Hours)</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else if (day.Status == TimesheetViewService.Pending)
+            {
+                <p class="ts-day__empty">Today's entries appear here once you submit the day from the widget.</p>
+            }
+            else if (day.Status == TimesheetViewService.Missing)
+            {
+                <p class="ts-day__empty">This day was never submitted, so none of its check-ins are in your timesheet.</p>
+            }
+            else
+            {
+                <p class="ts-day__empty">Nothing logged.</p>
+            }
+        </section>
+    }
+
+    <p class="ts-edit-note">Entries can't be edited here. To change one, correct it in the widget and submit that day again.</p>
+</section>
+
+@section Scripts {
+    <script src="~/js/timesheet.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,171 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Tokens.xaml" />
+        <ResourceDictionary Source="Buttons.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+
+    <!-- ==================================== Option tile (single-select) ==================================== -->
+    <Style x:Key="Option" TargetType="RadioButton">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Control}" />
+        <Setter Property="Height" Value="{StaticResource SizeControl}" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    
+                    <Grid>
+                        <Border x:Name="Bd" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderControlBrush}"
+                            BorderThickness="{DynamicResource BorderWidth}" CornerRadius="{StaticResource RadiusControl}" />
+                        
+                        <Border x:Name="Ring" Visibility="Collapsed" CornerRadius="{StaticResource RadiusControl}"
+                            UseLayoutRounding="False" BorderThickness="{DynamicResource BorderWidthSelected}" BorderBrush="{StaticResource BorderSelectedBrush}" />
+                        
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}">
+                            
+                            <controls:Icon x:Name="Tick" Kind="Check" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0"
+                                       Visibility="Collapsed" VerticalAlignment="Center" />
+                            
+                            <controls:Icon x:Name="Glyph" Size="{StaticResource SizeShapeGlyph}" Margin="0,0,8,0" VerticalAlignment="Center"
+                                       Kind="{Binding Path=(controls:Field.Glyph), RelativeSource={RelativeSource TemplatedParent}}"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            
+                            <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="False" />
+                        </StackPanel>
+                    </Grid>
+                    
+                    <ControlTemplate.Triggers>
+                        
+                        <Trigger Property="controls:Field.Glyph" Value="None">
+                            <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
+                        </Trigger>
+                        
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentFillBrush}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderSelectedBrush}" />
+                            <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource TextAccentBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource TextAccentBrush}" />
+                            <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+                        </Trigger>
+                        
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="controls:Field.Glyph" Value="None" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+                        </MultiTrigger>
+                        
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceBrush}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+                            <Setter TargetName="Ring" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource TextDisabledBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource TextDisabledBrush}" />
+                        </Trigger>
+                        
+                        <!-- Still shows which one is chosen, but muted, so it reads as set-but-inactive -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsEnabled" Value="False" />
+                                <Condition Property="IsChecked" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource TextDisabledBrush}" />
+                            <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Ring" Property="BorderBrush" Value="{StaticResource TextDisabledBrush}" />
+                        </MultiTrigger>
+                        
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ==================================== Switch: [On/Off word] ==================================== -->
+    <Style x:Key="Switch" TargetType="ToggleButton">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Square}" />
+        <Setter Property="Height" Value="{StaticResource SizeControl}" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <StackPanel x:Name="Root" Orientation="Horizontal" Background="Transparent">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CheckStates">
+                                <VisualStateGroup.Transitions>
+                                    <VisualTransition GeneratedDuration="0:0:0.12">
+                                        <VisualTransition.GeneratedEasingFunction>
+                                            <QuadraticEase EasingMode="EaseInOut" />
+                                        </VisualTransition.GeneratedEasingFunction>
+                                    </VisualTransition>
+                                </VisualStateGroup.Transitions>
+                                <VisualState x:Name="Checked">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Thumb" Duration="0" To="14"
+                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Unchecked" />
+                                <VisualState x:Name="Indeterminate" />
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+
+                        <TextBlock x:Name="State" Text="Off" VerticalAlignment="Center" Margin="0,0,8,0"
+                               LineHeight="{StaticResource LineHeightBody}" LineStackingStrategy="BlockLineHeight"
+                               RenderTransform="{StaticResource Baseline.Body}" />
+                        <Grid Width="{StaticResource SizeSwitchW}" Height="{StaticResource SizeSwitchH}" VerticalAlignment="Center">
+                            <Border x:Name="Track" CornerRadius="{StaticResource RadiusSwitch}" BorderThickness="{DynamicResource BorderWidth}"
+                                BorderBrush="{StaticResource BorderControlBrush}" Background="{StaticResource SurfaceBrush}" />
+                            <!-- 4 inside the 1px border on either side: x = 5 off, 19 on -->
+                            <Ellipse x:Name="Thumb" Width="{StaticResource SizeThumb}" Height="{StaticResource SizeThumb}"
+                                 HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5,0,0,0"
+                                 Fill="{StaticResource TextSecondaryBrush}">
+                                <Ellipse.RenderTransform>
+                                    <TranslateTransform />
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+                        </Grid>
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="State" Property="Text" Value="On" />
+                            <Setter TargetName="Track" Property="Background" Value="{StaticResource ToggleOnBrush}" />
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource ToggleOnBrush}" />
+                            <Setter TargetName="Thumb" Property="Fill" Value="{StaticResource SurfaceBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{StaticResource TextDisabledBrush}" />
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+                            <Setter TargetName="Thumb" Property="Fill" Value="{StaticResource TextDisabledBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>
