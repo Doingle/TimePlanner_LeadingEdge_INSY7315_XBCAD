@@ -2,6 +2,8 @@ using TimePlanner.Dashboard.Services.Reports;
 
 namespace TimePlanner.Dashboard.Models
 {
+    public record PastPeriod(string Label, DateTime From, DateTime To);
+
     //-----------------------------
     //everything My Reports shows: the signed in person's own week, month or range, with the billable split and the breakdowns.
     //the detailed report (any grouping, any person) is an admin tool and lives on the team's Submissions page
@@ -21,6 +23,9 @@ namespace TimePlanner.Dashboard.Models
 
         //how many days of the range the person submitted
         public int SubmittedDays { get; set; }
+
+        //list of past periods for quick downloads
+        public List<PastPeriod> PastPeriods { get; set; } = new();
 
         //null when the range was not valid, Error then says why
         public string? Error { get; set; }

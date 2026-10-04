@@ -63,14 +63,14 @@ namespace TimePlanner.Dashboard.Controllers
         }
 
         //-----------------------------
-        //one person's csv, or without a person a zip with one csv per person who logged time, for the week or month
+        //one person's file, or without a person a zip with one file per person who logged time, for the week or month
         [HttpGet]
-        public async Task<IActionResult> Export(string? view, DateTime? date, int? userId)
+        public async Task<IActionResult> Export(string? view, DateTime? date, int? userId, string format = "xlsx")
         {
             if (!Period.TryResolve(view, date, _clock.Today, out var period))
                 return BadRequest(Period.InvalidViewMessage);
 
-            var file = await _admin.ExportAsync(period, userId);
+            var file = await _admin.ExportAsync(period, userId, format);
             if (file == null)
             {
                 TempData["Error"] = "There is nothing to export for that person and period.";
