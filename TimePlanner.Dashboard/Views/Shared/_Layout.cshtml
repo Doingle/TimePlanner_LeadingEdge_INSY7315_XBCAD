@@ -1,11 +1,16 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+﻿@{
+    //the text size, bold and italic picked under Accessibility, for the pages still on this layout
+    var text = TextPreferences.From(Context.Request);
+}
+<!DOCTYPE html>
+<html lang="en" data-text-size="@text.Size" data-bold="@text.BoldValue" data-italic="@text.ItalicValue">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - TimePlanner.Dashboard</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/TimePlanner.Dashboard.styles.css" asp-append-version="true" />
 </head>
 <body>

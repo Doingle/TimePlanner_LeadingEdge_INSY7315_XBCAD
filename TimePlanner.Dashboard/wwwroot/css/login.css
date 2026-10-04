@@ -5,7 +5,8 @@
    The colours and typefaces come from tokens.css.
 
    Every size is written as calc(N * var(--u)), where N is the size in px on the
-   1000x596 design. --u grows and shrinks with the browser window */
+   1000x596 design. --u grows and shrinks with the browser window. Font sizes are also
+   multiplied by --text-scale, the text size picked under Settings > Accessibility (tokens.css) */
 
 :root {
     --login-fit: min(100vw / 1000, 100vh / 596);
@@ -30,7 +31,7 @@ html {
 body.login-body {
     margin: 0;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    font-size: calc(14 * var(--u));
+    font-size: calc(14 * var(--u) * var(--text-scale, 1));
     line-height: var(--leading-ui);
     color: var(--text);
     background: var(--surface);
@@ -83,7 +84,7 @@ body.login-body {
 .login-brand__title {
     margin: calc(24 * var(--u)) 0 0;
     font-family: var(--font-display);
-    font-size: calc(40 * var(--u));
+    font-size: calc(40 * var(--u) * var(--text-scale, 1));
     font-weight: var(--weight-semibold);
     line-height: var(--leading-head);
     letter-spacing: -0.015em;
@@ -92,7 +93,7 @@ body.login-body {
 .login-brand__tagline {
     max-width: 30ch;
     margin: calc(12 * var(--u)) 0 0;
-    font-size: calc(16 * var(--u));
+    font-size: calc(16 * var(--u) * var(--text-scale, 1));
     line-height: var(--leading-body);
     color: var(--on-ink-2);
 }
@@ -188,7 +189,7 @@ body.login-body {
     position: absolute;
     bottom: calc(100% + 8 * var(--u));
     left: 50%;
-    font-size: calc(12 * var(--u));
+    font-size: calc(12 * var(--u) * var(--text-scale, 1));
     font-weight: var(--weight-semibold);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -213,7 +214,7 @@ body.login-body {
 .login-title {
     margin: 0;
     font-family: var(--font-display);
-    font-size: calc(32 * var(--u));
+    font-size: calc(32 * var(--u) * var(--text-scale, 1));
     font-weight: var(--weight-semibold);
     line-height: var(--leading-head);
     letter-spacing: -0.01em;
@@ -249,7 +250,7 @@ body.login-body {
     min-height: calc(44 * var(--u));
     padding: 0 calc(12 * var(--u));
     font: inherit;
-    font-size: calc(16 * var(--u));
+    font-size: calc(16 * var(--u) * var(--text-scale, 1));
     color: var(--text);
     background: var(--surface);
     border: max(1px, var(--u)) solid var(--line-strong);
@@ -352,7 +353,7 @@ body.login-body {
     width: 100%;
     min-height: calc(48 * var(--u));
     font: inherit;
-    font-size: calc(16 * var(--u));
+    font-size: calc(16 * var(--u) * var(--text-scale, 1));
     font-weight: var(--weight-semibold);
     color: #ffffff;
     background: var(--brand-600);
@@ -404,7 +405,7 @@ body.login-body {
 
 .login-help {
     margin: calc(24 * var(--u)) 0 0;
-    font-size: calc(12 * var(--u));
+    font-size: calc(12 * var(--u) * var(--text-scale, 1));
     text-align: center;
     color: var(--text-2);
 }
@@ -444,7 +445,7 @@ body.login-body {
 
     .login-brand__title {
         margin: 0;
-        font-size: calc(24 * var(--u));
+        font-size: calc(24 * var(--u) * var(--text-scale, 1));
     }
 
     .login-brand__tagline,

@@ -6,9 +6,12 @@
     //a wrong email or password is a form level error, both boxes are marked and the alert describes them
     var loginFailed = ViewData.ModelState.TryGetValue(string.Empty, out var formEntry) && formEntry.Errors.Count > 0;
     string? Invalid(string field) => loginFailed || ViewData.ModelState[field]?.Errors.Count > 0 ? "true" : null;
+
+    //the text size, bold and italic picked under Accessibility stay with this browser, so they apply here too
+    var text = TextPreferences.From(Context.Request);
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-text-size="@text.Size" data-bold="@text.BoldValue" data-italic="@text.ItalicValue">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

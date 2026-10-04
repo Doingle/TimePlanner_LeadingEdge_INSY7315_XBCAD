@@ -53,7 +53,7 @@ namespace TimePlanner.Api.Tests
             {
                 ("/Account/Login", anonymous), ("/Home/Privacy", anonymous), ("/Home/Error", anonymous),
                 ("/", developer), ("/?period=week", developer), ("/Timesheet", developer), ("/Timesheet?view=month", developer),
-                ("/Report?view=week", developer), ("/Report?view=month", developer), ("/CsvUpload", developer), ("/Settings", developer), ("/Account/AccessDenied", developer),
+                ("/Report?view=week", developer), ("/Report?view=month", developer), ("/CsvUpload", developer), ("/Settings", developer), ("/Settings/Accessibility", developer), ("/Account/AccessDenied", developer),
                 ("/Admin", admin), ("/Admin/Submissions", admin), ("/Admin/Exports", admin), ("/Users", admin)
             };
 

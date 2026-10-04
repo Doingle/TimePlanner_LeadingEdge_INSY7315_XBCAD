@@ -48,7 +48,7 @@ body.app-body {
     min-height: 100vh;
     margin: 0;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    font-size: 14px;
+    font-size: var(--text-sm);
     line-height: 1.45;
     color: var(--app-text);
     background: var(--app-page);
@@ -198,7 +198,7 @@ body.app-body {
 .app-user__avatar--large {
     width: 40px;
     height: 40px;
-    font-size: 14px;
+    font-size: var(--text-sm);
 }
 
 .app-user__name {
@@ -254,15 +254,15 @@ body.app-body {
 }
 
 .app-user__card-name {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
     line-height: 1.4;
     overflow-wrap: anywhere;
 }
 
 .app-user__meta {
     margin-top: 3px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--app-muted);
     overflow-wrap: anywhere;
 }
@@ -279,8 +279,8 @@ body.app-body {
     height: 42px;
     padding: 0 10px;
     font: inherit;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
     text-align: left;
     text-decoration: none;
     color: var(--app-text);
@@ -318,8 +318,8 @@ body.app-body {
     height: 36px;
     padding: 0 15px;
     font: inherit;
-    font-size: 13.5px;
-    font-weight: 500;
+    font-size: 0.84375rem;
+    font-weight: var(--weight-medium);
     color: #374151;
     text-decoration: none;
     white-space: nowrap;

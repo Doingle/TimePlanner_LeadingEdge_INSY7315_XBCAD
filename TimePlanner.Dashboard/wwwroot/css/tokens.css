@@ -29,6 +29,7 @@
     --text-3: #6e6982;      /* captions only, 4.8:1 on paper */
     --line: #e3dfed;        /* hairlines and panel borders */
     --line-strong: #cdc6dc; /* control borders */
+    --line-control: #857f9b; /* a control that must be seen to be used, like a switch track or a card choice: 3.8:1 on white, 3.5:1 on paper (WCAG 1.4.11 needs 3:1) */
 
     /* ---- Status: reserved for state, never for categories ---- */
     --success-700: #067647;
@@ -118,4 +119,34 @@
     :root {
         --gutter: var(--space-4);
     }
+}
+
+/* ---- Text preferences (Settings > Accessibility) ----
+   The layouts write the saved choice onto <html> on every page, so these few rules change the whole site at once.
+   Sizes are in rem and weights come from the tokens above, so nothing else needs to know. --text-scale is for the
+   sign in page, which sizes its text from the window rather than from rem */
+html[data-text-size="large"] {
+    font-size: 112.5%;
+    --text-scale: 1.125;
+}
+
+html[data-text-size="larger"] {
+    font-size: 125%;
+    --text-scale: 1.25;
+}
+
+html[data-text-size="largest"] {
+    font-size: 150%;
+    --text-scale: 1.5;
+}
+
+html[data-bold="on"] {
+    font-weight: 600;
+    --weight-regular: 600;
+    --weight-medium: 700;
+    --weight-semibold: 700;
+}
+
+html[data-italic="on"] {
+    font-style: italic;
 }
