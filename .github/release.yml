@@ -1,0 +1,17 @@
+#release notes
+changelog:
+  exclude:
+    labels: [ release, dependencies ]
+  categories:
+    - title: Widget
+      labels: [ area:widget ]
+    - title: Dashboard and API
+      labels: [ area:dashboard ]
+    - title: Core and data
+      labels: [ area:core ]
+    - title: CI and DevOps
+      labels: [ area:devops ]
+    - title: Tests
+      labels: [ area:testing ]
+    - title: Other changes
+      labels: [ "*" ]
