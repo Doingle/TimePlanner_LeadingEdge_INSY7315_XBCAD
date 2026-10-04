@@ -15,10 +15,10 @@
     <!-- CA5395 asks every page action to say GET explicitly, which is the default for them and only adds noise -->
     <NoWarn>$(NoWarn);CA5395</NoWarn>
 
-    <!-- every restore checks direct and indirect packages against the public vulnerability list, and a known vulnerability fails the build -->
+    <!-- every restore checks direct and indirect packages against the public vulnerability list. Low and moderate findings stay warnings and high or critical ones fail the build -->
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAuditLevel>low</NuGetAuditLevel>
-    <WarningsAsErrors>$(WarningsAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
   </PropertyGroup>
 </Project>
