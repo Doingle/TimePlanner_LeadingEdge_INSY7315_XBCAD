@@ -77,17 +77,25 @@ namespace TimePlanner.Dashboard.Services.Overview
         }
 
         //-----------------------------
-        //one person's timesheet as a csv, or with no person chosen a zip with one csv per person who logged time in the period.
+        //one person's timesheet as an excel or csv file, or with no person chosen a zip with one file per person who logged time in the period.
         //null when the person does not exist or nothing was logged in the period
-        public async Task<ExportFile?> ExportAsync(Period period, int? appUserId)
+        public async Task<ExportFile?> ExportAsync(Period period, int? appUserId, string format = "xlsx")
         {
+            var isCsv = string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase);
+            var ext = isCsv ? "csv" : "xlsx";
+            var mime = isCsv ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
             if (appUserId != null)
             {
                 var profile = await _app.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == appUserId);
                 if (profile == null)
                     return null;
-                return new ExportFile(await _reports.ExportTimesheetCsvAsync(appUserId.Value, period.From, period.To), "text/csv",
-                    $"timesheet_{Slug(profile.Name)}_{period.From:yyyyMMdd}_{period.To:yyyyMMdd}.csv");
+
+                var singleBytes = isCsv
+                    ? await _reports.ExportTimesheetCsvAsync(appUserId.Value, period.From, period.To)
+                    : await _reports.ExportTimesheetXlsxAsync(appUserId.Value, period.From, period.To);
+
+                return new ExportFile(singleBytes, mime, $"timesheet_{Slug(profile.Name)}_{period.From:yyyyMMdd}_{period.To:yyyyMMdd}.{ext}");
             }
 
             var people = (await _reports.LoadEntriesAsync(period.From, period.To, null, null))
@@ -104,9 +112,11 @@ namespace TimePlanner.Dashboard.Services.Overview
                 foreach (var person in people)
                 {
                     //the id is part of the name, so two people called the same never overwrite each other
-                    var file = zip.CreateEntry($"{Slug(person.Name)}-{person.Id}_{period.From:yyyyMMdd}_{period.To:yyyyMMdd}.csv", CompressionLevel.Optimal);
+                    var file = zip.CreateEntry($"{Slug(person.Name)}-{person.Id}_{period.From:yyyyMMdd}_{period.To:yyyyMMdd}.{ext}", CompressionLevel.Optimal);
                     await using var stream = file.Open();
-                    var bytes = await _reports.ExportTimesheetCsvAsync(person.Id, period.From, period.To);
+                    var bytes = isCsv
+                        ? await _reports.ExportTimesheetCsvAsync(person.Id, period.From, period.To)
+                        : await _reports.ExportTimesheetXlsxAsync(person.Id, period.From, period.To);
                     await stream.WriteAsync(bytes);
                 }
             }

@@ -209,6 +209,26 @@ namespace TimePlanner.Dashboard.Services.Reports
             return memory.ToArray();
         }
 
+        //-----------------------------
+        //gets a person's display name or email
+        public async Task<string> PersonNameAsync(int appUserId)
+        {
+            var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == appUserId);
+            return user?.Name ?? user?.Email ?? "Timesheet";
+        }
+
+        //-----------------------------
+        //one person's entries in the company's timesheet layout as an excel workbook
+        public async Task<byte[]> ExportTimesheetXlsxAsync(int userId, DateTime from, DateTime to)
+        {
+            var entries = await LoadEntriesAsync(from, to, userId, null);
+            var activities = await ActivityLookup.LoadAsync(_db);
+            var personName = await PersonNameAsync(userId);
+            await _audit.LogAsync(AuditActions.TimesheetExported, $"profile {userId}, {from:yyyy-MM-dd} to {to:yyyy-MM-dd}, {entries.Count} entries, xlsx");
+
+            return TimesheetWorkbook.Build(personName, from, to, entries, activities);
+        }
+
         public static double Hours(ReportEntry e) => (e.End - e.Start).TotalHours;
 
         private static double Round(double hours) => Math.Round(hours, 2);
@@ -218,8 +238,11 @@ namespace TimePlanner.Dashboard.Services.Reports
         //billable unless internal work or a non billable activity
         public static bool IsBillable(ReportEntry e, ActivityLookup activities) => BillingRules.IsBillable(e.Company, activities.RootIsBillable(e.CategoryId));
 
+        //client and project display text
+        internal static string ClientProjectText(ReportEntry e) => e.Project == e.Company || e.Project == LocalSetupService.InternalProjectName ? e.Company : $"{e.Company} / {e.Project}";
+
         //the company's own sheet writes "Internal" for the work that is not billed
-        private static string BillableLabel(ReportEntry e, ActivityLookup activities) => IsInternal(e) ? "Internal" : IsBillable(e, activities) ? "Yes" : "No";
+        internal static string BillableLabel(ReportEntry e, ActivityLookup activities) => IsInternal(e) ? "Internal" : IsBillable(e, activities) ? "Yes" : "No";
 
         private static string Label(ReportEntry e, ReportGrouping groupBy, ActivityLookup activities) => groupBy switch
         {

@@ -57,15 +57,26 @@
                 </span>
             </div>
 
+            <div class="tm-field">
+                <label class="tm-label" for="format">Format</label>
+                <span class="tm-select">
+                    <select class="tm-input tm-input--select" id="format" name="format">
+                        <option value="xlsx" selected>Excel (.xlsx)</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                    <svg class="tm-select__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                </span>
+            </div>
+
             @* exactly what the button gives, for everyone or for the person picked *@
             <p class="tm-you-get" id="tm-you-get" aria-live="polite">
                 <span class="tm-you-get__item" data-export-for="everyone">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8v13H3V8" /><path d="M1 3h22v5H1zM10 12h4" /></svg>
-                    <span><strong>A .zip file</strong> with one CSV per person who logged time<small>@Model.Label</small></span>
+                    <span><strong>A .zip file</strong> with one Excel or CSV file per person who logged time<small>@Model.Label</small></span>
                 </span>
                 <span class="tm-you-get__item" data-export-for="person" hidden>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>
-                    <span><strong>One CSV file</strong> for <span data-export-name>the person picked</span><small>@Model.Label</small></span>
+                    <span><strong>One file</strong> for <span data-export-name>the person picked</span><small>@Model.Label</small></span>
                 </span>
             </p>
 
@@ -82,7 +93,7 @@
                     <span class="tm-spinner" aria-hidden="true" data-export-busy hidden></span>
                     <svg class="tm-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-export-icon><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
                     <span data-export-for="everyone">Download .zip</span>
-                    <span data-export-for="person" hidden>Download CSV</span>
+                    <span data-export-for="person" hidden>Download file</span>
                     <span data-export-busy hidden>Preparing download…</span>
                 </button>
             </div>

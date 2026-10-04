@@ -40,14 +40,14 @@ namespace TimePlanner.Dashboard.Controllers.Api
         }
 
         //-----------------------------
-        //one person's timesheet as a csv, or without userId a zip holding one csv per person who logged time in the period
+        //one person's timesheet as an excel or csv file, or without userId a zip holding one file per person who logged time in the period
         [HttpGet("exports/timesheets")]
-        public async Task<IActionResult> Export([FromQuery] string? view, [FromQuery] DateTime? date, [FromQuery] int? userId)
+        public async Task<IActionResult> Export([FromQuery] string? view, [FromQuery] DateTime? date, [FromQuery] int? userId, [FromQuery] string format = "csv")
         {
             if (!Period.TryResolve(view, date, _clock.Today, out var period))
                 return ValidationProblem(new ValidationProblemDetails { Title = Period.InvalidViewMessage });
 
-            var file = await _admin.ExportAsync(period, userId);
+            var file = await _admin.ExportAsync(period, userId, format);
             return file == null
                 ? Problem(title: "There is nothing to export for that person and period.", statusCode: StatusCodes.Status404NotFound)
                 : File(file.Bytes, file.ContentType, file.FileName);
