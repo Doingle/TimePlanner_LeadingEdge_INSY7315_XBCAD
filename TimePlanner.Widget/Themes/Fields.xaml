@@ -164,7 +164,7 @@
                                       ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
                         <controls:Icon Kind="ChevronDown" Size="{StaticResource SizeIcon}" Margin="0,0,17,0" IsHitTestVisible="False"
                                    HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
-                        <ToggleButton x:Name="Toggle" Focusable="False" ClickMode="Press"
+                        <ToggleButton x:Name="Toggle" Focusable="False"
                                   IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
                             <ToggleButton.Template>
                                 <ControlTemplate TargetType="ToggleButton">
