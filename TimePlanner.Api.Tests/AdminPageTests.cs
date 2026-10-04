@@ -298,7 +298,7 @@ namespace TimePlanner.Api.Tests
             var admin = await AdminBrowserAsync(f);
 
             var html = await admin.GetStringAsync($"/Admin/Submissions?view=week&date=2026-09-14&from=2026-09-14&to=2026-09-15&groupBy=Day&userId={a.ProfileId}");
-            var export = await admin.GetAsync($"/Report/Export?from=2026-09-14&to=2026-09-15&userId={a.ProfileId}");
+            var export = await admin.GetAsync($"/Report/Export?from=2026-09-14&to=2026-09-15&userId={a.ProfileId}&format=csv");
 
             Assert.Contains("<option value=\"Day\" selected=\"selected\">Day</option>", html);
             Assert.Contains($"<option value=\"{a.ProfileId}\" selected=\"selected\">", html);
@@ -341,9 +341,9 @@ namespace TimePlanner.Api.Tests
             Assert.Contains("name=\"view\" value=\"week\"", html);
             Assert.Contains("name=\"date\" value=\"2026-09-14\"", html);
             Assert.Contains("action=\"/Admin/Export\"", html);
-            //what the button gives: a zip for everyone to begin with, one csv once a person is picked
-            Assert.Contains("A .zip file with one CSV per person who logged time 14 Sep to 20 Sep 2026", Text(html));
-            Assert.Contains("One CSV file", html);
+            //what the button gives: a zip for everyone to begin with, one file once a person is picked
+            Assert.Contains("A .zip file with one Excel or CSV file per person who logged time 14 Sep to 20 Sep 2026", Text(html));
+            Assert.Contains("One file", html);
             Assert.Contains("Download .zip", html);
             Assert.Contains("/js/exports.js", html);
         }
@@ -380,7 +380,7 @@ namespace TimePlanner.Api.Tests
 
             //what the form sends when "Everyone" is chosen: a blank userId
             var zip = await admin.GetAsync("/Admin/Export?view=week&date=2026-09-14&userId=");
-            var csv = await admin.GetAsync($"/Admin/Export?view=week&date=2026-09-14&userId={a.ProfileId}");
+            var csv = await admin.GetAsync($"/Admin/Export?view=week&date=2026-09-14&userId={a.ProfileId}&format=csv");
 
             Assert.Equal("application/zip", zip.Content.Headers.ContentType!.MediaType);
             using (var archive = new ZipArchive(new MemoryStream(await zip.Content.ReadAsByteArrayAsync())))

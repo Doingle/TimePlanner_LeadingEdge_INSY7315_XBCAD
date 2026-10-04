@@ -1,0 +1,93 @@
+@model TextPreferences
+@{
+    ViewData["Title"] = "Accessibility";
+    ViewData["Nav"] = "Accessibility";
+    Layout = "_AppLayout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/settings.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/accessibility.css" asp-append-version="true" />
+}
+
+@section Hero {
+    <section class="st-hero" aria-labelledby="ax-title">
+        <div class="st-hero__inner">
+            <div class="st-narrow">
+                <h1 class="st-hero__title" id="ax-title">Accessibility</h1>
+                <p class="st-hero__sub">Change how text looks across Time Planner. Changes apply straight away.</p>
+            </div>
+        </div>
+    </section>
+}
+
+@* the same centred column as Settings. Nothing is posted: accessibility.js applies each change to the page and keeps it in this browser *@
+<div class="st-settings">
+    <div class="st-sheet st-narrow" data-text-preferences>
+        <section class="st-setting" aria-labelledby="ax-size-title">
+            <h2 class="st-setting__title" id="ax-size-title">Text size</h2>
+            @* four choices shown as cards, each drawn at its own size *@
+            <div class="ax-sizes" role="radiogroup" aria-labelledby="ax-size-title">
+                @foreach (var size in TextPreferences.Sizes)
+                {
+                    <label class="ax-size">
+                        <input type="radio" name="size" value="@size.Value" checked="@(size.Value == Model.Size)" />
+                        <svg class="ax-size__tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                        <span class="ax-size__aa ax-size__aa--@size.Value" aria-hidden="true">Aa</span>
+                        <span class="ax-size__name">@size.Name</span>
+                        <span class="ax-size__pct">@size.Percent</span>
+                    </label>
+                }
+            </div>
+        </section>
+
+        <section class="st-setting" aria-labelledby="ax-style-title">
+            <h2 class="st-setting__title" id="ax-style-title">Text style</h2>
+            @* switches are native checkboxes, so Space and the labels just work *@
+            <div class="ax-toggle">
+                <div>
+                    <label class="ax-toggle__label" for="ax-bold">Bold text</label>
+                    <p class="ax-toggle__hint" id="ax-bold-hint">Makes all text heavier, which some people find easier to read.</p>
+                </div>
+                <input class="ax-switch" type="checkbox" role="switch" id="ax-bold" name="bold" aria-describedby="ax-bold-hint" checked="@Model.Bold" />
+            </div>
+            <div class="ax-toggle">
+                <div>
+                    <label class="ax-toggle__label" for="ax-italic">Italic text</label>
+                    <p class="ax-toggle__hint" id="ax-italic-hint">Slants all text.</p>
+                </div>
+                <input class="ax-switch" type="checkbox" role="switch" id="ax-italic" name="italic" aria-describedby="ax-italic-hint" checked="@Model.Italic" />
+            </div>
+        </section>
+
+        <section class="st-setting" aria-labelledby="ax-preview-title">
+            <h2 class="st-setting__title" id="ax-preview-title">Preview</h2>
+            @* a piece of the app made up for the preview, so people judge the setting on what they will actually read *@
+            <div class="ax-sample" aria-hidden="true">
+                <div class="ax-sample__head"><strong>Monday 28 Sep</strong><span>7:30</span></div>
+                <div class="ax-sample__row ax-sample__row--coding">
+                    <span class="ax-sample__cat">Coding</span><span class="ax-sample__dur">2:30</span>
+                    <span class="ax-sample__note">Started the weekly CSV export: query and columns</span>
+                    <span class="ax-sample__time">10:15–12:45, Project X</span>
+                </div>
+                <div class="ax-sample__row ax-sample__row--meeting">
+                    <span class="ax-sample__cat">Meeting</span><span class="ax-sample__dur">1:00</span>
+                    <span class="ax-sample__note">Went through the reporting screen requirements with ACME</span>
+                    <span class="ax-sample__time">15:00–16:00, ACME</span>
+                </div>
+            </div>
+        </section>
+
+        <div class="ax-footer">
+            <p class="ax-status" role="status">
+                <svg class="ax-status__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-text-status-icon hidden><path d="M20 6 9 17l-5-5" /></svg>
+                <span data-text-status></span>
+            </p>
+            <button class="ax-button" type="button" data-text-reset>Reset to default</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/accessibility.js" asp-append-version="true"></script>
+}

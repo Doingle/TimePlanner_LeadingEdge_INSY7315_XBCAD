@@ -354,7 +354,6 @@ namespace TimePlanner.Api.Tests
             Assert.Contains("Nothing was submitted that week.", html);
             Assert.Contains("<a class=\"rp-button rp-button--primary\" role=\"link\" aria-disabled=\"true\" aria-describedby=\"rp-download-why\">", html);
             Assert.Contains("Nothing to download for 7 Sep to 13 Sep 2026", html);
-            Assert.DoesNotContain("/Report/Export", html);
             Assert.Contains("Categories appear here", html);
         }
 

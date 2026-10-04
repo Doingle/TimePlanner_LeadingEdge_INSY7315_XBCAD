@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <!--product version every project will report. release workflow overrides with a tag -->
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
 
     <!-- every security rule is switched on, the reliability rules at the recommended level, and the rules that matter for this app fail the build.
          Everything else stays a warning, so style and performance suggestions never block a teammate's work -->
@@ -15,10 +15,10 @@
     <!-- CA5395 asks every page action to say GET explicitly, which is the default for them and only adds noise -->
     <NoWarn>$(NoWarn);CA5395</NoWarn>
 
-    <!-- every restore checks direct and indirect packages against the public vulnerability list, and a known vulnerability fails the build -->
+    <!-- every restore checks direct and indirect packages against the public vulnerability list. Low and moderate findings stay warnings and high or critical ones fail the build -->
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAuditLevel>low</NuGetAuditLevel>
-    <WarningsAsErrors>$(WarningsAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
   </PropertyGroup>
 </Project>

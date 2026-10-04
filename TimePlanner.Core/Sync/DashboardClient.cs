@@ -13,6 +13,9 @@ namespace TimePlanner.Core.Sync
 
         public DashboardClient(HttpClient http) => _http = http;
 
+        //the site this client talks to
+        public Uri? Address => _http.BaseAddress;
+
         //-----------------------------
         //signs in and returns a token outcome
         public async Task<SignInOutcome> SignInAsync(string email, string password)

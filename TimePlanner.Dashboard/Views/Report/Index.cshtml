@@ -115,12 +115,20 @@
                         {
                             <a class="rp-button rp-button--primary" role="link" aria-disabled="true" aria-describedby="rp-download-why">
                                 <svg class="rp-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
+                                Download Excel
+                            </a>
+                            <a class="rp-button rp-button--secondary" role="link" aria-disabled="true" aria-describedby="rp-download-why">
+                                <svg class="rp-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
                                 Download CSV
                             </a>
                         }
                         else
                         {
                             <a class="rp-button rp-button--primary" asp-action="Export" asp-route-from="@Model.From.ToString("yyyy-MM-dd", culture)" asp-route-to="@Model.To.ToString("yyyy-MM-dd", culture)">
+                                <svg class="rp-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
+                                Download Excel
+                            </a>
+                            <a class="rp-button rp-button--secondary" asp-action="Export" asp-route-from="@Model.From.ToString("yyyy-MM-dd", culture)" asp-route-to="@Model.To.ToString("yyyy-MM-dd", culture)" asp-route-format="csv">
                                 <svg class="rp-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
                                 Download CSV
                             </a>
@@ -220,9 +228,33 @@
         </div>
     </section>
 
-    <section class="rp-section" aria-labelledby="rp-files-title">
-        <h2 class="rp-section__title" id="rp-files-title">Past @(week ? "weekly " : month ? "monthly " : "")downloads</h2>
-        @* downloads are not stored yet, so there is no list to show *@
-        <p class="rp-files__empty">Past downloads aren't kept yet. Use Download CSV above to get this @unit's timesheet again at any time.</p>
-    </section>
+    @if (week || month)
+    {
+        <section class="rp-section" aria-labelledby="rp-files-title">
+            <h2 class="rp-section__title" id="rp-files-title">Past @(week ? "weekly " : "monthly ")downloads</h2>
+            @if (Model.PastPeriods.Count == 0)
+            {
+                <p class="rp-files__empty">No past periods available.</p>
+            }
+            else
+            {
+                <ul class="rp-bars">
+                    @foreach (var period in Model.PastPeriods)
+                    {
+                        <li class="rp-bar-row">
+                            <span class="rp-bar-row__label">@period.Label</span>
+                            <span class="rp-actions">
+                                <a class="rp-button rp-button--secondary" asp-action="Export" asp-route-from="@period.From.ToString("yyyy-MM-dd", culture)" asp-route-to="@period.To.ToString("yyyy-MM-dd", culture)">
+                                    Excel
+                                </a>
+                                <a class="rp-button rp-button--secondary" asp-action="Export" asp-route-from="@period.From.ToString("yyyy-MM-dd", culture)" asp-route-to="@period.To.ToString("yyyy-MM-dd", culture)" asp-route-format="csv">
+                                    CSV
+                                </a>
+                            </span>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    }
 }

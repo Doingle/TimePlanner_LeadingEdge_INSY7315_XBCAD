@@ -63,6 +63,21 @@ namespace TimePlanner.Dashboard.Controllers
                 return View(model);
             }
 
+            //populates past periods for week or month views
+            if (model.View is "week" or "month")
+            {
+                var count = model.View == "week" ? 8 : 6;
+                var currentFrom = model.From;
+                for (var i = 0; i < count; i++)
+                {
+                    if (Period.TryResolve(model.View, currentFrom.AddDays(-1), _clock.Today, out var pastPeriod))
+                    {
+                        model.PastPeriods.Add(new PastPeriod(pastPeriod.Label, pastPeriod.From, pastPeriod.To));
+                        currentFrom = pastPeriod.From;
+                    }
+                }
+            }
+
             model.Summary = await _reports.GetSummaryAsync(model.From, model.To, me);
             model.SubmittedDays = (await _submissions.ForUserAsync(me, model.From, model.To)).Count;
             return View(model);
@@ -71,7 +86,7 @@ namespace TimePlanner.Dashboard.Controllers
         //-----------------------------
         //downloads one person's timesheet in the company layout
         [HttpGet]
-        public async Task<IActionResult> Export(DateTime? from, DateTime? to, int? userId = null)
+        public async Task<IActionResult> Export(DateTime? from, DateTime? to, int? userId = null, string format = "xlsx")
         {
             if (ReportService.ValidateRange(from, to) is string problem)
                 return BadRequest(problem);
@@ -82,8 +97,15 @@ namespace TimePlanner.Dashboard.Controllers
             if (!ReportService.TryScope(userId, me, IsPrivileged, out _))
                 return Forbid();
 
-            var bytes = await _reports.ExportTimesheetCsvAsync(userId ?? me, from!.Value, to!.Value);
-            return File(bytes, "text/csv", $"timesheet_{from:yyyyMMdd}_{to:yyyyMMdd}.csv");
+            //csv export branch
+            if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
+            {
+                var csvBytes = await _reports.ExportTimesheetCsvAsync(userId ?? me, from!.Value, to!.Value);
+                return File(csvBytes, "text/csv", $"timesheet_{from:yyyyMMdd}_{to:yyyyMMdd}.csv");
+            }
+
+            var xlsxBytes = await _reports.ExportTimesheetXlsxAsync(userId ?? me, from!.Value, to!.Value);
+            return File(xlsxBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"timesheet_{from:yyyyMMdd}_{to:yyyyMMdd}.xlsx");
         }
     }
 }

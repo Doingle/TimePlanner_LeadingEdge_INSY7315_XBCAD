@@ -277,6 +277,10 @@ namespace TimePlanner.Widget
         public Task<SendOutcome> SendDayAsync(DateOnly day) => _log.SendDayAsync(Session.User.UserId, day);
 
         //-----------------------------
+        //the host name of the dashboard client
+        public string DashboardHost => _log.DashboardHost;
+
+        //-----------------------------
         //signs in to dashboard
         public Task<SignInOutcome> SignInToDashboardAsync(string email, string password) => _log.SignInToDashboardAsync(email, password);
 

@@ -15,7 +15,9 @@
             <StackPanel>
                 <TextBlock Style="{StaticResource Text.Title}" Text="Sign in to the dashboard" />
                 <TextBlock Style="{StaticResource Text.Subtitle}"
-                           Text="Your password isn't stored. The sign in lasts 30 minutes." />
+                           Text="Your password isn't stored. You stay signed in on this PC for up to 30 days." />
+                <TextBlock x:Name="HostText" Style="{StaticResource Text.Caption}"
+                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0" />
             </StackPanel>
 
             <StackPanel Margin="{StaticResource GapSection}">
@@ -34,6 +36,11 @@
             <StackPanel x:Name="ErrorLine" Visibility="Collapsed" Margin="0,8,0,0">
                 <TextBlock x:Name="ErrorText" Style="{StaticResource Text.Error}" />
             </StackPanel>
+
+            <TextBlock x:Name="WaitText" Style="{StaticResource Text.Caption}"
+                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,8,0,0"
+                       TextWrapping="Wrap" Visibility="Collapsed"
+                       Text="The first sign in can take up to a minute while the dashboard wakes up." />
 
             <StackPanel Margin="{StaticResource GapSection}">
                 <Button x:Name="SignInButton" Style="{StaticResource Button.Primary}" Content="Sign in" Click="SignIn_Click" />
