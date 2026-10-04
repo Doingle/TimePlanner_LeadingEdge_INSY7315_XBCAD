@@ -594,15 +594,16 @@ namespace TimePlanner.Core.Tests.Sync
             await tokens.SaveAsync(new StoredToken("acc1", DateTime.UtcNow.AddMinutes(-5), "user@test.com", "ref1", DateTime.UtcNow.AddDays(10)));
 
             using var host = CreateHost(handler, tokens);
-            using var scope = host.CreateScope();
-
-            var userId = await SeedDayAsync(scope.ServiceProvider);
-            var service = scope.ServiceProvider.GetRequiredService<DaySendService>();
+            using var seedScope = host.CreateScope();
+            var userId = await SeedDayAsync(seedScope.ServiceProvider);
             var day = new DateOnly(2026, 9, 28);
             var now = new DateTime(2026, 9, 29, 10, 0, 0);
 
-            var task1 = service.SendDayAsync(userId, day, now, DateTime.UtcNow);
-            var task2 = service.SendDayAsync(userId, day, now, DateTime.UtcNow);
+            //each send gets its own scope since a database context cannot run two operations at once
+            using var scope1 = host.CreateScope();
+            using var scope2 = host.CreateScope();
+            var task1 = scope1.ServiceProvider.GetRequiredService<DaySendService>().SendDayAsync(userId, day, now, DateTime.UtcNow);
+            var task2 = scope2.ServiceProvider.GetRequiredService<DaySendService>().SendDayAsync(userId, day, now, DateTime.UtcNow);
 
             var outcome1 = await task1;
             var outcome2 = await task2;
@@ -610,6 +611,34 @@ namespace TimePlanner.Core.Tests.Sync
             Assert.Equal(1, refreshCount);
             Assert.Equal(SendStatus.Sent, outcome1.Status);
             Assert.Equal(SendStatus.Sent, outcome2.Status);
+        }
+
+        //-----------------------------
+        //parallel adds to file send history keep every day without file access crashes
+        [Fact]
+        public async Task FileSendHistoryStore_ParallelAdds_KeepEveryDay()
+        {
+            var tempPath = Path.Combine(Path.GetTempPath(), $"parallel-history-{Guid.NewGuid():N}.json");
+            try
+            {
+                var store = new FileSendHistoryStore(tempPath);
+                var tasks = Enumerable.Range(1, 20)
+                    .Select(i => store.AddAsync(new SentDay(new DateOnly(2026, 9, i), DateTime.UtcNow, 1, 8.0)));
+
+                await Task.WhenAll(tasks);
+
+                var history = await store.GetAsync();
+                Assert.Equal(20, history.Count);
+            }
+            //cleans up the temporary history file
+            finally
+            {
+                //removes the temporary file when it exists
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
         }
     }
 }
