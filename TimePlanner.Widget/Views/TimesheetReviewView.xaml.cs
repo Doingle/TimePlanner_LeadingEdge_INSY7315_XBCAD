@@ -383,6 +383,7 @@ namespace TimePlanner.Widget.Views
             }
 
             SendButton.IsEnabled = false;
+            SendButton.Content = "Sending…";
 
             try
             {
@@ -391,7 +392,15 @@ namespace TimePlanner.Widget.Views
             finally
             {
                 SendButton.IsEnabled = true;
+                SendButton.Content = "Send day";
             }
+        }
+
+        //-----------------------------
+        //tells the user the day reached the dashboard
+        private void ConfirmSent()
+        {
+            MessageBox.Show($"Sent {_preview.Rows.Count} entries ({_preview.Hours:0.##} h) for {Format.Day(_day.ToDateTime(TimeOnly.MinValue))} to the dashboard.", "Day sent");
         }
 
         //-----------------------------
@@ -403,6 +412,7 @@ namespace TimePlanner.Widget.Views
             //reloads timesheet when sent
             if (outcome.Status == SendStatus.Sent)
             {
+                ConfirmSent();
                 ReopenTimesheet();
                 return;
             }
@@ -414,8 +424,12 @@ namespace TimePlanner.Widget.Views
                 {
                     var retry = await _flow.SendDayAsync(_day);
 
-                    //a second failure is shown instead of looping back to sign in
-                    if (retry.Status != SendStatus.Sent)
+                    //confirms sent or shows failure on retry
+                    if (retry.Status == SendStatus.Sent)
+                    {
+                        ConfirmSent();
+                    }
+                    else
                     {
                         MessageBox.Show(retry.Message ?? "The day was not sent.", "Send day");
                     }

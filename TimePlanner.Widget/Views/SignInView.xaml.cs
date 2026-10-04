@@ -22,6 +22,7 @@ namespace TimePlanner.Widget.Views
             _flow = flow;
             _afterSignIn = afterSignIn;
             _back = back;
+            HostText.Text = $"Signing in to {flow.DashboardHost}";
         }
 
         //-----------------------------
@@ -30,6 +31,8 @@ namespace TimePlanner.Widget.Views
         {
             ErrorLine.Visibility = Visibility.Collapsed;
             SignInButton.IsEnabled = false;
+            SignInButton.Content = "Signing in…";
+            WaitText.Visibility = Visibility.Visible;
 
             try
             {
@@ -51,6 +54,8 @@ namespace TimePlanner.Widget.Views
             finally
             {
                 SignInButton.IsEnabled = true;
+                SignInButton.Content = "Sign in";
+                WaitText.Visibility = Visibility.Collapsed;
             }
         }
 

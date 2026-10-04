@@ -306,6 +306,17 @@ namespace TimePlanner.Widget.Services
         }
 
         //-----------------------------
+        //the host name of the dashboard client
+        public string DashboardHost
+        {
+            get
+            {
+                using var scope = scopes.CreateScope();
+                return scope.ServiceProvider.GetRequiredService<DashboardClient>().Address?.Host ?? "the dashboard";
+            }
+        }
+
+        //-----------------------------
         //signs in to the dashboard and saves the token
         public async Task<SignInOutcome> SignInToDashboardAsync(string email, string password)
         {
