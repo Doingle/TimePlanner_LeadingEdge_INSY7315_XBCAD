@@ -31,6 +31,19 @@
     //what the period is called in a sentence: this week, that week, in September, or in this range
     var inPeriod = week ? (current ? "this week" : "that week") : month ? $"in {Model.From.ToString("MMMM", culture)}" : "in this range";
     var whereTitle = week ? (current ? "Where this week went" : "Where that week went") : month ? $"Where {Model.From.ToString("MMMM", culture)} went" : "Where the time went";
+
+    //a past week the short way, "21–27 Sep 2026" or "28 Sep – 4 Oct 2026". A month keeps its name
+    string PastName(PastPeriod period)
+    {
+        if (!week)
+            return period.Label;
+        var (from, to) = (period.From, period.To);
+        if (from.Year != to.Year)
+            return $"{from.ToString("d MMM yyyy", culture)} – {to.ToString("d MMM yyyy", culture)}";
+        return from.Month == to.Month
+            ? $"{from.Day}–{to.ToString("d MMM yyyy", culture)}"
+            : $"{from.ToString("d MMM", culture)} – {to.ToString("d MMM yyyy", culture)}";
+    }
 }
 
 @section Styles {
@@ -238,18 +251,17 @@
             }
             else
             {
-                <ul class="rp-bars">
+                @* one ruled row per earlier week or month: its name on the left, its two files on the right. Downloads are not kept, so each file is
+                   made again from what was submitted. The links say which period they are for to a screen reader, which hears them out of the row *@
+                <ul class="rp-files">
                     @foreach (var period in Model.PastPeriods)
                     {
-                        <li class="rp-bar-row">
-                            <span class="rp-bar-row__label">@period.Label</span>
-                            <span class="rp-actions">
-                                <a class="rp-button rp-button--secondary" asp-action="Export" asp-route-from="@period.From.ToString("yyyy-MM-dd", culture)" asp-route-to="@period.To.ToString("yyyy-MM-dd", culture)">
-                                    Excel
-                                </a>
-                                <a class="rp-button rp-button--secondary" asp-action="Export" asp-route-from="@period.From.ToString("yyyy-MM-dd", culture)" asp-route-to="@period.To.ToString("yyyy-MM-dd", culture)" asp-route-format="csv">
-                                    CSV
-                                </a>
+                        <li class="rp-files__row">
+                            <span class="rp-files__label">@PastName(period)</span>
+                            <span class="rp-files__actions">
+                                <span class="rp-files__meta" aria-hidden="true">Download as</span>
+                                <a class="rp-files__link" asp-action="Export" asp-route-from="@period.From.ToString("yyyy-MM-dd", culture)" asp-route-to="@period.To.ToString("yyyy-MM-dd", culture)"><span class="app-sr-only">Download </span>Excel<span class="app-sr-only"> for @PastName(period)</span></a>
+                                <a class="rp-files__link" asp-action="Export" asp-route-from="@period.From.ToString("yyyy-MM-dd", culture)" asp-route-to="@period.To.ToString("yyyy-MM-dd", culture)" asp-route-format="csv"><span class="app-sr-only">Download </span>CSV<span class="app-sr-only"> for @PastName(period)</span></a>
                             </span>
                         </li>
                     }
