@@ -288,7 +288,7 @@ flowchart LR
   B[Browser] -- "Sign in<br/>HTTPS + cookie" --> D
   GH[GitHub Actions] -- "deploy on push to main" --> D
 ```
- *Mermaid diagramming/ charting tool*: https://www.mermaideditor.io/ !@Dylan to replace with reference entry citation of creation page.!
+(Mermaid Editor, 2025)
 
 Both sides share a domain model as well as one set of rules in TimePlanner.Core, so the widget and the server don't have different states regarding what a valid entry, client name or billable hour exists.
 
@@ -329,7 +329,7 @@ sequenceDiagram
   A-->>W: created count
   W-->>U: "Sent 9 entries to the dashboard"
 ```
-*Mermaid diagramming/ charting tool*: https://www.mermaideditor.io/ !@Dylan to replace with reference entry citation of creation page.!
+(Mermaid Editor, 2025)
 
 - **Only finished days leave the PC:** a past day, or today after End day.
 - An expired 30 minute access token is swapped silently with the refresh token. A refused send gets one refresh and one retry before the user is asked to sign in again.
@@ -962,7 +962,7 @@ flowchart LR
   M -- back-merge PR --> D
   H[hotfix branch] -- PR --> M
 ```
-*Mermaid diagramming/ charting tool*: https://www.mermaideditor.io/ !@Dylan to replace with reference entry citation of creation page.!
+(Mermaid Editor, 2025)
 
 ### Branching
 We followed the three tier model from our documentation:
@@ -1095,7 +1095,7 @@ flowchart TB
   Markers[Demo users] --> M
   Staff[Leading Edge staff] --> P
 ```
-*Mermaid diagramming/ charting tool*: https://www.mermaideditor.io/ !@Dylan to replace with reference entry citation of creation page.!
+(Mermaid Editor, 2025)
 
 
 
@@ -1175,6 +1175,8 @@ MDN Web Docs (n.d.) Using HTTP cookies. Mozilla. Available at: https://developer
 MDN Web Docs (n.d.) X-Content-Type-Options header. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Content-Type-Options (Accessed: 4 October 2026).
 
 MDN Web Docs (n.d.) X-Frame-Options header. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options (Accessed: 4 October 2026).
+
+Mermaid Editor (2025). Mermaid editor. [online] Mermaid Editor. Available at: https://www.mermaideditor.io/ [Accessed 5 Oct. 2026].
 
 Microsoft (n.d.) .NET application publishing overview. .NET. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/core/deploying/ (Accessed: 4 October 2026).
 
