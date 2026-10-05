@@ -1266,6 +1266,8 @@ Nottingham, M. and Fielding, R. (2012) RFC 6585: Additional HTTP Status Codes. R
 
 Nottingham, M., Wilde, E. and Dalal, S. (2023) RFC 9457: Problem Details for HTTP APIs. RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc9457 (Accessed: 4 October 2026).
 
+OpenAI (2026). ChatGPT. ChatGPT. Available at: https://chatgpt.com/ (Accessed 1 Oct. 2026).
+
 OWASP Foundation (n.d.) Authentication Cheat Sheet. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html (Accessed: 4 October 2026).
 
 OWASP Foundation (n.d.) Content Security Policy Cheat Sheet. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html (Accessed: 4 October 2026).
@@ -1303,3 +1305,10 @@ W3C (2024) Web Content Accessibility Guidelines (WCAG) 2.2. Available at: https:
 W3C (n.d.) Content Security Policy Level 3. Available at: https://www.w3.org/TR/CSP3/ (Accessed: 4 October 2026).
 
 xUnit.net (n.d.) xUnit.net. Available at: https://xunit.net/ (Accessed: 4 October 2026).
+
+---
+
+### Declaration of AI Usage:
+Throughout this project, members of our team utilised ChatGPT 5.0 LLM to assist with planning, brainstorming, architecture structuring, feature implementation, debugging and code review. All work involving AI usage has, to the best of our abilities, been credited where due or reworked to be made our own. Please find the links to our conversations below:
+
+Link to chat: https://chatgpt.com/share/6ac41052-fe14-83e9-b58e-6f1af998aaf2
