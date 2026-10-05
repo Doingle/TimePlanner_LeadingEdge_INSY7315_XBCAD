@@ -1,4 +1,5 @@
 <div align="center">
+ <a id="readme-top"></a>
 
 
 <h3 align="center">Time Planner</h3>
@@ -40,15 +41,10 @@
 ## Table of Contents
 
 <ol>
-  <li>
-    <a href="#project-overview">Project Overview</a>
-    <ul>
-      <li><a href="#solution-components">Solution Components</a></li>
-      <li><a href="#users-and-roles">Users and Roles</a></li>
-    </ul>
-  </li>
-  <li>
-    <a href="#features">Features</a>
+  <li><a href="#video-demonstration">Video Demonstration</a></li>
+  <li><a href="#testing-the-production-release-v100-as-a-user-would-experience-it">Testing the Production Release</a></li>
+  <li><a href="#project-overview">Project Overview</a></li>
+  <li><a href="#features">Features</a>
     <ul>
       <li><a href="#desktop-widget">Desktop Widget</a></li>
       <li><a href="#web-dashboard-user">Web Dashboard (User)</a></li>
@@ -56,143 +52,74 @@
       <li><a href="#rest-api">REST API</a></li>
     </ul>
   </li>
-  <li>
-    <a href="#core-purpose-and-scope">Core Purpose and Scope</a>
-    <ul>
-      <li><a href="#the-problem">The Problem</a></li>
-      <li><a href="#purpose">Purpose</a></li>
-      <li><a href="#in-scope">In Scope</a></li>
-      <li><a href="#out-of-scope-this-version">Out of Scope (This Version)</a></li>
-      <li><a href="#assumptions-and-constraints">Assumptions and Constraints</a></li>
-    </ul>
-  </li>
-  <li>
-    <a href="#design-considerations-and-architectural-choices">Design Considerations and Architectural Choices</a>
+  <li><a href="#how-it-works">How It Works</a>
     <ul>
       <li><a href="#architecture-overview">Architecture Overview</a></li>
-      <li><a href="#key-design-decisions">Key Design Decisions</a></li>
-      <li><a href="#design-patterns-used">Design Patterns Used</a></li>
-      <li><a href="#sending-a-day-end-to-end-flow">Sending a Day: End-to-End Flow</a></li>
+      <li><a href="#check-in-backend">Check In Backend</a></li>
     </ul>
   </li>
-  <li>
-    <a href="#comprehensive-summary">Comprehensive Summary</a>
-    <ul>
-      <li><a href="#implementation-of-version-control">Implementation of Version Control</a></li>
-      <li><a href="#github-actions">GitHub Actions</a></li>
-    </ul>
-  </li>
-  <li><a href="#video-demonstration">Video Demonstration</a></li>
   <li><a href="#technology-stack">Technology Stack</a></li>
   <li><a href="#repository-layout">Repository Layout</a></li>
-  <li>
-    <a href="#getting-started">Getting Started</a>
+  <li><a href="#getting-started">Getting Started</a>
     <ul>
       <li><a href="#prerequisites">Prerequisites</a></li>
-      <li><a href="#step-1-clone-and-build">Step 1: Clone and Build</a></li>
-      <li><a href="#step-2-configure-the-dashboards-secrets">Step 2: Configure the Dashboard's Secrets</a></li>
-      <li><a href="#step-3-run-the-dashboard">Step 3: Run the Dashboard</a></li>
-      <li><a href="#step-4-create-people">Step 4: Create People</a></li>
-      <li><a href="#step-5-run-the-widget-windows">Step 5: Run the Widget (Windows)</a></li>
-      <li><a href="#step-6-try-a-full-round-trip-in-two-minutes">Step 6: Try a Full Round Trip in Two Minutes</a></li>
+      <li><a href="#1-clone-and-build">1. Clone and Build</a></li>
+      <li><a href="#2-configure-the-dashboards-secrets">2. Configure the Dashboard's Secrets</a></li>
+      <li><a href="#3-run-the-dashboard">3. Run the Dashboard</a></li>
+      <li><a href="#4-create-people">4. Create People</a></li>
+      <li><a href="#5-run-the-widget-windows">5. Run the Widget (Windows)</a></li>
+      <li><a href="#6-try-a-full-round-trip">6. Try a Full Round Trip</a></li>
     </ul>
   </li>
-  <li>
-    <a href="#configuration-reference">Configuration Reference</a>
+  <li><a href="#configuration-reference">Configuration Reference</a>
     <ul>
       <li><a href="#dashboard-settings">Dashboard Settings</a></li>
       <li><a href="#widget-settings">Widget Settings</a></li>
-      <li><a href="#widget-data-files">Widget Data Files</a></li>
       <li><a href="#per-user-check-in-settings">Per-User Check-In Settings</a></li>
     </ul>
   </li>
-  <li>
-    <a href="#using-the-widget">Using the Widget</a>
+  <li><a href="#using-the-widget">Using the Widget</a></li>
+  <li><a href="#using-the-dashboard">Using the Dashboard</a></li>
+  <li><a href="#domain-model-and-business-rules">Domain Model and Business Rules</a>
     <ul>
-      <li><a href="#the-day-screen-by-screen">The Day, Screen by Screen</a></li>
-      <li><a href="#clients-projects-and-activities">Clients, Projects and Activities</a></li>
-      <li><a href="#check-in-rules">Check-In Rules</a></li>
+      <li><a href="#app-data-appdbcontext-in-timeplannercore">App Data (AppDbContext)</a></li>
+      <li><a href="#rules-worth-knowing">Rules Worth Knowing</a></li>
+      <li><a href="#identity-data-authdbcontext-in-timeplannerdashboard">Identity Data (AuthDbContext)</a></li>
     </ul>
   </li>
-  <li>
-    <a href="#using-the-dashboard">Using the Dashboard</a>
+  <li><a href="#import-and-export-formats">Import and Export Formats</a>
     <ul>
-      <li><a href="#pages">Pages</a></li>
-      <li><a href="#roles-and-submission-expectations">Roles and Submission Expectations</a></li>
-      <li><a href="#days-and-time-zones">Days and Time Zones</a></li>
+      <li><a href="#json-import-api-used-by-the-widget">JSON Import</a></li>
+      <li><a href="#csv-import-website-upload-and-api">CSV Import</a></li>
+      <li><a href="#validation-both-formats">Validation</a></li>
+      <li><a href="#timesheet-export-company-layout">Timesheet Export</a></li>
+      <li><a href="#sample-day-csv">Sample-Day CSV</a></li>
     </ul>
   </li>
-  <li>
-    <a href="#domain-model-and-business-rules">Domain Model and Business Rules</a>
+  <li><a href="#rest-api-reference">REST API Reference</a>
     <ul>
-      <li><a href="#app-data-model-appdbcontext">App Data Model (AppDbContext)</a></li>
-      <li><a href="#seeded-top-level-categories">Seeded Top-Level Categories</a></li>
-      <li><a href="#business-rules">Business Rules</a></li>
-      <li><a href="#identity-data-model-authdbcontext">Identity Data Model (AuthDbContext)</a></li>
-    </ul>
-  </li>
-  <li>
-    <a href="#import-and-export-formats">Import and Export Formats</a>
-    <ul>
-      <li><a href="#json-import-api">JSON Import (API)</a></li>
-      <li><a href="#csv-import-website-and-api">CSV Import (Website and API)</a></li>
-      <li><a href="#import-validation-rules">Import Validation Rules</a></li>
-      <li><a href="#timesheet-export-company-layout">Timesheet Export (Company Layout)</a></li>
-      <li><a href="#sample-day-csv">Sample-Day CSV</a></li>  
-    </ul>
-  </li>
-  <li>
-    <a href="#rest-api-reference">REST API Reference</a>
-    <ul>
-      <li><a href="#conventions-at-a-glance">Conventions at a Glance</a></li>
       <li><a href="#authentication-flow">Authentication Flow</a></li>
       <li><a href="#endpoints">Endpoints</a></li>
-      <li><a href="#access-rules-and-errors">Access Rules and Errors</a></li>
+      <li><a href="#conventions">Conventions</a></li>
     </ul>
   </li>
-  <li>
-    <a href="#security">Security</a>
-    <ul>
-      <li><a href="#authentication-and-accounts">Authentication and Accounts</a></li>
-      <li><a href="#transport-and-browser">Transport and Browser</a></li>
-      <li><a href="#input-and-output">Input and Output</a></li>
-      <li><a href="#rate-limiting">Rate Limiting</a></li>
-      <li><a href="#audit-trail">Audit Trail</a></li>
-      <li><a href="#widget-security">Widget Security</a></li>
-      <li><a href="#build-and-supply-chain">Build and Supply Chain</a></li>
-    </ul>
-  </li>
-  <li>
-    <a href="#databases-and-migrations">Databases and Migrations</a>
-    <ul>
-      <li><a href="#contexts-and-providers">Contexts and Providers</a></li>
-      <li><a href="#adding-a-migration">Adding a Migration</a></li>
-      <li><a href="#how-migrations-stay-in-sync">How Migrations Stay in Sync</a></li>
-    </ul>
-  </li>
-  <li>
-    <a href="#testing">Testing</a>
-    <ul>
-      <li><a href="#running-the-tests">Running the Tests</a></li>
-      <li><a href="#what-the-tests-cover">What the Tests Cover</a></li>
-    </ul>
-  </li>
-  <li>
-    <a href="#deployment">Deployment</a>
+  <li><a href="#security">Security</a></li>
+  <li><a href="#databases-and-migrations">Databases and Migrations</a></li>
+  <li><a href="#testing">Testing</a></li>
+  <li><a href="#cicd-and-releases">CI/CD and Releases</a></li>
+  <li><a href="#deployment">Deployment</a>
     <ul>
       <li><a href="#dashboard-on-azure-app-service">Dashboard on Azure App Service</a></li>
-      <li><a href="#running-the-dashboard-elsewhere">Running the Dashboard Elsewhere</a></li>
+      <li><a href="#hosting-rationale">Hosting Rationale</a></li>
+      <li><a href="#environment-separation">Environment Separation</a></li>
       <li><a href="#distributing-the-widget">Distributing the Widget</a></li>
     </ul>
   </li>
-  <li>
-    <a href="#troubleshooting">Troubleshooting</a>
-    <ul>
-      <li><a href="#dashboard-and-api">Dashboard and API</a></li>
-      <li><a href="#widget">Widget</a></li>
-    </ul>
-  </li>
+  <li><a href="#project-notes">Project Notes</a></li>
+  <li><a href="#references">References</a></li>
 </ol>
+
+## Video Demonstration
 
 ## Testing the Production Release v1.0.0 (as a user would experience it):
 
@@ -202,16 +129,18 @@ This section is for testing **the released software exactly as a Leading Edge de
 > ### Demo accounts *USERNAMES + PASSWORDS*
 > | Account | Role | Email | Password |
 > |---|---|---|---|
-> | **Demo Admin** | Admin | demo.admin@email.com | R2l407x1gB!| |
-> | **Demo Developer** | Developer | demo.dev@email.com | )3[8$l4WHV4Q |
+> | **Demo Admin** | Admin | demo.admin@email.com | Included in the Arc Submission as this is a public repo |
+> | **Demo Developer** | Developer | demo.dev@email.com | Included in the Arc Submission as this is a public repo |
 
  **Dashboard:** https://timeplanner-dashboard-dj-dpd2byfyhfd4gthc.southafricanorth-01.azurewebsites.net
 
-**Note:** These accounts have already undergone the first time password change procedure.
+- The widget will work along side the dashboard, please see the steps "Downloading the widget" below.
 
-Please don't change the demo admin and developer passwords or deactivate the accounts: You can create new user accounts to test the temporary password generation and account reactivation/ deactiviation. 
+- **Note:** These accounts have already undergone the first time password change.
 
-### What each account can test
+- Please don't change the demo admin and developer passwords or deactivate the accounts: You can create new user accounts to test the temporary password generation and account reactivation/ deactiviation. 
+
+### What each account can view
 
 | | Demo Developer | Demo Admin |
 |---|---|--|
@@ -220,7 +149,9 @@ Please don't change the demo admin and developer passwords or deactivate the acc
 | Settings and Accessibility | Yes | Yes |
 | **Team:** Overview, Submissions, Exports (one person or a .zip for everyone), Users | No, access denied | Yes, everyone's data |
 
-A good order: test the **widget with the Demo Developer** first, then sign in to the Dashboard as the **Demo Admin** and see that developer's submitted day in Team, Submissions and Exports.
+- A good order to test is to  test the **widget with the Demo Developer** first, then sign in to the Dashboard as the **Demo Admin** and see that developer's submitted day in the Team tab under Submissions and Exports.
+
+### Downloading The Widget: 
 
 ### 1. Download the widget
 1. Open the **[latest release](https://github.com/Doingle/TimePlanner_LeadingEdge_INSY7315_XBCAD/releases/latest)**.
@@ -343,14 +274,68 @@ A versioned JSON API (`/api/v1`) with JWT bearer tokens and rotating refresh tok
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## How it works
+
+### Architecture overview
+
+```mermaid
+flowchart LR
+  subgraph PC[Developer's Windows PC]
+    W[Widget<br/>WPF] --> L[(SQLite<br/>%LOCALAPPDATA%)]
+  end
+  subgraph Azure[Azure · South Africa North]
+    D[Dashboard + REST API<br/>App Service, Linux] --> S[(Azure SQL)]
+  end
+  W -- "Send day<br/>HTTPS + JWT" --> D
+  B[Browser] -- "Sign in<br/>HTTPS + cookie" --> D
+  GH[GitHub Actions] -- "deploy on push to main" --> D
+```
+ *Mermaid diagramming/ charting tool*: https://www.mermaideditor.io/ !@Dylan to replace with reference entry citation of creation page.!
+
+Both sides share a domain model as well as one set of rules in TimePlanner.Core, so the widget and the server don't have different states regarding what a valid entry, client name or billable hour exists.
+
 **Key design points**
 1. **Local first.** The widget keeps its own SQLite database under `%LOCALAPPDATA%\TimePlanner`. It identifies the local user by Windows account name, creates them on first launch with default settings, and adds the internal company _Leading Edge (Internal)_ with its project Internal.
 2. **Two separate databases.** The widget's local database and the dashboard's database are separate. They share the same schema (both use TimePlanner.Core), but nothing is replicated row by row. A day is sent as a list of entries described by names (company, project, activity path) rather than database ids, so a row means the same thing on any machine.
 3. **The dashboard owns identity.** The dashboard keeps ASP.NET Core Identity accounts (ApplicationUser) in a separate AuthDbContext. Each account links to a time-tracking profile (AppUser) through AppUserId, which travels as the uid claim in both the cookie and the JWT. An imported entry always belongs to the caller identified by the token, never to a user named in the request.
 4. **Send replaces the day.** The widget sends a finished day with `replaceDays: true`. The server checks every row first, then, in one transaction, deletes that user's entries for the day and stores the new ones. Sending the same day again after a correction is safe and leaves the server matching the widget.
 5. **A submission is a record, not an approval.** Every accepted import records a DaySubmission (user + date + time). The admin grid is built from these records; there is no approve or reject workflow.
+6. **Rules are enforced twice.** Services validate all the writes, and the database has check constraints for the same rules (entries end after they start, settings stay within range), so that a bug/manual edit can't store impossible rows.
+7. **Billing is derived, not entered.** An entry is billable unless it's for the internal company or under the non billable Learning category.
+8. **Times are wall clock local times.** Entries are stored and sent without a time zone.
+
+### Check in backend
+CheckInEngine in TimePlanner.Core is a small state machine that decides when to ask follow up about logging, one of Leading Edge's core requirements. It doesn't depend on the UI, so it's fully unit tested with a fake clock.
+
+- **Interval on active time only:** pauses don't count, and no prompt fires inside the user's lunch window.
+- **Snooze** delays a due check in, up to the snooze limit per check-in. **Skip** is allowed a limited number of times per day; after that, check-ins are required.
+- **Ignored check-ins:** if a prompt isn't answered in time, the configured action applies (keep asking, by default).
+- **Day sessions:** *Start tracking* opens a day and *End day* closes it. Pauses live inside the day, so break time is known exactly and never logged as work. Only one open day and one open pause per user, enforced by filtered unique indexes.
 
 **Sending a day**
+
+```mermaid
+sequenceDiagram
+  participant U as Developer
+  participant W as Widget
+  participant A as Dashboard API
+  participant DB as Azure SQL
+  U->>W: Timesheet → Send day
+  W->>W: Day ended? Entries? Build rows by name
+  alt access token expired
+    W->>A: POST /api/v1/auth/refresh
+    A-->>W: new access + refresh token (old one revoked)
+  end
+  W->>A: POST /api/v1/timesheets/import (replaceDays = true)
+  A->>DB: one transaction: delete the day, insert new entries, record submission
+  A-->>W: created count
+  W-->>U: "Sent 9 entries to the dashboard"
+```
+*Mermaid diagramming/ charting tool*: https://www.mermaideditor.io/ !@Dylan to replace with reference entry citation of creation page.!
+
+- **Only finished days leave the PC:** a past day, or today after End day.
+- An expired 30 minute access token is swapped silently with the refresh token. A refused send gets one refresh and one retry before the user is asked to sign in again.
+- The widget remembers what it sent. If an entry on a sent day is edited later, the timesheet shows changed since sent.
+
 If the server rejects the day, the widget lists the row errors and nothing is stored. If the dashboard can't be reached, the day stays saved locally and can be sent later.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -375,6 +360,27 @@ If the server rejects the day, the widget lists the row errors and nothing is st
 
 ## Repository layout
 
+```
+TimePlanner.slnx
+├── TimePlanner.Core/            shared domain, data layer, rules, check in backend, sync client
+│   ├── Domain/                  entities and enums
+│   ├── Data/                    AppDbContext and database paths
+│   ├── Migrations/              SQLite migrations
+│   ├── Repositories/            repository interfaces and SQLite implementations
+│   ├── Services/                check in backemd, sessions, entries, timesheet edits, catalogue, billing/name rules, sample day
+│   └── Sync/                    Dashboard client, send service, token and send history stores
+├── TimePlanner.Widget/          WPF desktop widget
+│   └── SampleData/              sample-day.csv for testing
+├── TimePlanner.Dashboard/       ASP.NET Core website and REST API
+│   └── Data/SqlServer/          SQL Server contexts and migrations (App and Auth)
+├── TimePlanner.Core.Tests/      unit tests for Core
+├── TimePlanner.Api.Tests/       integration tests for the Dashboard and API
+├── Directory.Build.props        version, security analysers, NuGet audit
+└── .github/                     workflows, Dependabot, release note categories
+```
+
+---
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
@@ -393,7 +399,7 @@ If the server rejects the day, the widget lists the row errors and nothing is st
 ### 1. Clone and build
 
 ```bash
-git clone <https://github.com/Doingle/TimePlanner_LeadingEdge_INSY7315_XBCAD.git>
+git clone https://github.com/Doingle/TimePlanner_LeadingEdge_INSY7315_XBCAD.git
 cd TimePlanner_LeadingEdge_INSY7315_XBCAD
 
 # Windows: build the whole solution
@@ -582,7 +588,28 @@ Entries are stored as local wall-clock times without a time zone, exactly as the
 
 ## Domain model and business rules
 ### App data (`AppDbContext`, in `TimePlanner.Core`)
+
+| Entity | Purpose |
+|---|---|
+| `Company`, `Project` | A client and its projects. Every project **must** belong to a company. *Leading Edge (Internal) › Internal* exists in every database |
+| `Category` | The **activity tree**: six fixed top-level categories with up to three levels of sub-activities. The top level carries the colour and billable flag. Names are unique among siblings; used items are **archived** (hidden) instead of deleted |
+| `WorkTask` | A user's project and activity pair that time entries hang off |
+| `TimeEntry` | One block of work: start, end, note and method (`Manual` or `AutoPrompted`) |
+| `DaySession`, `SessionPause` | One tracked working day, from *Start tracking* to *End day*, and the breaks inside it |
+| `CheckInSkip` | A skipped check-in, counted against the daily skip limit |
+| `UserSettings` | The per-user check-in settings |
+
+Deletes are restricted wherever history would be lost (a company with projects, a category in use, a user with entries). Pauses and skips go with their day.
+
 ### Rules worth knowing
+- **Billing:** billable **unless** the company is *Leading Edge (Internal)* **or** the top-level activity is *Learning*. Exports write `Internal`, `Yes` or `No`.
+- **Names:** clients and projects are 1 to 100 characters, never start with `= + - @` (so exports can't become spreadsheet formulas) and contain no control characters. Activity names are up to 60 characters without `>` or `›`.
+- **Entries:** end after start; at least 1 minute; within one calendar day; never in the future; never overlapping the user's other entries; notes up to 500 characters (the server accepts up to 2 000 from other clients).
+- **Gaps and breaks:** untracked time of **5 minutes or more** inside a day is shown as a gap; pauses are breaks and never count as work.
+- **Check constraints** in the database repeat the key rules. The migration that added them repairs older rows first, so existing databases never fail to open.
+
+---
+
 ### Identity data (`AuthDbContext`, in `TimePlanner.Dashboard`)
 
 This context uses its own history table (`__AuthMigrationHistory`), separate from the time data.
@@ -681,9 +708,10 @@ Exports use the company's timesheet layout, one row per entry:
 | Notes | the activity path |
 | Billable | `Yes`, `No` or `Internal` |
 
-### Sample-day CSV
-
 The Excel file has one worksheet per month, each titled `<Name> Time Log`, with the same columns. Downloads are available as Excel (`.xlsx`) or CSV from the website (My Reports, and Team → Exports for administrators, who can also download a `.zip` with one file per person). The API offers CSV at `GET /api/v1/reports/timesheet.csv` and, for administrators, `GET /api/v1/administration/exports/timesheets`. Both formats are safe to open: CSV is written with formula escaping, and the Excel file stores text such as `=SUM(A1)` as plain text, not a formula (there is a test for each).
+
+### Sample-day CSV
+`TimePlanner.Widget/SampleData/sample-day.csv` is a finished working day in the company layout mentioned above it can be used for testing and demos. `--sample-day` loads it onto the most recent weekday before today, only if that day is empty. It goes through the same checks as a manual entry, and gaps of 30 minutes or more become breaks.
 
 ---
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -759,8 +787,6 @@ All paths start with `/api/v1`. Every endpoint needs a bearer token unless marke
 ## Security
 **Authentication and accounts**
 
-**Authentication and accounts**
-
 - Passwords are hashed by ASP.NET Core Identity. They must be at least 12 characters with an upper-case letter, a lower-case letter, a digit and a symbol.
 - **Lockout:** five wrong passwords lock the account for 15 minutes. Every sign-in failure shows the same message, and an unknown email still costs a password hash, so response time does not reveal which emails have accounts.
 - **Temporary passwords.** An administrator creating or resetting an account gets a 16-character random password, shown once. The person must choose their own before doing anything else, on the website or the API.
@@ -793,7 +819,7 @@ Sign-in, token refresh, logout and password change are limited to 10 per minute 
 
 **Audit trail**
 
-Security-relevant events are written to an add-only `AuditEvents` table: `LoginSucceeded`, `LoginFailed`, `LoginLockedOut`, `LoginBlocked`, `Logout`, `RefreshFailed`, `RefreshTokenReuse`, `UserCreated`, `PasswordReset`, `UserDeactivated`, `UserReactivated`, `PasswordChanged`, `ProfileUpdated`, `TimesheetImported`, `TimesheetImportRejected` and `TimesheetExported`. Each row holds the time, the person, the address and a short detail. **Passwords and tokens are never written.** Text that came from a request is shortened and stripped of control characters, so a crafted value cannot forge or hide log lines. Administrators read it at `GET /api/v1/audit`.
+Security relevant events are written to an add-only `AuditEvents` table: `LoginSucceeded`, `LoginFailed`, `LoginLockedOut`, `LoginBlocked`, `Logout`, `RefreshFailed`, `RefreshTokenReuse`, `UserCreated`, `PasswordReset`, `UserDeactivated`, `UserReactivated`, `PasswordChanged`, `ProfileUpdated`, `TimesheetImported`, `TimesheetImportRejected` and `TimesheetExported`. Each row holds the time, the person, the address and a short detail. **Passwords and tokens are never written.** Text that came from a request is shortened and stripped of control characters, so a crafted value cannot forge or hide log lines. Administrators read it at `GET /api/v1/audit`.
 
 **Widget**
 
@@ -801,11 +827,21 @@ Security-relevant events are written to an add-only `AuditEvents` table: `LoginS
 - It only sends a day when the person chooses **Send day**.
 - Signing in with a temporary password is refused until the person has chosen their own on the website.
 - The widget zip is not code-signed, so Windows may show an "unknown publisher" warning the first time. Each release publishes a SHA-256 checksum so the download can be verified.
+- The Dashboard address must use **HTTPS**; plain `http` is refused except for `localhost`, so a token is never sent unencrypted.
+- Only **one token refresh runs at a time**, because refresh tokens rotate and a parallel refresh would look like token theft and end the session. **Sign out** also ends the session on the server.
+
+**Data separation**
+
+- **Pilot data is isolated from demo and marking data:** separate web apps, separate Azure SQL databases and separate signing keys (see [Environment separation](#environment-separation)).
+- Names that could act as spreadsheet formulas are refused everywhere, and the Excel export writes every value as text.
+
+
+---
 
 **Build and supply chain**
 
 - **Security analysers.** `Directory.Build.props` turns on every .NET security rule, and about 70 of them (weak cryptography, injection, unsafe XML, missing antiforgery, predictable random numbers) **fail the build**.
-- **Vulnerable packages.** Every restore audits direct and indirect packages against the public advisory list. A **high or critical** advisory fails the build.
+- **Vulnerable packages.** Every restore audits direct and indirect packages against the public advisory list. A **high or critical** advisory fails the build. The audit level is currently: high or critical advisories fail the build and low/ moderate ones show as warnings.
 - **Dependabot** opens weekly update pull requests for NuGet packages and GitHub Actions (minor and patch updates grouped).
 - **CodeQL** is set up but stays off until GitHub code scanning is enabled (see CI/CD).
 - **No secrets in the repository.** The signing key, admin credentials and connection strings come from user-secrets or environment variables. The app refuses to start without a strong signing key.
@@ -885,52 +921,160 @@ At the time of writing: **128 Core tests and 380 API tests, all passing.** The s
 
 ## CI/CD and releases
 
-| Workflow | Runs on | What it does |
-|---|---|---|
-| **Build** (`build.yml`) | every push and pull request to `main` and `development` | Backend job (Windows): restore, build and test Core, Dashboard and both test projects. Widget job: build the WPF widget. Security analysers and the package audit run as part of restore and build. |
-| **Deploy Dashboard** (`deploy-dashboard.yml`) | push to `main`, or by hand | Runs both test suites, publishes the dashboard, deploys to Azure App Service and polls `/health` for up to five minutes. |
-| **Release Widget** (`release-widget.yml`) | a tag starting with `v`, or by hand | Tests Core, publishes the widget as a self-contained single file, zips it, writes a SHA-256 file, and attaches both to a GitHub Release. |
-| **CodeQL** (`codeql.yml`) | pushes, pull requests, and weekly | Static security analysis of the C# code. Only runs when the repository variable `ENABLE_CODEQL` is `true`. |
-| **Dependabot** (`dependabot.yml`) | weekly | Update pull requests for NuGet and GitHub Actions, aimed at `development`, with major version bumps ignored. |
+In our Part 1 documentation we planned a three tier branching model, pull requests with automated checks, and tests that had to pass before anything went to main. This section shows how we implemented it in Task 2 and where we changed the what/why.
 
-**Repository settings the workflows expect**
+```mermaid
+flowchart LR
+  F[feat/ fix/ci/docs/branch] -- PR + Build checks --> D[development]
+  D -- release/x.y.z PR --> M[main]
+  M -- push --> DEP[Deploy Dashboard]
+  M -- tag vX.Y.Z --> REL[GitHub Release + widget zip]
+  M -- back-merge PR --> D
+  H[hotfix branch] -- PR --> M
+```
+*Mermaid diagramming/ charting tool*: https://www.mermaideditor.io/ !@Dylan to replace with reference entry citation of creation page.!
 
-- **Secret** `AZURE_WEBAPP_PUBLISH_PROFILE` (the App Service publish profile) and **variables** `AZURE_WEBAPP_NAME` and `AZURE_WEBAPP_URL`, used by the deploy workflow.
-- **Settings → Actions → General → Workflow permissions:** read and write, so a tagged run can create a Release.
-- **Branch protection** on `main` and `development`: require a pull request, require the `Backend (Core, Dashboard, tests)` and `Widget (WPF)` checks to pass, block force pushes, and do not allow bypassing. (This needs a plan that supports it on private repositories.)
-- **Dependabot security updates:** switch on in Settings → Code security, so vulnerability fixes arrive straight away rather than weekly.
-- **CodeQL:** enable code scanning in Settings → Code security (needs GitHub Advanced Security on a private repository), then set the repository variable `ENABLE_CODEQL` to `true`.
-- **Labels** `area:widget`, `area:dashboard`, `area:core`, `area:devops` and `area:testing` on pull requests, which group the generated release notes (`.github/release.yml`).
+### Branching
+We followed the three tier model from our documentation:
 
-**Releasing the widget**
+- **`main`** holds released code only. Every release is tagged (`v0.1.0`, `v0.1.1`, `v1.0.0`) and is exactly what's deployed.
+- **`development`** is where finished work comes together and gets tested before a release.
+- Short lived branches come off `development`, named by type, initials and a camelCase description, for example `feat/dj/excelExport`. As well as `feat/` we used `fix/`, `ci/`, `docs/` and `change/`, so the type of work was clear.
+- Releases are a `release/vx.y.z` branch from `development`, merged into `main` with a commit, tagged, and merged back into `development`.
+- Hotfixes went to `main` through their own pull request, for example `fix/dj/checkinSelection` in v0.1.1, so a spotted bug didn't wait for the next release version. They're merged back into `development` afterwards.
 
-1. Make sure `development` has been merged into `main` and the **Deploy Dashboard** run is green (the widget talks to the live dashboard).
-2. Tag the commit on `main` and push the tag:
+**Note on branch dates:** branches created after 5 October 2026 are Dependabot update branches and not late changes.
 
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
+### Pull requests and tracking
+- Every change reached `development` through a pull request, and the Build checks had to pass before merging.
+- Work items from our WBS were tracked as **GitHub Issues** and referenced from commits and pull requests.
+- Pull requests were labelled by area e.g. (`area:widget`) and grouped into milestones per release (v0.1.0, etc). The labels also group the generated release notes (`.github/release.yml`).
 
-3. The **Release Widget** workflow tests, builds and publishes `TimePlanner-Widget-1.0.0-win-x64.zip` and `.sha256` to the GitHub Release. The tag becomes the version inside the app (`v1.0.0` becomes `1.0.0`). A tag that is not a version like `1.2.3` is refused.
-4. To try the build without releasing, run the workflow by hand from the Actions tab: it keeps the zip as a build artifact with the version `0.0.0-dev.<run number>`.
+### Automated testing and analysis
+The **Build** workflow runs on every pull request and every push to `main` and `development`. It has two jobs on Windows runners:
+
+| Job | Steps |
+|---|---|
+| **Backend (Core, Dashboard, tests)** | Restore, which also checks every package against the public vulnerability list, build in Release with the .NET security analysers, run the **Core tests**, run the **API tests** |
+| **Widget (WPF)** | Restore and build the widget |
+
+- **Tests:** 128 Core tests and 380 API tests. They cover what our documentation planned (time entry logic, check in limits, skip and override rules, timesheet export, EF Core repository layer) and more, for example security headers, refresh tokens, imports, and the SQL Server migrations staying in sync.
+- **Static analysis:** we planned `dotnet format` and the built in analysers. We kept the analysers and made about 70 security rules fail the build (weak crypto, injection, missing antiforgery). We decided to switch from dotnet format because the code style is reviewed in pull requests.
+- **Each test project is its own step.** We found that running both in one step only reported the last result, which was hiding failing Core tests. Splitting them up fixed the issue.
+- **Tests run again before every deploy and before every widget release**: so a change that got past a pull request wasn't shipped.
+
+### Branch protection
+A rule on main and development required a pull request with passing Build checks, and blocks force pushes and branch deletion, with no bypass. When commits were pushed straight to main by mistake, we moved them to development through a pull request and reverted them on main, this ultimately led to a better configuration of our branch protection as we set the rule but it wasn't enforced until the mistaken main merge occured.
+
+### Deployment
+The **Deploy Dashboard** workflow runs on every push to `main`, which only happens through a release or hotfix pull request:
+
+1. runs the Core and API tests again (on Linux so that it matched the server)
+2. publishes the dashboard in Release
+3. deploys to Azure App Service with the publish profile stored as a GitHub secret
+4. polls `/health` for up to five minutes, and fails the run if the site doesn't come back healthy.
+
+Deploys first ran from `development` too. We changed it to `main` only, so the live site only changes when we release create a release, this was to avoid future changes occuring untested during the pilot.
+
+### Releasing the widget
+The **Release Widget** workflow runs when a version tag is created (we create it by publishing a GitHub Release on `main`):
+
+1. runs the Core tests;
+2. publishes the widget as a **self contained single file** for Windows x64, with the version taken from the tag;
+3. zips it, writes a **SHA-256** checksum and attaches both to the release.
+
+It can also be run by hand from the Actions tab to get a test zip without making a release.
+
+### Supply chain and secrets
+- **Dependabot** opens weekly update pull requests for NuGet packages and GitHub Actions against `development`. Major version updates are paused until after marking, because they can break the build.
+- **Vulnerable packages:** high and critical advisories fail the build low and moderate ones show as warnings.
+- **CodeQL** is set up but only runs once code scanning is enabled (`ENABLE_CODEQL`). Code scanning needed a paid plan while the repository was private.
+- **Secrets:** as planned, nothing secret was committed. The Azure publish profile is a GitHub secret, and the database connection, signing key and Grit Solution admin login are Azure app env variables.
 
 ---
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Deployment
-### Dashboard on Azure App Service 
-### Running it elsewhere
+
+### Dashboard on Azure App Service
+
+| Resource | Setting |
+|---|---|
+| App Service plan | B1, Linux, South Africa North |
+| Web app | .NET 10, Always On, HTTPS |
+| Azure SQL Database | separate from web app, Basic DTU |
+
+**App settings** (Configuration and Environment variables):
+
+| Setting | Value |
+|---|---|
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `Database__Provider` | `SqlServer` |
+| `ConnectionStrings__Default` | the Azure SQL connection string with: `Connection Timeout=60;` in case of slow first connections|
+| `Jwt__Key` | a long random key |
+| `Seed__AdminEmail`, `Seed__AdminPassword` | Grit Solutions Admin |
+| `AllowedHosts` | the site's host names |
+| `Proxy__TrustForwardedHeaders` | `true` |
+| `Api__EnableDocs` | shows Swagger |
+
+Deploys come only from `main` through the workflow action **Deploy Dashboard**. The database is migrated automatically when the a new version starts
+
+### Hosting rationale
+
+| Decision | What we chose | Alternatives we considered | Why |
+|---|---|---|---|
+| Where the dashboard runs | **Azure App Service** (PaaS) | A virtual machine/ containers | No server to patch or maintain, HTTPS and scaling comes with, it deploys straight from GitHub Actions. A VM would need OS updates and manual setup, and containers were more than a team of three needed for an MVP |
+| Plan | **B1 with Always On** | Free F1 | F1 sleeps when idle. In our testing the first request after sleeping took a minute+. |
+| Database | **Azure SQL**, separate from the web app | SQLite on the server | Managed backups and point in time restore, more than one user writing safely at once and it scales or restores without touching the app. EF Core runs the same model on SQLite and SQL Server |
+| Region | **South Africa North** | None | Closest to Leading Edge and the team. Page sends are quicker. |
+| Widget data | **SQLite on each PC** | Logging straight to the server | Works offline, and a dev's day stays private and editable until they send it, a requirement from Leading Edge to avoid feeling spyed on. |
+| Secrets | **App settings and GitHub secrets** | Config files in the repo | Nothing secret is committed, and each environment has its own keys |
+| Environments | **Separate demo and pilot sites**, they have their own web app and database | One shared site | Leading Edge's real timesheets and client names are never visible to markers or anyone outside the company or Grit Solutions |
+| Long term | Azure for the MVP and pilot | Leading Edge's own server | Moving to Leading Edge's on site server was out of MVP scope. Hosting on Azure lets us show the dashboard working at task 2, and the app runs on any .NET 10 host when they're ready so that the transfer is easier with the dashboard hosted now. The server dashboard will be dockerized though before hosting|
+
+**Scaling:** a bigger App Service plan or database tier is a setting change, with no code changes.
+
+**Stability:**
+- `/health` is checked after every deploy and a failing check fails the workflow
+- migrations run at startup and  schema changes repair old rows first
+- sign in and import are rate limited
+- deploys come only from our protected `main` branch
+- the database has point in time restore
+
+**Approximate monthly cost (Changes from documentation projection):** App Service B1  US$13 (shared by both web apps), and US$5 per Azure SQL Basic database, it's protected by a budget alert. This decision let's us demonstrate the dashboard hosting capability before deployment to leading edges on site server, which was out of our MVP scope.
+
+### Environment separation
+
+| | Demo  | Leading Edge pilot |
+|---|---|---|
+| Who uses it | for markers | Leading Edge staff only |
+| Azure Web App | its own | its own |
+| Azure SQL | its own database, on its own server | its own database, on its own server |
+| Signing key and admin | its own | its own, different |
+| Accounts | the demo accounts | real employees only|
+| Widget download |  regular release zip | the pilot zip which pointes at seperate pilot site |
+
+```mermaid
+flowchart TB
+  subgraph Plan[Same build from main]
+    M[Demo / marking web app]
+    P[Pilot web app]
+  end
+  M --> DM[(Azure SQL: demo)]
+  P --> DP[(Azure SQL: pilot)]
+  Markers[Demo users] --> M
+  Staff[Leading Edge staff] --> P
+```
+*Mermaid diagramming/ charting tool*: https://www.mermaideditor.io/ !@Dylan to replace with reference entry citation of creation page.!
+
+
+
+
+An Admin sees every user's hours, which is right inside one company but would expose real timesheets and client names if lecturers had access and a shared database with the pilot. This was a security concern addressed to make sure Leading Edge data stays private. 
+
 ### Distributing the widget
+- The widget is released as a self contained, single file Windows x64 zipD, so no .NET install is needed. 
 
-
-
-
-
-### GitHub Actions
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-## Video Demonstration
 
 ## References 
