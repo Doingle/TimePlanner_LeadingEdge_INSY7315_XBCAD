@@ -37,8 +37,6 @@
   </tr>
 </table>
 
-
-
 ## Table of Contents
 
 <ol>
@@ -195,6 +193,84 @@
     </ul>
   </li>
 </ol>
+
+## Testing the Production Release v1.0.0 (as a user would experience it):
+
+This section is for testing **the released software exactly as a Leading Edge developer or project manager would receive it**, with nothing to build or software/IDE's install. To run the code from Visual Studio instead, see [Getting Started](#getting-started).
+
+
+> ### Demo accounts *USERNAMES + PASSWORDS*
+> | Account | Role | Email | Password |
+> |---|---|---|---|
+> | **Demo Admin** | Admin | demo.admin@email.com | R2l407x1gB!| |
+> | **Demo Developer** | Developer | demo.dev@email.com | )3[8$l4WHV4Q |
+
+ **Dashboard:** https://timeplanner-dashboard-dj-dpd2byfyhfd4gthc.southafricanorth-01.azurewebsites.net
+
+**Note:** These accounts have already undergone the first time password change procedure.
+
+Please don't change the demo admin and developer passwords or deactivate the accounts: You can create new user accounts to test the temporary password generation and account reactivation/ deactiviation. 
+
+### What each account can test
+
+| | Demo Developer | Demo Admin |
+|---|---|--|
+| **Widget** (sign in and Send day) | Yes | Yes |
+| Home, My Timesheet, My Reports (Excel and CSV download), Upload CSV | Yes, own data only | Yes, own data |
+| Settings and Accessibility | Yes | Yes |
+| **Team:** Overview, Submissions, Exports (one person or a .zip for everyone), Users | No, access denied | Yes, everyone's data |
+
+A good order: test the **widget with the Demo Developer** first, then sign in to the Dashboard as the **Demo Admin** and see that developer's submitted day in Team, Submissions and Exports.
+
+### 1. Download the widget
+1. Open the **[latest release](https://github.com/Doingle/TimePlanner_LeadingEdge_INSY7315_XBCAD/releases/latest)**.
+2. Under **Assets**, download `TimePlanner-Widget-<version>-win-x64.zip`. Ignore the "Source code" downloads.
+3. Optional: check the download against the `.sha256` file in powershell:
+   Get-FileHash .\TimePlanner-Widget-<version>-win-x64.zip -Algorithm SHA256
+
+
+### 2. Extract it
+1. Right click the zip, click **Properties**, tick **Unblock** if it's shown, click  **OK**. This can stop Windows treating every extracted file as downloaded from the internet.
+2. Right click the zip, then click **Extract All…**, then choose a folder you'll keep, for example `C:\TimePlanner`.
+
+The folder contains `TimePlanner.Widget.exe` and a `SampleData` folder. Nothing needs installing: the widget is self contained and includes .NET.
+
+### 3. Create a shortcut (optional, recommended)
+1. Right click `TimePlanner.Widget.exe`, then **Show more options**, then **Send to**, then **Desktop (create shortcut)**.
+2. For a second shortcut that loads an example finished day: copy the shortcut, open its **Properties**, and add ` --sample-day` (with a space before it) at the end of **Target**. For example:
+   `"C:\TimePlanner\TimePlanner.Widget.exe" --sample-day`
+
+### 4. Get past Windows SmartScreen
+The MVP isn't code signed yet. So on first start Windows shows **"Windows protected your PC"**:
+1. Click **More info**.
+2. Click **Run anyway**.
+
+This is only needed once per downloaded version.
+
+### 5. Run it
+1. Start the widget (shortcut or exe). It appears in the **bottom right corner** of the screen, and its icon sits in the system tray (click **^** next to the clock if it's hidden).
+2. **First run:** choose a check in interval, then click **Start tracking**.
+3. **Fastest test:** start it with `--sample-day`. It loads a finished example day (9 entries, a lunch break and a short gap) onto the most recent weekday, then:
+   1. tray icon, click **Timesheet**, then press **‹** until you reach the sample day (or leave as current day for any self added logging).
+   2. review it, optionally **Fill** the sample data gap, then click **Send day**, then sign in as the **Demo Developer or Admin**
+   3. open the Dashboard as the Demo Developer or admin: **My Timesheet** and **My Reports** show the day
+   4. sign in as the **Demo Admin**: the day appears in **Team, Submissions** and **Exports**.
+
+Only one widget runs at a time. If nothing happens when you start it, it's already running in the tray: right click its purple clock face icon, then click **Exit** and then start it again.
+
+### Optional: Fill the Dashboard With a Sample Day (to see a populated dashboard day, this step is not required though):
+
+To see the Dashboard populated without logging time yourself, as you'd otherwise have to go through the process of tracking a day to see full population, the widget can load a pre seeded csv day of work and send you can send it.
+
+1. **The sample file comes with the widget.** `SampleData\sample-day.csv`, next to `TimePlanner.Widget.exe`, holds a finished working day in the company timesheet layout: 9 entries across three clients, a lunch break and a short untracked gap.
+2. **The date is set for you.** The day is always loaded onto the **most recent weekday before today** (for example last Friday when run on a Monday), so the sample works in any week. It's only loaded if that day has no entries yet.
+3. **Released widget:** add ` --sample-day` to the end of a shortcut's **Target**, or run `.\TimePlanner.Widget.exe --sample-day` in the widget's folder. (create a shortcut by right clicking and add the '--sample-day to the end of the target (name) of the shortcut)
+4. **Send the day.** Exit any running widget first; only one can run. The widget confirms which day it loaded. Open **Timesheet** from the tray icon, press the  **‹** (back button) at the top left of the widget until you reach that day, optionally **fill** any gap, and press **Send day**, signing in with the demo account information shared in the table above when you're asked.
+5. **Look at the Dashboard.** As that developer: Home, My Timesheet and My Reports for that week. As an admin: Team, then Overview, Submissions and Exports.
+
+To load the sample again, exit the widget and rename `%LOCALAPPDATA%\TimePlanner` (press win + r and paste %LOCALAPPDATA%\TimePlanner, then navigate back once and delete or rename the foler), which starts with an empty local database.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Project Overview
 Time Planner is a check-in based time tracker made for software development teams. Its a Windows desktop widget that asks developers what the have been working on, and a web dashboard where they can review their time and administrators can oversee the team.
