@@ -380,31 +380,6 @@ The widget opens on Setup (_Welcome to Time Planner_): pick a check-in interval 
 
 ## Configuration reference
 ### Dashboard settings
-Set these in `appsettings.json`, as user-secrets locally, or as environment variables when hosted. A colon becomes a double underscore in environment variables (`Jwt:Key` is `Jwt__Key`). Anything from the secrets or environment outranks the files.
-
-| Setting | Default | Meaning |
-|---|---|---|
-| `Jwt:Key` | none, **required** | Signing key for access tokens, at least 32 bytes. The app refuses to start without it. |
-| `Jwt:Issuer`, `Jwt:Audience` | `TimePlanner.Dashboard`, `TimePlanner.Clients` | Must match on every instance that validates the tokens. |
-| `Jwt:ExpiryMinutes` | `30` | Lifetime of an access token. |
-| `Jwt:RefreshDays` | `30` | Lifetime of a refresh token, renewed each time it is used. |
-| `Jwt:RefreshMaxDays` | `90` | The longest a sign-in session can last, however often it is refreshed. |
-| `Seed:AdminEmail`, `Seed:AdminPassword` | none | Creates the first administrator at startup if no such account exists. The password must meet the password policy. If unset, no admin is created. |
-| `Database:Provider` | `Sqlite` | `Sqlite` or `SqlServer`. |
-| `ConnectionStrings:Default` | `Data Source=timeplanner.db` | Used for both the time data and the login data. |
-| `AllowedHosts` | `localhost;127.0.0.1;[::1]` | Host names the app answers to. **Add the real domain when hosting.** |
-| `Proxy:TrustForwardedHeaders` | `false` | Set `true` when the app sits behind a proxy that ends TLS (Azure App Service does). Without it, forms fail and every user shares one rate limit. |
-| `Api:EnableDocs` | `false` | Serves Swagger UI outside Development. |
-| `RateLimiting:LoginPerMinute` | `10` | Sign-in, refresh, logout and password-change attempts per address per minute. |
-| `RateLimiting:ImportPerMinute` | `20` | Imports and uploads per signed-in user per minute. |
-| `Display:TimeZone` | `Africa/Johannesburg` | Time zone for "today", week boundaries and shown submission times. |
-| `Goals:DailyHours` | `8` | Default daily goal when a person has not set their own. |
-| `Home:DayStart`, `Home:DayEnd` | `08:00`, `17:00` | Working day used for the Home timeline (`HH:mm`). |
-| `Home:LunchStart`, `Home:LunchEnd` | `12:00`, `13:00` | Lunch window, left out of "unlogged gap" warnings. |
-| `ASPNETCORE_ENVIRONMENT` | `Production` | `Development` turns on Swagger and relaxes two security settings (below). |
-
-Two things change in Development only: the Content-Security-Policy is sent as **report-only**, and the antiforgery cookie follows the request scheme instead of being Secure-only. This is why a problem with either can first appear once the site is hosted.
-
 ### Widget settings
 ### Per-user check-in settings
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
