@@ -268,12 +268,30 @@ A versioned JSON API (`/api/v1`) with JWT bearer tokens and rotating refresh tok
 
 ## How it works
 **Key design points**
+1. **Local first.** The widget keeps its own SQLite database under `%LOCALAPPDATA%\TimePlanner`. It identifies the local user by Windows account name, creates them on first launch with default settings, and adds the internal company _Leading Edge (Internal)_ with its project Internal.
+2. **Two separate databases.** The widget's local database and the dashboard's database are separate. They share the same schema (both use TimePlanner.Core), but nothing is replicated row by row. A day is sent as a list of entries described by names (company, project, activity path) rather than database ids, so a row means the same thing on any machine.
+3. **The dashboard owns identity.** The dashboard keeps ASP.NET Core Identity accounts (ApplicationUser) in a separate AuthDbContext. Each account links to a time-tracking profile (AppUser) through AppUserId, which travels as the uid claim in both the cookie and the JWT. An imported entry always belongs to the caller identified by the token, never to a user named in the request.
+4. **Send replaces the day.** The widget sends a finished day with `replaceDays: true`. The server checks every row first, then, in one transaction, deletes that user's entries for the day and stores the new ones. Sending the same day again after a correction is safe and leaves the server matching the widget.
+5. **A submission is a record, not an approval.** Every accepted import records a DaySubmission (user + date + time). The admin grid is built from these records; there is no approve or reject workflow.
 
 **Sending a day**
+If the server rejects the day, the widget lists the row errors and nothing is stored. If the dashboard can't be reached, the day stays saved locally and can be sent later.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 ## Technology stack
+| Area      | Technology                                                                                                                                                 |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime   | .NET 10 (`net10.0`, widget `net10.0-windows`), C# with nullable reference types and implicit usings                                                        |
+| Desktop   | WPF, [Hardcodet.NotifyIcon.Wpf](https://github.com/hardcodet/wpf-notifyicon) (tray icon), Microsoft.Extensions.Hosting / DependencyInjection               |
+| Web       | ASP.NET Core MVC (Razor views), ASP.NET Core Identity, JWT bearer authentication, built-in rate limiter                                                    |
+| Data      | Entity Framework Core 10 with **SQLite** (widget, local dev, tests) and **SQL Server** (hosted dashboard)                                                  |
+| Files     | [CsvHelper](https://joshclose.github.io/CsvHelper/) (CSV), [ClosedXML](https://github.com/ClosedXML/ClosedXML) (Excel `.xlsx`)                             |
+| API docs  | Swashbuckle (OpenAPI + Swagger UI)                                                                                                                         |
+| Other     | Windows DPAPI (`System.Security.Cryptography.ProtectedData`) for the widget's token. HtmlSanitizer is referenced by the dashboard but not used in code yet |
+| Tests     | xUnit, `Microsoft.AspNetCore.Mvc.Testing` (in-memory test server), coverlet                                                                                |
+| CI/CD     | GitHub Actions, Dependabot, CodeQL, Azure Web Apps deploy                                                                                                  |
+| Front end | Plain CSS with design tokens and plain JavaScript (no framework, no CDN). Self-hosted Inter and Lora fonts                                                 |
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
