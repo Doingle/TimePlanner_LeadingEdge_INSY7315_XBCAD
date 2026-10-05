@@ -1113,7 +1113,7 @@ An Admin sees every user's hours, which is right inside one company but would ex
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## References 
+## Reference List
 Andersson, R. (n.d.) Inter font family. Available at: https://rsms.me/inter/ (Accessed: 4 October 2026).
 
 Andersson, R. (n.d.) Inter: license. GitHub. Available at: https://github.com/rsms/inter/blob/master/LICENSE.txt (Accessed: 4 October 2026).
