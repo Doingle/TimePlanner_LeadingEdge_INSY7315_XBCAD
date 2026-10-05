@@ -360,7 +360,7 @@ If the server rejects the day, the widget lists the row errors and nothing is st
 
 ## Repository layout
 
-```text
+```
 TimePlanner_LeadingEdge_INSY7315_XBCAD/
 ├── TimePlanner.slnx                
 ├── Directory.Build.props            
@@ -532,6 +532,7 @@ Settings come from the standard ASP.NET Core sources: `appsettings.json` → `ap
 | `Home:DayStart`, `Home:DayEnd`          | `08:00`, `17:00`             | The window of Home's timeline (`HH:mm`), widened to fit earlier or later entries.                                                                                                                                                                                                               |
 | `Home:LunchStart`, `Home:LunchEnd`      | `12:00`, `13:00`             | Lunch is not reported as an unlogged gap on Home.                                                                                                                                                                                                                                               |
 | `Logging:*`                             | Information                  | Standard ASP.NET Core logging configuration.                                                                                                                                                                                                                                                    |
+
 Other built-in behaviour (not configurable): sign-in cookie lifetime 8 hours (sliding); account lockout after 5 failed attempts for 15 minutes; request body limit 2 MB; HSTS for 365 days outside Development.
 
 ### Widget settings
@@ -566,6 +567,7 @@ Stored per user in UserSettings. Ranges are enforced both by SettingsService and
 | `IgnoredCheckInMinutes`   | 5             | 1–60                                       | How long an unanswered prompt waits before the ignored rule applies.                             |
 | `IgnoredCheckInAction`    | `KeepAsking`  | `KeepAsking`, `LogAsUntracked`, `AutoSkip` | What happens to an unanswered prompt.                                                            |
 | `LunchStart` / `LunchEnd` | 12:00 / 13:00 | start < end                                | No prompts in this window. A prompt that would fall inside it waits until it ends.               |
+
 The widget's Setup and Settings screens currently change **only the interval** (plus the appearance preferences above). The other values use their defaults 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
