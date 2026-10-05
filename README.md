@@ -1108,3 +1108,190 @@ An Admin sees every user's hours, which is right inside one company but would ex
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## References 
+Andersson, R. (n.d.) Inter font family. Available at: https://rsms.me/inter/ (Accessed: 4 October 2026).
+
+Andersson, R. (n.d.) Inter: license. GitHub. Available at: https://github.com/rsms/inter/blob/master/LICENSE.txt (Accessed: 4 October 2026).
+
+Auth0 (n.d.) Refresh Token Rotation. Auth0 Docs. Available at: https://auth0.com/docs/secure/tokens/refresh-tokens/refresh-token-rotation (Accessed: 4 October 2026).
+
+Barth, A. (2011) RFC 6265: HTTP State Management Mechanism. RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc6265 (Accessed: 4 October 2026).
+
+Close, J. (n.d.) CsvHelper. GitHub. Available at: https://github.com/JoshClose/CsvHelper (Accessed: 4 October 2026).
+
+domaindrivendev (n.d.) Swashbuckle.AspNetCore. GitHub. Available at: https://github.com/domaindrivendev/Swashbuckle.AspNetCore (Accessed: 4 October 2026).
+
+Fielding, R., Nottingham, M. and Reschke, J. (eds.) (2022) RFC 9110: HTTP Semantics. RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc9110 (Accessed: 4 October 2026).
+
+Fowler, M. (2012) TestPyramid. martinfowler.com. Available at: https://martinfowler.com/bliki/TestPyramid.html (Accessed: 4 October 2026).
+
+GitHub (n.d.) About protected branches. GitHub Docs. Available at: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches (Accessed: 4 October 2026).
+
+GitHub (n.d.) About releases. GitHub Docs. Available at: https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases (Accessed: 4 October 2026).
+
+GitHub (n.d.) Code scanning with CodeQL. GitHub Docs. Available at: https://docs.github.com/en/code-security/concepts/code-scanning/codeql/codeql-code-scanning (Accessed: 4 October 2026).
+
+GitHub (n.d.) Dependabot options reference. GitHub Docs. Available at: https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference (Accessed: 4 October 2026).
+
+GitHub (n.d.) Events that trigger workflows. GitHub Docs. Available at: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows (Accessed: 4 October 2026).
+
+GitHub (n.d.) Secure use reference. GitHub Docs. Available at: https://docs.github.com/en/actions/reference/security/secure-use (Accessed: 4 October 2026).
+
+GitHub (n.d.) Workflow syntax for GitHub Actions. GitHub Docs. Available at: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax (Accessed: 4 October 2026).
+
+Grassi, P.A. et al. (2017) NIST Special Publication 800-63B: Digital Identity Guidelines, Authentication and Lifecycle Management. National Institute of Standards and Technology. Available at: https://pages.nist.gov/800-63-3/sp800-63b.html (Accessed: 4 October 2026).
+
+Hardt, D. (ed.) (2012) RFC 6749: The OAuth 2.0 Authorization Framework. RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc6749 (Accessed: 4 October 2026).
+
+Hodges, J., Jackson, C. and Barth, A. (2012) RFC 6797: HTTP Strict Transport Security (HSTS). RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc6797 (Accessed: 4 October 2026).
+
+Information Regulator (South Africa) (n.d.) Protection of Personal Information Act (POPIA). Available at: https://inforegulator.org.za/popia/ (Accessed: 4 October 2026).
+
+Jia, Y. and Harman, M. (2011) 'An analysis and survey of the development of mutation testing', IEEE Transactions on Software Engineering, 37(5), pp. 649-678. doi: 10.1109/TSE.2010.62. Available at: https://doi.org/10.1109/TSE.2010.62 (Accessed: 4 October 2026).
+
+Jones, M. and Hardt, D. (2012) RFC 6750: The OAuth 2.0 Authorization Framework: Bearer Token Usage. RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc6750 (Accessed: 4 October 2026).
+
+Jones, M., Bradley, J. and Sakimura, N. (2015) RFC 7519: JSON Web Token (JWT). RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc7519 (Accessed: 4 October 2026).
+
+Lodderstedt, T., Bradley, J., Labunets, A. and Fett, D. (2025) RFC 9700: Best Current Practice for OAuth 2.0 Security. RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc9700 (Accessed: 4 October 2026).
+
+MDN Web Docs (n.d.) @font-face CSS at-rule. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@font-face (Accessed: 4 October 2026).
+
+MDN Web Docs (n.d.) Cache-Control header. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control (Accessed: 4 October 2026).
+
+MDN Web Docs (n.d.) Content Security Policy (CSP). Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP (Accessed: 4 October 2026).
+
+MDN Web Docs (n.d.) Cross-Origin-Opener-Policy (COOP) header. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Opener-Policy (Accessed: 4 October 2026).
+
+MDN Web Docs (n.d.) Cross-Origin-Resource-Policy (CORP) header. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Resource-Policy (Accessed: 4 October 2026).
+
+MDN Web Docs (n.d.) Permissions-Policy header. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy (Accessed: 4 October 2026).
+
+MDN Web Docs (n.d.) Referrer-Policy header. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy (Accessed: 4 October 2026).
+
+MDN Web Docs (n.d.) unicode-range CSS at-rule descriptor. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@font-face/unicode-range (Accessed: 4 October 2026).
+
+MDN Web Docs (n.d.) Using HTTP cookies. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies (Accessed: 4 October 2026).
+
+MDN Web Docs (n.d.) X-Content-Type-Options header. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Content-Type-Options (Accessed: 4 October 2026).
+
+MDN Web Docs (n.d.) X-Frame-Options header. Mozilla. Available at: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options (Accessed: 4 October 2026).
+
+Microsoft (n.d.) .NET application publishing overview. .NET. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/core/deploying/ (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Account confirmation and password recovery. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/security/authentication/accconfirm (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Auditing package dependencies for security vulnerabilities. NuGet. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/nuget/concepts/auditing-packages (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Azure SQL Database documentation. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/azure/azure-sql/database/ (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Best Practices for Comparing Strings in .NET. .NET. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/standard/base-types/best-practices-strings (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Code analysis in .NET. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Code quality rules overview. .NET. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Configure an App Service App. Azure App Service. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/azure/app-service/configure-common (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Configure ASP.NET Core Identity. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Configure ASP.NET Core to work with proxy servers and load balancers. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Configure JWT bearer authentication in ASP.NET Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Configure options for the ASP.NET Core Kestrel web server. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel/options (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Create a single file for application deployment. .NET. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Create an ASP.NET Core app with user data protected by authorization. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/security/authorization/secure-data (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Dates, times, and time zones. .NET. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/standard/datetime/ (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Deploy by Using GitHub Actions. Azure App Service. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Enforce HTTPS in ASP.NET Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/security/enforcing-ssl (Accessed: 4 October 2026).
+
+Microsoft (n.d.) ExecuteUpdate and ExecuteDelete. EF Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/ef/core/saving/execute-insert-update-delete (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Globalization. .NET. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/core/extensions/globalization (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Handle errors in ASP.NET Core APIs. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling-api (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Health checks in ASP.NET Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Integration tests in ASP.NET Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Introduction to Identity on ASP.NET Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Migrations Overview. EF Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/ (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Migrations with Multiple Providers. EF Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/providers (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Model validation in ASP.NET Core MVC. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/mvc/models/validation (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Overview of ASP.NET Core MVC. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/mvc/overview (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Overview of Entity Framework Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/ef/core/ (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Overview of OpenAPI support in ASP.NET Core API apps. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Prevent Cross-Site Request Forgery (XSRF/CSRF) attacks in ASP.NET Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Prevent Cross-Site Scripting (XSS) in ASP.NET Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/security/cross-site-scripting (Accessed: 4 October 2026).
+
+Microsoft (n.d.) ProtectedData Class. System.Security.Cryptography. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.protecteddata (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Rate limiting middleware in ASP.NET Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/performance/rate-limit (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Safe storage of app secrets in development. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets (Accessed: 4 October 2026).
+
+Microsoft (n.d.) SQLite Database Provider - Limitations. EF Core. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/ef/core/providers/sqlite/limitations (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Testing in .NET. .NET. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/core/testing/ (Accessed: 4 October 2026).
+
+Microsoft (n.d.) TimeProvider Class. System. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider (Accessed: 4 October 2026).
+
+Microsoft (n.d.) Use cookie authentication without ASP.NET Core Identity. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/aspnet/core/security/authentication/cookie (Accessed: 4 October 2026).
+
+Microsoft (n.d.) What is Windows Presentation Foundation. WPF. Microsoft Learn. Available at: https://learn.microsoft.com/en-us/dotnet/desktop/wpf/overview/ (Accessed: 4 October 2026).
+
+Nottingham, M. and Fielding, R. (2012) RFC 6585: Additional HTTP Status Codes. RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc6585 (Accessed: 4 October 2026).
+
+Nottingham, M., Wilde, E. and Dalal, S. (2023) RFC 9457: Problem Details for HTTP APIs. RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc9457 (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) Authentication Cheat Sheet. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) Content Security Policy Cheat Sheet. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) Cross-Site Request Forgery Prevention Cheat Sheet. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) CSV Injection. OWASP Community. Available at: https://owasp.org/www-community/attacks/CSV_Injection (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) HTTP Headers Cheat Sheet. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) Input Validation Cheat Sheet. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) Logging Cheat Sheet. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) OWASP Application Security Verification Standard (ASVS). Available at: https://owasp.org/www-project-application-security-verification-standard/ (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) OWASP Top 10. Available at: https://owasp.org/www-project-top-ten/ (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) Password Storage Cheat Sheet. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) Secrets Management Cheat Sheet. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html (Accessed: 4 October 2026).
+
+OWASP Foundation (n.d.) Session Management Cheat Sheet. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html (Accessed: 4 October 2026).
+
+Petersson, A. and Nilsson, M. (2014) RFC 7239: Forwarded HTTP Extension. RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc7239 (Accessed: 4 October 2026).
+
+Sheffer, Y., Hardt, D. and Jones, M. (2020) RFC 8725: JSON Web Token Best Current Practices. RFC Editor. Available at: https://www.rfc-editor.org/rfc/rfc8725 (Accessed: 4 October 2026).
+
+SIL International (n.d.) SIL Open Font License. Available at: https://openfontlicense.org/ (Accessed: 4 October 2026).
+
+SQLite Consortium (n.d.) SQLite Documentation. Available at: https://www.sqlite.org/docs.html (Accessed: 4 October 2026).
+
+W3C (2024) Web Content Accessibility Guidelines (WCAG) 2.2. Available at: https://www.w3.org/TR/WCAG22/ (Accessed: 4 October 2026).
+
+W3C (n.d.) Content Security Policy Level 3. Available at: https://www.w3.org/TR/CSP3/ (Accessed: 4 October 2026).
+
+xUnit.net (n.d.) xUnit.net. Available at: https://xunit.net/ (Accessed: 4 October 2026).
