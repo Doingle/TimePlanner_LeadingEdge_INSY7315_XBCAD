@@ -360,23 +360,52 @@ If the server rejects the day, the widget lists the row errors and nothing is st
 
 ## Repository layout
 
-```
-TimePlanner.slnx
-├── TimePlanner.Core/            shared domain, data layer, rules, check in backend, sync client
-│   ├── Domain/                  entities and enums
-│   ├── Data/                    AppDbContext and database paths
-│   ├── Migrations/              SQLite migrations
-│   ├── Repositories/            repository interfaces and SQLite implementations
-│   ├── Services/                check in backemd, sessions, entries, timesheet edits, catalogue, billing/name rules, sample day
-│   └── Sync/                    Dashboard client, send service, token and send history stores
-├── TimePlanner.Widget/          WPF desktop widget
-│   └── SampleData/              sample-day.csv for testing
-├── TimePlanner.Dashboard/       ASP.NET Core website and REST API
-│   └── Data/SqlServer/          SQL Server contexts and migrations (App and Auth)
-├── TimePlanner.Core.Tests/      unit tests for Core
-├── TimePlanner.Api.Tests/       integration tests for the Dashboard and API
-├── Directory.Build.props        version, security analysers, NuGet audit
-└── .github/                     workflows, Dependabot, release note categories
+```text
+TimePlanner_LeadingEdge_INSY7315_XBCAD/
+├── TimePlanner.slnx                
+├── Directory.Build.props            
+├── .github/
+│   ├── workflows/                   
+│   ├── dependabot.yml              `
+│   └── release.yml                  
+│
+├── TimePlanner.Core/               
+│   ├── Domain/Entities/             
+│   ├── Domain/Enums/             
+│   ├── Data/                        
+│   ├── Migrations/                  
+│   ├── Repositories/               
+│   ├── Services/                   
+│   │                                
+│   ├── Sync/                        
+│   ├── Extensions/                 
+│   └── Adapters/                    
+│
+├── TimePlanner.Dashboard/          
+│   ├── Program.cs                   
+│   ├── Controllers/                 
+│   ├── Controllers/Api/             
+│   ├── Services/                    
+│   ├── Security/                  
+│   ├── Data/                        
+│   ├── Data/SqlServer/              
+│   ├── Views/                     
+│   └── wwwroot/                    
+│
+├── TimePlanner.Widget/              
+│   ├── App.xaml(.cs)               
+│   ├── WidgetFlow.cs              
+│   ├── WidgetService.cs             
+│   ├── Services/                    
+│   ├── Views/                     
+│   │                               
+│   ├── Controls/                    
+│   ├── Themes/                     
+│   ├── SampleData/sample-day.csv    
+│   └── Assests/insy.ico           
+│
+├── TimePlanner.Core.Tests/          
+└── TimePlanner.Api.Tests/           
 ```
 
 ---
