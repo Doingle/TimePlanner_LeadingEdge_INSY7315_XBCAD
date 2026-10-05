@@ -35,11 +35,6 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/report.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/upload.css" asp-append-version="true" />
-}
-
-@section Scripts {
-    <script src="~/js/upload.js" asp-append-version="true"></script>
 }
 
 @section Hero {
@@ -138,8 +133,7 @@
                                 Download CSV
                             </a>
                         }
-                        @* opens the upload dialog (upload.js), or the upload page without the script *@
-                        <a class="rp-button rp-button--secondary" asp-controller="CsvUpload" asp-action="Index" aria-haspopup="dialog" data-upload-open>
+                        <a class="rp-button rp-button--secondary" asp-controller="CsvUpload" asp-action="Index">
                             <svg class="rp-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5M5 3h14" /></svg>
                             Upload CSV
                         </a>
@@ -264,5 +258,3 @@
         </section>
     }
 }
-
-<partial name="_UploadDialog" />
