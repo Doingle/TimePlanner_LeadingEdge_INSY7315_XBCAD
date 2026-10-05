@@ -140,8 +140,7 @@
       <li><a href="#csv-import-website-and-api">CSV Import (Website and API)</a></li>
       <li><a href="#import-validation-rules">Import Validation Rules</a></li>
       <li><a href="#timesheet-export-company-layout">Timesheet Export (Company Layout)</a></li>
-      <li><a href="#sample-day-csv">Sample-Day CSV</a></li>
-      
+      <li><a href="#sample-day-csv">Sample-Day CSV</a></li>  
     </ul>
   </li>
   <li>
