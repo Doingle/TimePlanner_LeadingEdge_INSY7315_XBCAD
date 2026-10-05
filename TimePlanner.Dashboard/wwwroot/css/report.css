@@ -222,8 +222,13 @@
     border: 1px solid var(--ink-line);
 }
 
-    .rp-button--secondary:hover {
+    .rp-button--secondary[href]:hover {
         background: var(--ink-raised);
+    }
+
+    .rp-button--secondary[aria-disabled="true"] {
+        color: var(--lilac-dim);
+        cursor: not-allowed;
     }
 
 .rp-actions__status {
@@ -343,6 +348,59 @@
     padding-top: var(--space-4);
     border-top: 1px solid var(--line);
 }
+
+/* ---------- Past downloads: one ruled row per earlier week or month, its name on the left and its two files on the right ---------- */
+
+.rp-files {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--line);
+}
+
+.rp-files__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-5);
+    min-height: 3.75rem;
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.rp-files__label {
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+}
+
+.rp-files__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+}
+
+.rp-files__meta {
+    color: var(--text-2);
+}
+
+.rp-files__link {
+    font-weight: var(--weight-semibold);
+    color: var(--brand-600);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+    .rp-files__link:hover {
+        color: var(--brand-700);
+    }
+
+    .rp-files__link:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+        border-radius: 2px;
+    }
 
 /* by category and by project, side by side with a hairline between them, the same as Home */
 .rp-split {
@@ -536,6 +594,13 @@
 @media (pointer: coarse) {
     .rp-toggle__option,
     .rp-button {
+        min-height: var(--target-touch);
+    }
+
+    /* a finger sized target around each past download link */
+    .rp-files__link {
+        display: inline-flex;
+        align-items: center;
         min-height: var(--target-touch);
     }
 }

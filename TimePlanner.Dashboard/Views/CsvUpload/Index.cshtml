@@ -2,41 +2,63 @@
 @model ImportResult?
 @{
     ViewData["Title"] = "Upload timesheet";
+    ViewData["Nav"] = "Reports";
+    Layout = "_AppLayout";
+    var ok = Model != null && Model.Success;
+    var rowErrors = Model?.Errors.Any(e => e.Row > 0) == true;
 }
 
-<h1 class="h3 mb-3">Upload timesheet</h1>
-
-@if (Model != null && Model.Success)
-{
-    <div class="alert alert-success" role="status">
-        Imported @Model.Created entr@(Model.Created == 1 ? "y" : "ies")@(Model.Skipped > 0 ? $", skipped {Model.Skipped} that were already stored" : "").
-    </div>
+@section Styles {
+    <link rel="stylesheet" href="~/css/upload.css" asp-append-version="true" />
 }
-else if (Model != null)
-{
-    <div class="alert alert-danger" role="alert">
-        <p class="mb-2">Nothing was imported. Fix the following and upload the file again:</p>
-        <ul class="mb-0">
-            @foreach (var error in Model.Errors.Take(50))
-            {
-                <li>@(error.Row > 0 ? $"Row {error.Row}: " : "")@error.Message</li>
-            }
-        </ul>
-        @if (Model.Errors.Count > 50)
+
+@* uploading usually happens in the dialog on My Reports. This page is where its button leads without the script, and where a plain post lands:
+   the same panel as the dialog, sitting on the page. The result block is also what the dialog reads from the answer to its post *@
+<div class="up-page">
+    <section class="up-modal up-modal--page" aria-labelledby="up-title">
+        <header class="up-modal__head">
+            <h1 class="up-modal__title" id="up-title">Upload timesheet</h1>
+            <a class="up-modal__close" asp-controller="Report" asp-action="Index" asp-route-view="week" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </a>
+        </header>
+
+        @if (Model == null)
         {
-            <p class="mt-2 mb-0">and @(Model.Errors.Count - 50) more.</p>
+            <form class="up-modal__form" method="post" enctype="multipart/form-data" asp-action="Index" data-upload-form>
+                <div class="up-modal__body">
+                    <partial name="_UploadPick" />
+                </div>
+                <footer class="up-modal__foot">
+                    <a class="up-button up-button--secondary" asp-controller="Report" asp-action="Index" asp-route-view="week">Cancel</a>
+                    <button type="submit" class="up-button up-button--primary">
+                        <svg class="up-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5M5 3h14" /></svg>
+                        Upload
+                    </button>
+                </footer>
+            </form>
         }
-    </div>
-}
+        else
+        {
+            <div class="up-modal__body">
+                <partial name="_UploadResult" model="Model" />
+            </div>
+            <footer class="up-modal__foot">
+                @if (ok)
+                {
+                    <a class="up-button up-button--secondary" asp-action="Index">Upload another file</a>
+                    <a class="up-button up-button--primary" asp-controller="Report" asp-action="Index" asp-route-view="week">Done</a>
+                }
+                else
+                {
+                    <a class="up-button up-button--secondary" asp-controller="Report" asp-action="Index" asp-route-view="week">Close</a>
+                    <a class="up-button up-button--primary" asp-action="Index">@(rowErrors ? "Choose the fixed file" : "Choose another file")</a>
+                }
+            </footer>
+        }
+    </section>
+</div>
 
-<form method="post" enctype="multipart/form-data" asp-action="Index">
-    <div class="mb-3">
-        <label for="file" class="form-label">CSV file exported from the widget</label>
-        <input type="file" id="file" name="file" class="form-control" accept=".csv,text/csv" required />
-        <div class="form-text">
-            Columns: Company, Project, Activity, Start, End, and optionally Note, Method. Times look like 2026-09-28 09:30.
-            Maximum 1 MB. <a asp-action="Template">Download an example file</a>.
-        </div>
-    </div>
-    <button type="submit" class="btn btn-primary">Upload</button>
-</form>
+@section Scripts {
+    <script src="~/js/upload.js" asp-append-version="true"></script>
+}
