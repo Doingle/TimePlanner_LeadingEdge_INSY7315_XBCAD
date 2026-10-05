@@ -1,0 +1,43 @@
+@* the first step of uploading a timesheet: choose the file. Shared by the dialog on My Reports and the /CsvUpload page.
+   the real file input covers the whole dashed area, so a click, a tap, Enter or Space and a dropped file all go through the browser's own picker.
+   upload.js swaps the face for the chosen file's name and size, and explains a file that will not be accepted before it is sent *@
+<p class="up-lead">Adds the entries in a CSV file from the widget to your timesheet. Entries you already have are skipped, so nothing is added twice.</p>
+
+<div class="up-field">
+    <label class="up-field__label" for="up-file">CSV file from the widget</label>
+    <div class="up-drop" data-upload-drop>
+        <input type="file" id="up-file" name="file" accept=".csv,text/csv" aria-describedby="up-file-error up-needs" data-upload-file />
+        <div class="up-drop__face" aria-hidden="true">
+            <svg class="up-drop__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" data-upload-icon="pick"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M12 11v6M9 14l3-3 3 3" /></svg>
+            <svg class="up-drop__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" data-upload-icon="ok" hidden><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 15l2 2 4-4" /></svg>
+            <svg class="up-drop__icon up-drop__icon--bad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" data-upload-icon="bad" hidden><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M10 12l4 4M14 12l-4 4" /></svg>
+            <span data-upload-empty><span class="up-drop__cta">Choose a CSV file</span> <span class="up-drop__or">or drop it here</span></span>
+            <span class="up-drop__file" data-upload-chosen hidden><span class="up-drop__name" data-upload-name></span><span class="up-drop__size" data-upload-size></span></span>
+            <span class="up-drop__cta" data-upload-another hidden>Choose another file</span>
+        </div>
+    </div>
+    <p class="up-field__error" id="up-file-error" data-upload-error hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+        <span data-upload-error-text></span>
+    </p>
+</div>
+
+@* the upload never reached the importer: no connection, too many uploads at once, or the sign in ran out *@
+<p class="up-alert" role="alert" data-upload-net hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+    <span data-upload-net-text></span>
+</p>
+
+@* plain list, with the column names in mono because they have to match exactly *@
+<div class="up-needs" id="up-needs">
+    <h3 class="up-needs__title">What the file needs</h3>
+    <ul class="up-needs__list">
+        <li>Columns <span class="up-mono">Company</span>, <span class="up-mono">Project</span>, <span class="up-mono">Activity</span>, <span class="up-mono">Start</span> and <span class="up-mono">End</span>. <span class="up-mono">Note</span> and <span class="up-mono">Method</span> are optional.</li>
+        <li>Times written like <span class="up-mono">2026-09-28 09:30</span></li>
+        <li>A .csv file of 1 MB or less</li>
+    </ul>
+    <a class="up-needs__example" asp-controller="CsvUpload" asp-action="Template">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
+        Download an example file
+    </a>
+</div>
