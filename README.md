@@ -118,7 +118,13 @@
   <li><a href="#references">References</a></li>
 </ol>
 
+---
+
 ## Video Demonstration
+
+https://www.youtube.com/watch?v=JY2xQNmQe8U
+
+---
 
 ## Testing the Production Release v1.0.0 (as a user would experience it):
 
