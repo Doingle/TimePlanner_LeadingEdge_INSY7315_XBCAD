@@ -6,9 +6,6 @@
 <h3 align="center">Time Planner</h3>
   <p align="center">
     XBCAD Repo for Time Planner, a check-in based time tracker for developers.
-   
-    <br />
-    <br />
   </p>
 </div>
 
