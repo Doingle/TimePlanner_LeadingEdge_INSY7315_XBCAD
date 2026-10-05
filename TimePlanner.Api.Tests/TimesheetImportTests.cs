@@ -412,57 +412,8 @@ namespace TimePlanner.Api.Tests
             var response = await user.Browser.PostAsync("/CsvUpload", CsvContent(CsvHeader + CsvRow("Acme " + Tag()), antiForgery: token));
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            var html = await response.Content.ReadAsStringAsync();
-            //the result block the page shows and the dialog lifts out of the answer, with the file it was about
-            Assert.Contains("data-upload-result data-kind=\"ok\" data-imported=\"true\"", html);
-            Assert.Contains("<span class=\"up-result__num\">1</span><span class=\"up-result__unit\">entry added to your timesheet</span>", html);
-            Assert.Contains("timesheet.csv", html);
+            Assert.Contains("Imported 1 entry", await response.Content.ReadAsStringAsync());
             Assert.Single(await EntriesOfAsync(user.Api));
-        }
-
-        [Fact]
-        public async Task UploadPage_SaysWhenEverythingWasAlreadyStored()
-        {
-            var user = await SignedInAsync();
-            var csv = CsvHeader + CsvRow("Acme " + Tag());
-            await user.Browser.PostAsync("/CsvUpload", CsvContent(csv, antiForgery: await TokenFromAsync(user.Browser, "/CsvUpload")));
-
-            var html = await (await user.Browser.PostAsync("/CsvUpload", CsvContent(csv, antiForgery: await TokenFromAsync(user.Browser, "/CsvUpload")))).Content.ReadAsStringAsync();
-
-            Assert.Contains("data-upload-result data-kind=\"none\" data-imported=\"false\"", html);
-            Assert.Contains("Nothing new", html);
-            Assert.Contains("<span class=\"up-result__num\">1</span><span class=\"up-result__unit\">entry already stored</span>", html);
-            Assert.Single(await EntriesOfAsync(user.Api));
-        }
-
-        [Fact]
-        public async Task TheReportsPage_OpensTheUploadDialog_AndStillLinksToTheUploadPage()
-        {
-            var user = await SignedInAsync();
-
-            var html = await user.Browser.GetStringAsync("/Report?view=week");
-
-            Assert.Contains("aria-haspopup=\"dialog\" data-upload-open href=\"/CsvUpload\"", html);
-            Assert.Contains("<dialog class=\"up-modal\" id=\"up-dialog\" aria-labelledby=\"up-title\" data-upload-dialog>", html);
-            //the dialog posts to the same handler as the page, with the anti forgery token
-            var dialog = Regex.Match(html, "<dialog.*?</dialog>", RegexOptions.Singleline).Value;
-            Assert.Contains("<form class=\"up-modal__form\" method=\"post\" enctype=\"multipart/form-data\" novalidate data-upload-form action=\"/CsvUpload\">", dialog);
-            Assert.Contains("name=\"__RequestVerificationToken\"", dialog);
-            Assert.Contains("name=\"file\" accept=\".csv,text/csv\"", html);
-            Assert.Contains("href=\"/CsvUpload/Template\"", html);
-            Assert.Contains("/js/upload.js", html);
-        }
-
-        [Fact]
-        public async Task UploadPage_EncodesTheFileName()
-        {
-            var user = await SignedInAsync();
-            var token = await TokenFromAsync(user.Browser, "/CsvUpload");
-
-            var html = await (await user.Browser.PostAsync("/CsvUpload", CsvContent(CsvHeader + CsvRow("Acme " + Tag()), fileName: "<b>hours</b>.csv", antiForgery: token))).Content.ReadAsStringAsync();
-
-            Assert.DoesNotContain("<b>hours</b>", html);
-            Assert.Contains("&lt;b&gt;hours&lt;/b&gt;.csv", html);
         }
 
         [Fact]

@@ -69,7 +69,6 @@
        Inter does every working job: labels, tables, controls */
     --font-display: "Lora", Georgia, "Times New Roman", serif;
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; /* column names and times that have to be typed exactly */
 
     --text-xs: 0.75rem;   /* 12  axis ticks, captions */
     --text-sm: 0.875rem;  /* 14  body, labels, controls */
