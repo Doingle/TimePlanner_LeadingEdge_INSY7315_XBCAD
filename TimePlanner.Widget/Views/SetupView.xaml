@@ -14,7 +14,7 @@
                             <controls:Icon Kind="ClockHands" Foreground="{StaticResource TextOnActionBrush}" />
                         </Border>
                     </Border>
-                    <TextBlock Style="{StaticResource Text.Title}" Text="Welcome to INSY" Margin="0,8,0,0" TextAlignment="Center"
+                    <TextBlock Style="{StaticResource Text.Title}" Text="Welcome to Time Planner" Margin="0,8,0,0" TextAlignment="Center"
                                Foreground="{StaticResource TextOnActionBrush}" />
                     <TextBlock Style="{StaticResource Text.Subtitle}" Text="Runs until you end your day." TextAlignment="Center"
                                Foreground="{StaticResource TextOnActionSecondaryBrush}" />
