@@ -457,6 +457,20 @@ Entries are stored as local wall-clock times without a time zone, exactly as the
 ### App data (`AppDbContext`, in `TimePlanner.Core`)
 ### Rules worth knowing
 ### Identity data (`AuthDbContext`, in `TimePlanner.Dashboard`)
+
+This context uses its own history table (`__AuthMigrationHistory`), separate from the time data.
+
+| Table | Purpose | Key columns |
+|---|---|---|
+| ASP.NET Identity tables (`AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, …) | Logins and roles (**Admin**, **Developer**) | `AspNetUsers` adds `AppUserId` (the time-tracking profile), `IsActive` (default true) and `MustChangePassword` |
+| `AuditEvents` | Security audit trail, add-only | `TimestampUtc`, `UserId`, `Email`, `Action`, `Detail`, `IpAddress` |
+| `DaySubmissions` | That a person's day reached the dashboard | `AppUserId`, `Date`, `SubmittedAtUtc`; unique on (`AppUserId`, `Date`) |
+| `RefreshTokens` | Long-lived API sessions | `TokenHash` (unique, SHA-256), `FamilyId`, `FamilyStartedUtc`, `CreatedUtc`, `ExpiresUtc`, `UsedUtc`, `RevokedUtc`, `Stamp` |
+
+`AppUserId` points at a profile in the other database. There is no foreign key between the two, because they are separate contexts.
+
+---
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Import and export formats
