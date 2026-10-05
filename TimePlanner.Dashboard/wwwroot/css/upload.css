@@ -1,0 +1,633 @@
+/* Upload timesheet
+
+   The dialog on My Reports (Views/Shared/_UploadDialog.cshtml) and the same panel on its own page (Views/CsvUpload/Index.cshtml):
+   choose a file, upload it, then see what it did. The colours, type and spacing come from tokens.css */
+
+/* ---------- The dialog ---------- */
+
+/* the page behind stays still while the dialog is open */
+html:has(.up-modal[open]) {
+    overflow: hidden;
+}
+
+.up-modal {
+    width: min(34rem, calc(100vw - 2 * var(--space-4)));
+    /* anchored near the top rather than centred, so the picker doesn't jump when an error appears below it */
+    max-width: none;
+    max-height: min(calc(100dvh - min(12vh, 7rem) - var(--space-6)), 46rem);
+    margin: min(12vh, 7rem) auto auto;
+    padding: 0;
+    color: var(--text);
+    background: var(--surface);
+    border: 0;
+    border-radius: var(--radius-md);
+    box-shadow: 0 24px 64px rgba(36, 26, 62, 0.28), 0 2px 8px rgba(36, 26, 62, 0.12);
+    overflow: hidden;
+}
+
+    .up-modal[open] {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* ink, dimmed. No blur */
+    .up-modal::backdrop {
+        background: rgba(36, 26, 62, 0.66);
+    }
+
+.up-modal__form {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.up-modal__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-4) var(--space-2) var(--space-6);
+}
+
+.up-modal__title {
+    margin: 0;
+    padding-top: 4px;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    letter-spacing: -0.01em;
+}
+
+.up-modal__close {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    color: var(--text-2);
+    background: none;
+    border: 0;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+    .up-modal__close:hover {
+        color: var(--text);
+        background: var(--paper);
+    }
+
+    .up-modal__close:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 0;
+    }
+
+    .up-modal__close svg {
+        width: 22px;
+        height: 22px;
+    }
+
+.up-modal__body {
+    flex: 1;
+    min-height: 0;
+    padding: 0 var(--space-6) var(--space-6);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.up-modal__foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-6);
+    border-top: 1px solid var(--line);
+}
+
+.up-lead {
+    max-width: 60ch;
+    margin: 0 0 var(--space-5);
+    line-height: var(--leading-body);
+    color: var(--text-2);
+}
+
+/* ---------- The same panel on its own page ---------- */
+
+.up-page {
+    padding: var(--space-5) 0 var(--space-6);
+}
+
+.up-modal--page {
+    display: flex;
+    flex-direction: column;
+    max-height: none;
+    margin: 0 auto;
+    border: 1px solid var(--line);
+    box-shadow: none;
+}
+
+/* ---------- Buttons ---------- */
+
+.up-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 44px;
+    padding: 0 var(--space-4);
+    font: inherit;
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+    .up-button:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+.up-button__icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+}
+
+.up-button--primary {
+    color: #ffffff;
+    background: var(--brand-600);
+    border: 1px solid var(--brand-600);
+}
+
+    .up-button--primary:hover {
+        background: var(--brand-700);
+        border-color: var(--brand-700);
+    }
+
+    /* while the file is on its way */
+    .up-button--primary[aria-disabled="true"] {
+        cursor: progress;
+        opacity: 0.85;
+    }
+
+.up-button--secondary {
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+}
+
+    .up-button--secondary:hover {
+        background: var(--paper);
+        border-color: var(--text-3);
+    }
+
+.up-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+}
+
+/* ---------- The file picker ---------- */
+
+.up-field {
+    display: grid;
+    gap: var(--space-2);
+}
+
+.up-field__label {
+    font-weight: var(--weight-medium);
+}
+
+.up-drop {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 5.5rem;
+    padding: var(--space-4) var(--space-5);
+    line-height: var(--leading-body);
+    background: var(--paper);
+    border: 1.5px dashed var(--line-control);
+    border-radius: var(--radius-sm);
+}
+
+    /* the real input, unseen, over the whole area */
+    .up-drop input[type="file"] {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .up-drop:hover,
+    .up-drop--over {
+        background: var(--brand-50);
+        border-color: var(--brand-600);
+    }
+
+    .up-drop:has(input:focus-visible) {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+    }
+
+.up-drop__face {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-4);
+    min-width: 0;
+}
+
+.up-drop__icon {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    color: var(--brand-600);
+}
+
+.up-drop__icon--bad {
+    color: var(--danger-700);
+}
+
+.up-drop__cta {
+    font-weight: var(--weight-semibold);
+    color: var(--brand-600);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.up-drop__or {
+    color: var(--text-2);
+}
+
+/* nothing to drag on a phone */
+@media (hover: none) {
+    .up-drop__or {
+        display: none;
+    }
+}
+
+.up-drop__file {
+    flex: 1 1 12rem;
+    min-width: 0;
+}
+
+.up-drop__name {
+    display: block;
+    font-weight: var(--weight-semibold);
+    overflow-wrap: anywhere;
+}
+
+.up-drop__size {
+    display: block;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+}
+
+.up-drop--chosen {
+    background: var(--surface);
+    border-style: solid;
+}
+
+.up-drop--error {
+    background: var(--danger-50);
+    border-style: solid;
+    border-color: var(--danger-700);
+}
+
+.up-drop--busy {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.up-field__error {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: 0;
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-body);
+    color: var(--danger-700);
+}
+
+.up-field__error svg,
+.up-alert svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 3px;
+}
+
+.up-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin: var(--space-4) 0 0;
+    padding: var(--space-3) var(--space-4);
+    line-height: var(--leading-body);
+    background: var(--danger-50);
+    border: 1px solid var(--danger-200);
+    border-radius: var(--radius-sm);
+}
+
+    .up-alert svg {
+        color: var(--danger-700);
+    }
+
+/* ---------- What the file needs ---------- */
+
+.up-needs {
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--line);
+}
+
+.up-needs__title {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+}
+
+.up-needs__list {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    line-height: var(--leading-body);
+    color: var(--text-2);
+    list-style: none;
+}
+
+    /* a short dash instead of a bullet */
+    .up-needs__list li {
+        position: relative;
+        padding-left: var(--space-4);
+    }
+
+        .up-needs__list li::before {
+            content: "";
+            position: absolute;
+            top: 0.75em;
+            left: 2px;
+            width: 6px;
+            height: 2px;
+            background: var(--text-3);
+            border-radius: 1px;
+        }
+
+.up-mono {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.up-needs__example {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 32px;
+    margin-top: var(--space-3);
+    font-weight: var(--weight-semibold);
+    color: var(--brand-600);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+    .up-needs__example:hover {
+        color: var(--brand-700);
+    }
+
+    .up-needs__example svg {
+        flex: none;
+        width: 16px;
+        height: 16px;
+    }
+
+/* ---------- What the upload did: the count gets the big Lora figure, the same voice as the page heroes ---------- */
+
+.up-result__summary:focus {
+    outline: none;
+}
+
+.up-result__status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    font-weight: var(--weight-semibold);
+}
+
+    .up-result__status svg {
+        flex: none;
+        width: 18px;
+        height: 18px;
+    }
+
+.up-result__status--ok {
+    color: var(--success-700);
+}
+
+.up-result__status--none {
+    color: var(--text-2);
+}
+
+.up-result__status--fail {
+    color: var(--danger-700);
+}
+
+.up-result__figure {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-2);
+    margin: var(--space-2) 0 0;
+    font-family: var(--font-display);
+    line-height: var(--leading-tight);
+}
+
+.up-result__num {
+    font-size: 3rem;
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: lining-nums tabular-nums;
+    letter-spacing: -0.02em;
+}
+
+.up-result__unit {
+    font-size: 1.375rem;
+    color: var(--text-2);
+}
+
+.up-result__sub {
+    max-width: 60ch;
+    margin: var(--space-3) 0 0;
+    line-height: var(--leading-body);
+    color: var(--text-2);
+}
+
+.up-result__file {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-4) 0 0;
+    font-size: var(--text-xs);
+    color: var(--text-3);
+    overflow-wrap: anywhere;
+}
+
+    .up-result__file svg {
+        flex: none;
+        width: 14px;
+        height: 14px;
+    }
+
+.up-errors {
+    margin: var(--space-5) 0 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--line);
+}
+
+.up-errors__item {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    line-height: var(--leading-body);
+    border-bottom: 1px solid var(--line);
+}
+
+.up-errors__row {
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+}
+
+/* a problem with the whole file has no row to point at */
+.up-errors__whole {
+    grid-column: 1 / -1;
+}
+
+.up-errors__more {
+    padding: var(--space-3) 0 0;
+    color: var(--text-2);
+}
+
+/* ---------- Motion ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+    .up-spinner {
+        animation: up-spin 0.8s linear infinite;
+    }
+
+    .up-modal[open] {
+        animation: up-modal-in 180ms var(--ease-out);
+    }
+
+        .up-modal[open]::backdrop {
+            animation: up-fade-in 180ms ease-out;
+        }
+}
+
+@keyframes up-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes up-modal-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+@keyframes up-fade-in {
+    from {
+        opacity: 0;
+    }
+}
+
+/* ---------- Phones: a sheet from the bottom, the buttons in the thumb zone ---------- */
+
+@media (max-width: 40rem) {
+    .up-modal {
+        width: 100%;
+        max-height: calc(100dvh - var(--space-5));
+        margin: auto 0 0;
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+
+    .up-modal--page {
+        max-height: none;
+        margin: 0;
+        border-radius: var(--radius-md);
+    }
+
+    .up-modal__head {
+        padding: var(--space-3) var(--space-2) var(--space-1) var(--space-4);
+    }
+
+    .up-modal__title {
+        padding-top: 10px;
+    }
+
+    .up-modal__close {
+        width: var(--target-touch);
+        height: var(--target-touch);
+    }
+
+    .up-modal__body {
+        padding: 0 var(--space-4) var(--space-5);
+    }
+
+    .up-modal__foot {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
+    }
+
+    .up-button {
+        min-height: var(--target-touch);
+        padding: 0 var(--space-2);
+    }
+
+    /* while uploading only the one button is left, it takes the whole width */
+    .up-modal__foot[data-step="busy"] .up-button {
+        grid-column: 1 / -1;
+    }
+
+    .up-drop {
+        min-height: 6rem;
+        padding: var(--space-4);
+    }
+
+    .up-needs__example {
+        min-height: var(--target-touch);
+    }
+
+    .up-result__num {
+        font-size: 2.5rem;
+    }
+
+    .up-result__unit {
+        font-size: var(--text-lg);
+    }
+}
+
+@media (max-width: 40rem) and (prefers-reduced-motion: no-preference) {
+    .up-modal[open] {
+        animation: up-sheet-in 220ms var(--ease-out);
+    }
+}
+
+@keyframes up-sheet-in {
+    from {
+        transform: translateY(100%);
+    }
+}
