@@ -140,7 +140,7 @@
       <li><a href="#csv-import-website-and-api">CSV Import (Website and API)</a></li>
       <li><a href="#import-validation-rules">Import Validation Rules</a></li>
       <li><a href="#timesheet-export-company-layout">Timesheet Export (Company Layout)</a></li>
-      <li><a href="#sample-day-csv">Sample-Day CSV</a></li>
+      <li><a href="#sample-day-csv">Sample-Day CSV</a></li>  
     </ul>
   </li>
   <li>
@@ -508,41 +508,271 @@ Entries are stored as local wall-clock times without a time zone, exactly as the
 ### App data (`AppDbContext`, in `TimePlanner.Core`)
 ### Rules worth knowing
 ### Identity data (`AuthDbContext`, in `TimePlanner.Dashboard`)
+
+This context uses its own history table (`__AuthMigrationHistory`), separate from the time data.
+
+| Table | Purpose | Key columns |
+|---|---|---|
+| ASP.NET Identity tables (`AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, …) | Logins and roles (**Admin**, **Developer**) | `AspNetUsers` adds `AppUserId` (the time-tracking profile), `IsActive` (default true) and `MustChangePassword` |
+| `AuditEvents` | Security audit trail, add-only | `TimestampUtc`, `UserId`, `Email`, `Action`, `Detail`, `IpAddress` |
+| `DaySubmissions` | That a person's day reached the dashboard | `AppUserId`, `Date`, `SubmittedAtUtc`; unique on (`AppUserId`, `Date`) |
+| `RefreshTokens` | Long-lived API sessions | `TokenHash` (unique, SHA-256), `FamilyId`, `FamilyStartedUtc`, `CreatedUtc`, `ExpiresUtc`, `UsedUtc`, `RevokedUtc`, `Stamp` |
+
+`AppUserId` points at a profile in the other database. There is no foreign key between the two, because they are separate contexts.
+
+---
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Import and export formats
+
 ### JSON import (API, used by the widget)
 
+`POST /api/v1/timesheets/import` with a bearer token.
+
+```json
+{
+  "replaceDays": true,
+  "entries": [
+    {
+      "company": "Acme Ltd",
+      "project": "Website Redesign",
+      "activity": "Coding > Frontend",
+      "start": "2026-09-28T09:00:00",
+      "end": "2026-09-28T10:30:00",
+      "note": "Built the login page",
+      "method": "Manual"
+    }
+  ]
+}
+```
+
+- `start` and `end` are **local times with no offset** (no `Z`, no `+02:00`), exactly as the person worked them.
+- `activity` is a path separated by `>`. The first part must be one of **Meeting, Coding, Email, Admin, Design, Learning**. Up to three levels are allowed, and new sub-activities are created on the fly.
+- `note` and `method` are optional. `method` is `Manual` (default), `AutoPrompted` or `AutoTracked`.
+- There is **no user field**: every entry belongs to the person the token was issued to.
+- `replaceDays` (default `false`) replaces that person's stored entries for each day in the request. The widget sends `true`.
+
+Success returns `200`:
+
+```json
+{ "created": 12, "skipped": 0, "errors": [] }
+```
+
+`skipped` counts entries that were already stored (same task, start and end), so sending the same data twice is harmless. If any row fails, the response is `400`, **nothing is stored**, and `errors` lists each problem as `{ "row": 3, "message": "..." }` (`row` 0 means the whole file).
+
 ### CSV import (website upload and API)
+
+The website's **Upload CSV** page and `POST /api/v1/timesheets/import/csv` (multipart form field `file`) use the same rules as the JSON import.
+
+```csv
+Company,Project,Activity,Start,End,Note,Method
+Acme Ltd,Website Redesign,Coding > Frontend,2026-09-28 09:00,2026-09-28 10:30,Built the login page,Manual
+```
+
+- The header row is required. Column order and capitalisation do not matter. `Company`, `Project`, `Activity`, `Start` and `End` are required, `Note` and `Method` are optional, and **any other column is rejected** so a misspelt heading cannot silently drop data.
+- Times are written `yyyy-MM-dd HH:mm` (seconds and a `T` separator are also accepted).
+- A template can be downloaded from `/CsvUpload/Template`.
+
 ### Validation (both formats)
+
+| Rule | Limit |
+|---|---|
+| Rows per import | 5,000 |
+| Upload size | 1 MB for a CSV file, 2 MB for any request body |
+| Company and project names | 1 to 100 characters |
+| Activity names (each level) | 1 to 60 characters, up to 3 levels |
+| Names starting with `=`, `+`, `-` or `@`, or containing control characters | refused (stops spreadsheet formula injection) |
+| Entry length | 1 minute to 24 hours, end after start |
+| Dates | after 1 January 2020, and not in the future (one day of allowance for time zones) |
+| Overlaps | two entries for the same person cannot cover the same minute |
+| Note | up to 2,000 characters |
+| Project status | entries for a closed project are refused |
+
+The whole import is **all-or-nothing**: every row is checked first, then everything is saved in one transaction.
+
 ### Timesheet export (company layout)
+
+Exports use the company's timesheet layout, one row per entry:
+
+| Column | Example |
+|---|---|
+| Date | `2026-09-28` |
+| Activity/Task | the note, or the activity path if there is no note |
+| Client / Project | `Acme Ltd / Website Redesign` (just the company name for internal work) |
+| Start Time, End Time | `09:00`, `10:30` |
+| Duration (hours) | `1.50` (always a point, whatever the server's language) |
+| Notes | the activity path |
+| Billable | `Yes`, `No` or `Internal` |
+
 ### Sample-day CSV
+
+The Excel file has one worksheet per month, each titled `<Name> Time Log`, with the same columns. Downloads are available as Excel (`.xlsx`) or CSV from the website (My Reports, and Team → Exports for administrators, who can also download a `.zip` with one file per person). The API offers CSV at `GET /api/v1/reports/timesheet.csv` and, for administrators, `GET /api/v1/administration/exports/timesheets`. Both formats are safe to open: CSV is written with formula escaping, and the Excel file stores text such as `=SUM(A1)` as plain text, not a formula (there is a test for each).
+
+---
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 ## REST API reference
+
+Interactive documentation is at `/swagger` in Development, or anywhere when `Api:EnableDocs` is `true`. Paste a token into the **Authorize** box to try calls.
+
 ### Authentication flow
+
+```text
+POST /api/v1/auth/login     { "email": "...", "password": "..." }
+  -> 200 { accessToken, tokenType: "Bearer", expiresAtUtc, refreshToken, refreshExpiresAtUtc }
+
+(send)  Authorization: Bearer <accessToken>    on every other call
+
+POST /api/v1/auth/refresh   { "refreshToken": "..." }
+  -> 200 the same shape as login, with a NEW refreshToken. The old one is now dead.
+
+POST /api/v1/auth/logout    { "refreshToken": "..." }
+  -> 204 always, and the session ends
+```
+
+- The **access token** lasts 30 minutes. The **refresh token** lasts 30 days, renewed on each use, and the whole sign-in session ends after 90 days.
+- A refresh token works **once**. If an already-used one is presented again, it is treated as stolen and the whole session ends (the next refresh gets `401`).
+- Changing a password, deactivating the account, or an account still on a temporary password all end every refresh token.
+- Every failure of login, refresh and logout looks the same (`401`, or `204` for logout), so nobody can tell an unknown email from a wrong password, or a stolen token from an expired one.
+- An account with a temporary password gets `403` from login until it has chosen a new password on the website.
+- Clients must store the new `refreshToken` after every refresh, and should refresh from one place only.
+
 ### Endpoints
+
+All paths start with `/api/v1`. Every endpoint needs a bearer token unless marked **anyone**. **Admin** means the Admin role. Where a *developer* sees only their own data, an admin may pass `userId` to look at one person.
+
+| Method and path | Who | What it does |
+|---|---|---|
+| `POST /auth/login` | anyone | Exchange an email and password for tokens. |
+| `POST /auth/refresh` | anyone | Swap a refresh token for a new pair. |
+| `POST /auth/logout` | anyone | End the session a refresh token belongs to. |
+| `GET /auth/me` | signed in | Who the token belongs to (email, profile id, roles). |
+| `GET /profile` | signed in | Your account details. |
+| `PUT /profile/name` | signed in | Change your display name. |
+| `POST /profile/password` | signed in | Change your password (needs the current one). |
+| `GET /overview?period=today\|week` | signed in | Your home screen: timeline, hours against goal, last submission, breakdown. |
+| `GET /timesheets?view=week\|month&date=` | signed in | A week or month day by day with each day's status. |
+| `POST /timesheets/import` | signed in | Import entries as JSON (see above). |
+| `POST /timesheets/import/csv` | signed in | Import a CSV file (multipart field `file`). |
+| `GET /time-entries?from=&to=` | signed in | Entries between two dates (at most 92 days). |
+| `GET /reports/summary` | signed in | Totals, billable split, breakdown by category, project and person. Give `from` and `to`, or `view` and `date`. |
+| `GET /reports/hours?from=&to=&groupBy=` | signed in | Hours grouped by `Project` (default), `Company`, `User`, `Day` or `Activity`. Optional `userId`, `companyId`. |
+| `GET /reports/timesheet.csv?from=&to=` | signed in | A timesheet as CSV in the company layout. |
+| `GET /companies`, `GET /categories`, `GET /projects`, `GET /projects/{id}`, `GET /tasks` | signed in | Reference data. `projects` takes `companyId` and `activeOnly`. `tasks` returns only your own. |
+| `GET /administration/overview?view=&date=` | Admin | Team hours and submission rate. |
+| `GET /administration/submissions?view=&date=` | Admin | People against working days. |
+| `GET /administration/exports/timesheets?view=&date=&userId=&format=` | Admin | One person's file, or a `.zip` of everyone's without `userId`. `format` is `csv` (default) or `xlsx`. |
+| `GET /users`, `POST /users` | Admin | List accounts, create one (the response holds the temporary password, shown once). |
+| `POST /users/{id}/reset-password`, `/deactivate`, `/reactivate` | Admin | Account actions. |
+| `GET /audit?action=&take=` | Admin | Newest audit events first (`take` 1 to 500, default 100). |
+| `GET /health` (no `/api/v1`) | anyone | `{"status":"ok"}`, or `503` if the database cannot be reached. |
+
 ### Conventions
+
+- **Format.** JSON, camelCase. Dates in a query string are `yyyy-MM-dd`. Times in a body are local, with no offset.
+- **Errors.** Failures are JSON problem details (`application/problem+json`) with a `title`. A validation failure is `400`, no token or an invalid one is `401`, a role or ownership problem is `403`, a missing item is `404`, and too many requests is `429` with `Retry-After: 60`. An unexpected failure is `500` with a generic message and a `traceId`, never a stack trace.
+- **Ownership.** The owner of any data is decided from the token, never from the request. Changing an id in a URL cannot expose someone else's records.
+- **Limits.** Date ranges are at most 92 days. Request bodies are at most 2 MB. Login, refresh, logout and password change share a limit of 10 per minute per address, and imports are limited to 20 per minute per user.
+- **Caching.** Responses carry `Cache-Control: no-store`.
+
+---
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Security
 **Authentication and accounts**
 
+**Authentication and accounts**
+
+- Passwords are hashed by ASP.NET Core Identity. They must be at least 12 characters with an upper-case letter, a lower-case letter, a digit and a symbol.
+- **Lockout:** five wrong passwords lock the account for 15 minutes. Every sign-in failure shows the same message, and an unknown email still costs a password hash, so response time does not reveal which emails have accounts.
+- **Temporary passwords.** An administrator creating or resetting an account gets a 16-character random password, shown once. The person must choose their own before doing anything else, on the website or the API.
+- **Sessions.** The website cookie is `Secure`, `HttpOnly` and `SameSite=Lax`, and lasts 8 hours with sliding expiry. It is re-checked against the account on **every request**, so deactivating someone or changing their password ends their open sessions at once.
+- **Tokens.** Access tokens are signed JWTs (HS256) with issuer and audience checked and a 30-minute life. Each carries a security stamp that is checked on every request. Refresh tokens are random, **stored only as a SHA-256 hash**, single-use, rotated on every use, and a replay ends the whole session. A session is capped at 90 days.
+- **Roles.** Two roles, **Developer** and **Admin**. A login is required everywhere by default. Developers see only their own data, and admin-only pages and endpoints check the role.
+- **Deactivation** is a flag, not a delete, so history stays in reports. You cannot deactivate yourself or the last active admin.
+
 **Transport and browser**
 
+- HTTPS redirection in every environment, and HSTS (one year) outside Development.
+- **Content-Security-Policy** with no exceptions for other sites: `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'` (report-only in Development, and not applied to the Swagger page). The Inter font is self-hosted for this reason.
+- Also sent on every response: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy` (camera, microphone, geolocation, payment and USB off), `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Resource-Policy: same-origin`. The `Server` header is removed.
+- **CSRF.** Every form post needs an antiforgery token. The antiforgery cookie is `Secure` and `SameSite=Strict`. The bearer-token API is not exposed to CSRF, since browsers do not send an `Authorization` header on their own.
+- Personal pages and downloads are sent `no-store`, so the back button on a shared computer does not show someone else's time.
+- Behind a proxy that ends TLS, set `Proxy:TrustForwardedHeaders=true` so the real client address and `https` scheme are used. Only turn it on when the app is reachable through the proxy alone.
+  
 **Input and output**
+
+- Every import is validated before anything is stored, with the limits in the table above, and stored in one transaction.
+- Razor encodes every value written into a page, so names and notes containing HTML are shown as text. Tests check this on the admin and user pages.
+- Names beginning with `=`, `+`, `-` or `@` are refused on import, and CSV exports escape formulas, so a spreadsheet opened from the dashboard cannot run injected formulas.
+- Request bodies are limited to 2 MB, and a CSV file to 1 MB.
+- Database access is through Entity Framework with parameters, so there is no string-built SQL.
+- Error responses never include stack traces or file content.
 
 **Rate limiting**
 
+Sign-in, token refresh, logout and password change are limited to 10 per minute per address (`RateLimiting:LoginPerMinute`), on top of the per-account lockout. Imports and uploads are limited to 20 per minute **per signed-in user** (`RateLimiting:ImportPerMinute`), so one person cannot starve the others. A limited request gets `429` and `Retry-After: 60`.
+
+**Audit trail**
+
+Security-relevant events are written to an add-only `AuditEvents` table: `LoginSucceeded`, `LoginFailed`, `LoginLockedOut`, `LoginBlocked`, `Logout`, `RefreshFailed`, `RefreshTokenReuse`, `UserCreated`, `PasswordReset`, `UserDeactivated`, `UserReactivated`, `PasswordChanged`, `ProfileUpdated`, `TimesheetImported`, `TimesheetImportRejected` and `TimesheetExported`. Each row holds the time, the person, the address and a short detail. **Passwords and tokens are never written.** Text that came from a request is shortened and stripped of control characters, so a crafted value cannot forge or hide log lines. Administrators read it at `GET /api/v1/audit`.
+
 **Widget**
 
+- The widget signs in once and **never stores the password**. It keeps the access and refresh tokens in a file encrypted with **Windows DPAPI** for the current Windows user (`dashboard-token.bin`), so another Windows account, or a copy of the file, cannot read it.
+- It only sends a day when the person chooses **Send day**.
+- Signing in with a temporary password is refused until the person has chosen their own on the website.
+- The widget zip is not code-signed, so Windows may show an "unknown publisher" warning the first time. Each release publishes a SHA-256 checksum so the download can be verified.
+
 **Build and supply chain**
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+- **Security analysers.** `Directory.Build.props` turns on every .NET security rule, and about 70 of them (weak cryptography, injection, unsafe XML, missing antiforgery, predictable random numbers) **fail the build**.
+- **Vulnerable packages.** Every restore audits direct and indirect packages against the public advisory list. A **high or critical** advisory fails the build.
+- **Dependabot** opens weekly update pull requests for NuGet packages and GitHub Actions (minor and patch updates grouped).
+- **CodeQL** is set up but stays off until GitHub code scanning is enabled (see CI/CD).
+- **No secrets in the repository.** The signing key, admin credentials and connection strings come from user-secrets or environment variables. The app refuses to start without a strong signing key.
+- **Mutation checks.** Security controls were tested by deliberately breaking them (removing a check, turning off replay detection) and confirming a test fails.
+
+---
 
 
 ## Databases and migrations
-**When you change the model, add a migration for every provider that context runs on:**
+### Contexts and providers
+
+| Context | Holds | SQLite migrations in | SQL Server migrations in |
+|---|---|---|---|
+| `AppDbContext` | people, companies, projects, activities, time entries, settings | `TimePlanner.Core/Migrations` | `TimePlanner.Dashboard/Data/SqlServer/Migrations/App` |
+| `AuthDbContext` | logins, audit, submissions, refresh tokens (history table `__AuthMigrationHistory`) | `TimePlanner.Dashboard/Data/Migrations` | `TimePlanner.Dashboard/Data/SqlServer/Migrations/Auth` |
+
+`Database:Provider` chooses SQLite (default) or SQL Server (`SqlServer`). The dashboard applies any missing migrations to **both** contexts when it starts, so there is no SQL script to run. The widget uses `AppDbContext` on SQLite only.
+
+### Adding a migration
+
+**When you change the model, add a migration for every provider that context runs on.** Install the tool once with `dotnet tool install --global dotnet-ef`, then from the repository root:
+
+```bash
+# time data, SQLite
+dotnet ef migrations add <Name> --context AppDbContext --project TimePlanner.Core
+
+# time data, SQL Server
+dotnet ef migrations add <Name>SqlServer --context SqlServerAppDbContext --project TimePlanner.Dashboard --output-dir Data/SqlServer/Migrations/App
+
+# logins, SQLite  (see the warning below)
+dotnet ef migrations add <Name> --context AuthDbContext --project TimePlanner.Dashboard --output-dir Data/Migrations
+
+# logins, SQL Server
+dotnet ef migrations add <Name>SqlServer --context SqlServerAuthDbContext --project TimePlanner.Dashboard --output-dir Data/SqlServer/Migrations/Auth
+```
+
+> **Warning, check the output.** `dotnet ef` finds design-time factories by type, and the SQL Server login factory can be picked up when you ask for `AuthDbContext`. If the new SQLite migration contains SQL Server types (`nvarchar`, `bit`, `datetime2`) instead of `TEXT`/`INTEGER`, it came from the wrong factory. Delete it and temporarily move `Data/SqlServer/SqlServerDesignTimeFactories.cs` aside while generating the SQLite one, then put the file back.
+
+### How migrations stay in sync
+
+Each model change needs both a SQLite and a SQL Server migration. Two tests in `SqlServerModelTests` fail when a SQL Server migration is missing or stale (`HasPendingModelChanges`), with no server needed, so CI catches a forgotten one. Provider-specific details also matter: for example SQLite cannot translate `ToLowerInvariant()` in a query, so use `ToLower()` inside queries.
+
+---
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -550,13 +780,67 @@ Entries are stored as local wall-clock times without a time zone, exactly as the
 
 
 ## Testing
+### Running the tests
+
+```bash
+dotnet test TimePlanner.Core.Tests
+dotnet test TimePlanner.Api.Tests
+```
+
+At the time of writing: **128 Core tests and 380 API tests, all passing.** The same two commands run in CI on every pull request and again before every deployment, and a release is not built unless the Core tests pass.
+
+### What the tests cover
+
+- **Core tests** (`TimePlanner.Core.Tests`): the domain model and business rules, repositories, the check-in engine and services, and the widget's dashboard client and sync logic.
+- **API tests** (`TimePlanner.Api.Tests`): the real dashboard running in memory against a throwaway SQLite database, with test-only secrets, so they exercise the actual pipeline. They cover:
+  - sign-in on the website (cookie) and the API (JWT), lockout, and rate limits
+  - refresh tokens: rotation, replay detection, expiry, the 90-day cap, theft, password change, deactivation, sign-out
+  - roles, row-level access (one person cannot read another's data) and the admin-only endpoints
+  - the import: every validation rule, all-or-nothing, repeat-safe sends and day replacement
+  - reports, overview, submissions and the Excel and CSV exports, including formula safety
+  - user administration, account settings, temporary passwords and the audit log
+  - security headers, the content-security policy, and a guard that **no page loads anything from another site**
+  - page output encoding, accessibility settings and the SQL Server model
+- **Fixed clock.** Date-dependent tests run with a fixed clock, so they never depend on the day they run.
+- **Mutation checks.** For every security control, I broke the code on purpose and confirmed at least one test failed. Where none did, the test was strengthened.
+
+---
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## CI/CD and releases
-**Repository settings the workflows expect**
-**Releasing the widget**
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+| Workflow | Runs on | What it does |
+|---|---|---|
+| **Build** (`build.yml`) | every push and pull request to `main` and `development` | Backend job (Windows): restore, build and test Core, Dashboard and both test projects. Widget job: build the WPF widget. Security analysers and the package audit run as part of restore and build. |
+| **Deploy Dashboard** (`deploy-dashboard.yml`) | push to `main`, or by hand | Runs both test suites, publishes the dashboard, deploys to Azure App Service and polls `/health` for up to five minutes. |
+| **Release Widget** (`release-widget.yml`) | a tag starting with `v`, or by hand | Tests Core, publishes the widget as a self-contained single file, zips it, writes a SHA-256 file, and attaches both to a GitHub Release. |
+| **CodeQL** (`codeql.yml`) | pushes, pull requests, and weekly | Static security analysis of the C# code. Only runs when the repository variable `ENABLE_CODEQL` is `true`. |
+| **Dependabot** (`dependabot.yml`) | weekly | Update pull requests for NuGet and GitHub Actions, aimed at `development`, with major version bumps ignored. |
+
+**Repository settings the workflows expect**
+
+- **Secret** `AZURE_WEBAPP_PUBLISH_PROFILE` (the App Service publish profile) and **variables** `AZURE_WEBAPP_NAME` and `AZURE_WEBAPP_URL`, used by the deploy workflow.
+- **Settings → Actions → General → Workflow permissions:** read and write, so a tagged run can create a Release.
+- **Branch protection** on `main` and `development`: require a pull request, require the `Backend (Core, Dashboard, tests)` and `Widget (WPF)` checks to pass, block force pushes, and do not allow bypassing. (This needs a plan that supports it on private repositories.)
+- **Dependabot security updates:** switch on in Settings → Code security, so vulnerability fixes arrive straight away rather than weekly.
+- **CodeQL:** enable code scanning in Settings → Code security (needs GitHub Advanced Security on a private repository), then set the repository variable `ENABLE_CODEQL` to `true`.
+- **Labels** `area:widget`, `area:dashboard`, `area:core`, `area:devops` and `area:testing` on pull requests, which group the generated release notes (`.github/release.yml`).
+
+**Releasing the widget**
+
+1. Make sure `development` has been merged into `main` and the **Deploy Dashboard** run is green (the widget talks to the live dashboard).
+2. Tag the commit on `main` and push the tag:
+
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+3. The **Release Widget** workflow tests, builds and publishes `TimePlanner-Widget-1.0.0-win-x64.zip` and `.sha256` to the GitHub Release. The tag becomes the version inside the app (`v1.0.0` becomes `1.0.0`). A tag that is not a version like `1.2.3` is refused.
+4. To try the build without releasing, run the workflow by hand from the Actions tab: it keeps the zip as a build artifact with the version `0.0.0-dev.<run number>`.
+
+---
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Deployment
 ### Dashboard on Azure App Service 
