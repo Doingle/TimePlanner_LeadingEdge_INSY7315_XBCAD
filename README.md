@@ -1,10 +1,12 @@
 <div align="center">
  <a id="readme-top"></a>
 
+##  * NB! * - To find demo account details, check the ARC submissions of ST10449392, ST10438312, or ST10434135
 
 <h3 align="center">Time Planner</h3>
   <p align="center">
     XBCAD Repo for Time Planner, a check-in based time tracker for developers.
+   
     <br />
     <br />
   </p>
