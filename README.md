@@ -141,6 +141,7 @@
       <li><a href="#import-validation-rules">Import Validation Rules</a></li>
       <li><a href="#timesheet-export-company-layout">Timesheet Export (Company Layout)</a></li>
       <li><a href="#sample-day-csv">Sample-Day CSV</a></li>
+      
     </ul>
   </li>
   <li>
@@ -474,12 +475,91 @@ This context uses its own history table (`__AuthMigrationHistory`), separate fro
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Import and export formats
+
 ### JSON import (API, used by the widget)
 
+`POST /api/v1/timesheets/import` with a bearer token.
+
+```json
+{
+  "replaceDays": true,
+  "entries": [
+    {
+      "company": "Acme Ltd",
+      "project": "Website Redesign",
+      "activity": "Coding > Frontend",
+      "start": "2026-09-28T09:00:00",
+      "end": "2026-09-28T10:30:00",
+      "note": "Built the login page",
+      "method": "Manual"
+    }
+  ]
+}
+```
+
+- `start` and `end` are **local times with no offset** (no `Z`, no `+02:00`), exactly as the person worked them.
+- `activity` is a path separated by `>`. The first part must be one of **Meeting, Coding, Email, Admin, Design, Learning**. Up to three levels are allowed, and new sub-activities are created on the fly.
+- `note` and `method` are optional. `method` is `Manual` (default), `AutoPrompted` or `AutoTracked`.
+- There is **no user field**: every entry belongs to the person the token was issued to.
+- `replaceDays` (default `false`) replaces that person's stored entries for each day in the request. The widget sends `true`.
+
+Success returns `200`:
+
+```json
+{ "created": 12, "skipped": 0, "errors": [] }
+```
+
+`skipped` counts entries that were already stored (same task, start and end), so sending the same data twice is harmless. If any row fails, the response is `400`, **nothing is stored**, and `errors` lists each problem as `{ "row": 3, "message": "..." }` (`row` 0 means the whole file).
+
 ### CSV import (website upload and API)
+
+The website's **Upload CSV** page and `POST /api/v1/timesheets/import/csv` (multipart form field `file`) use the same rules as the JSON import.
+
+```csv
+Company,Project,Activity,Start,End,Note,Method
+Acme Ltd,Website Redesign,Coding > Frontend,2026-09-28 09:00,2026-09-28 10:30,Built the login page,Manual
+```
+
+- The header row is required. Column order and capitalisation do not matter. `Company`, `Project`, `Activity`, `Start` and `End` are required, `Note` and `Method` are optional, and **any other column is rejected** so a misspelt heading cannot silently drop data.
+- Times are written `yyyy-MM-dd HH:mm` (seconds and a `T` separator are also accepted).
+- A template can be downloaded from `/CsvUpload/Template`.
+
 ### Validation (both formats)
+
+| Rule | Limit |
+|---|---|
+| Rows per import | 5,000 |
+| Upload size | 1 MB for a CSV file, 2 MB for any request body |
+| Company and project names | 1 to 100 characters |
+| Activity names (each level) | 1 to 60 characters, up to 3 levels |
+| Names starting with `=`, `+`, `-` or `@`, or containing control characters | refused (stops spreadsheet formula injection) |
+| Entry length | 1 minute to 24 hours, end after start |
+| Dates | after 1 January 2020, and not in the future (one day of allowance for time zones) |
+| Overlaps | two entries for the same person cannot cover the same minute |
+| Note | up to 2,000 characters |
+| Project status | entries for a closed project are refused |
+
+The whole import is **all-or-nothing**: every row is checked first, then everything is saved in one transaction.
+
 ### Timesheet export (company layout)
+
+Exports use the company's timesheet layout, one row per entry:
+
+| Column | Example |
+|---|---|
+| Date | `2026-09-28` |
+| Activity/Task | the note, or the activity path if there is no note |
+| Client / Project | `Acme Ltd / Website Redesign` (just the company name for internal work) |
+| Start Time, End Time | `09:00`, `10:30` |
+| Duration (hours) | `1.50` (always a point, whatever the server's language) |
+| Notes | the activity path |
+| Billable | `Yes`, `No` or `Internal` |
+
 ### Sample-day CSV
+
+The Excel file has one worksheet per month, each titled `<Name> Time Log`, with the same columns. Downloads are available as Excel (`.xlsx`) or CSV from the website (My Reports, and Team → Exports for administrators, who can also download a `.zip` with one file per person). The API offers CSV at `GET /api/v1/reports/timesheet.csv` and, for administrators, `GET /api/v1/administration/exports/timesheets`. Both formats are safe to open: CSV is written with formula escaping, and the Excel file stores text such as `=SUM(A1)` as plain text, not a formula (there is a test for each).
+
+---
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
