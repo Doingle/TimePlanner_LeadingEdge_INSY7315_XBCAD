@@ -109,6 +109,17 @@
                     <TextBlock x:Name="SoundLabel" Text="Sound on check-in" VerticalAlignment="Center" />
                 </DockPanel>
 
+                <StackPanel Margin="{StaticResource GapFieldToField}">
+                    <DockPanel MinHeight="{StaticResource SizeControl}">
+                        <ToggleButton x:Name="StartupSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}" Margin="16,0,0,0"
+                                      AutomationProperties.LabeledBy="{Binding ElementName=StartupLabel}"
+                                      Checked="Startup_Changed" Unchecked="Startup_Changed" />
+                        <TextBlock x:Name="StartupLabel" Text="Start with Windows" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock x:Name="StartupHelp" Style="{StaticResource Text.Help}" Text="Opens when you sign in to Windows." />
+                    <TextBlock x:Name="StartupError" Style="{StaticResource Text.Error}" TextWrapping="Wrap" Visibility="Collapsed" />
+                </StackPanel>
+
                 <Button Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}" Content="Done"
                         Click="CloseAdvanced_Click" />
             </StackPanel>
