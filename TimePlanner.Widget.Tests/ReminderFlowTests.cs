@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Extensions;
@@ -229,6 +230,8 @@ public class ReminderFlowTests
         public ReminderHistory History { get; } = new();
         public RecordingHost Window { get; } = new();
         public FakeDashboard Http { get; } = new();
+        // Windows startup kept in memory, so the tests never touch the real Run key
+        public InMemoryStartupRegistration Startup { get; } = new();
         public ServiceProvider Services { get; private set; } = null!;
         public WidgetFlow Flow => Services.GetRequiredService<WidgetFlow>();
 
@@ -255,6 +258,8 @@ public class ReminderFlowTests
             services.AddSingleton<TimeLogService>();
             services.AddSingleton<CsvExportService>();
             services.AddSingleton<UnsentDayReminder>();
+            services.AddSingleton(provider => new StartupService(host.Startup, @"C:\Test\TimePlanner.Widget.exe",
+                provider.GetRequiredService<ILogger<StartupService>>()));
             services.AddSingleton<WidgetFlow>();
             host.Services = services.BuildServiceProvider();
             using (var scope = host.Services.CreateScope())
