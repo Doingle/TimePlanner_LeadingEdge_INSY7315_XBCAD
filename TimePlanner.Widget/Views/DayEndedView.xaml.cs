@@ -20,6 +20,10 @@ namespace TimePlanner.Widget.Views
 
             if (day.Entries.Count > 0)
             {
+                // A day with entries can be sent, so it can be not sent yet
+                ReminderNotice.ShownChanged += (_, _) => ShowOpenTimesheet();
+                ReminderNotice.Initialise(flow, DateOnly.FromDateTime(day.Day));
+                ShowOpenTimesheet();
                 LoggedValue.Text = Format.Duration(day.Logged);
                 EntriesValue.Text = day.Entries.Count.ToString(CultureInfo.InvariantCulture);
                 return;
@@ -33,6 +37,9 @@ namespace TimePlanner.Widget.Views
             EmptyActions.Visibility = Visibility.Visible;
             Card.Padding = (Thickness)FindResource("ShellPadding");
         }
+
+        private void ShowOpenTimesheet() =>
+            OpenTimesheetButton.Visibility = ReminderNotice.IsShown ? Visibility.Collapsed : Visibility.Visible;
 
         private async void Export_Click(object sender, RoutedEventArgs e) => await _flow.ExportCsvAsync(_day);
 
