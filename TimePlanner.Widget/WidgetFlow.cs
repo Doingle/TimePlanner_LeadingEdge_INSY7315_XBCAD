@@ -38,12 +38,14 @@ namespace TimePlanner.Widget
         private readonly TimeLogService _log;
         private readonly CsvExportService _csv;
         private readonly PreferencesStore _preferences;
+        private readonly StartupService _startup;
         private Screen _screen;
         private DaySummary? _endedDay;
         private bool _loaded;
 
         public WidgetFlow(IWidgetHost host, WidgetSession session, CheckInScheduler scheduler, SnoozeManager snooze,
-            TimeLogService log, CsvExportService csv, PreferencesStore preferences, UnsentDayReminder reminder)
+            TimeLogService log, CsvExportService csv, PreferencesStore preferences, UnsentDayReminder reminder,
+            StartupService startup)
         {
             _host = host;
             Session = session;
@@ -53,6 +55,7 @@ namespace TimePlanner.Widget
             _csv = csv;
             _preferences = preferences;
             Reminder = reminder;
+            _startup = startup;
 
             scheduler.Ticked += (_, _) =>
             {
@@ -71,11 +74,16 @@ namespace TimePlanner.Widget
 
         public UnsentDayReminder Reminder { get; }
 
+        /// <summary>Why Windows startup doesn't match the setting, or null when it does. Settings shows it.</summary>
+        public string? StartupProblem { get; private set; }
+
         public async Task LoadAsync()
         {
             _loaded = false;
             Session.User = await _log.SignInAsync();
             Session.Preferences = _preferences.Load();
+            // The first run registers the widget (the setting starts on); later runs follow the saved choice
+            StartupProblem = _startup.Apply(Session.Preferences.StartWithWindows);
             (Session.ProjectId, Session.Activity) = await _log.GetLastChoiceAsync(Session.User.UserId);
             await Scheduler.InitialiseAsync();
             _endedDay = Scheduler.EndedToday ? await _log.GetDayAsync(Session.User.UserId, Scheduler.Now) : null;
@@ -359,6 +367,21 @@ namespace TimePlanner.Widget
         }
 
         public void SavePreferences() => _preferences.Save(Session.Preferences);
+
+        /// <summary>
+        /// Changes Windows startup straight away. The choice is saved only when Windows accepted it, so the
+        /// setting never claims something that isn't so; returns false when it was not changed.
+        /// </summary>
+        public bool ChangeStartWithWindows(bool enabled)
+        {
+            StartupProblem = _startup.Apply(enabled);
+            if (StartupProblem != null)
+                return false;
+
+            Session.Preferences.StartWithWindows = enabled;
+            SavePreferences();
+            return true;
+        }
 
         private void Present(Screen screen, FrameworkElement view, bool activate = true)
         {

@@ -28,7 +28,7 @@ namespace TimePlanner.Widget
             var connectionString = builder.Configuration.GetConnectionString("Default")
                 ?? DatabasePaths.GetDefaultConnectionString();
             Register(builder.Services, window, connectionString, TimeProvider.System,
-                new PreferencesStore(Path.Combine(DataFolder, "widget.json")));
+                new PreferencesStore(Path.Combine(DataFolder, "widget.json")), new RunKeyStartupRegistration());
             return builder.Build();
         }
 
@@ -36,7 +36,7 @@ namespace TimePlanner.Widget
         public static IHost CreateForPreview(IWidgetHost window, string connectionString, TimeProvider clock)
         {
             var builder = CreateBuilder();
-            Register(builder.Services, window, connectionString, clock, new PreferencesStore(null));
+            Register(builder.Services, window, connectionString, clock, new PreferencesStore(null), new InMemoryStartupRegistration());
             return builder.Build();
         }
 #endif
@@ -62,7 +62,7 @@ namespace TimePlanner.Widget
         }
 
         private static void Register(IServiceCollection services, IWidgetHost window, string connectionString, TimeProvider clock,
-            PreferencesStore preferences)
+            PreferencesStore preferences, IStartupRegistration startup)
         {
             services.AddTimePlannerCore(connectionString);
             services.AddTimePlannerSync();
@@ -73,6 +73,7 @@ namespace TimePlanner.Widget
             services.AddSingleton(window);
             services.AddSingleton(clock);
             services.AddSingleton(preferences);
+            services.AddSingleton(provider => new StartupService(startup, Environment.ProcessPath, provider.GetRequiredService<ILogger<StartupService>>()));
             services.AddSingleton<WidgetSession>();
             services.AddSingleton<SnoozeManager>();
             services.AddSingleton<CheckInScheduler>();

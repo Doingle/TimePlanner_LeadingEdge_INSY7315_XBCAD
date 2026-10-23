@@ -144,17 +144,6 @@ html:has(.up-modal[open]) {
     cursor: pointer;
 }
 
-    .up-button:focus-visible {
-        outline: var(--focus-ring);
-        outline-offset: var(--focus-offset);
-    }
-
-.up-button__icon {
-    flex: none;
-    width: 16px;
-    height: 16px;
-}
-
 .up-button--primary {
     color: #ffffff;
     background: var(--brand-600);
@@ -176,19 +165,6 @@ html:has(.up-modal[open]) {
     color: var(--text);
     background: var(--surface);
     border: 1px solid var(--line-strong);
-}
-
-    .up-button--secondary:hover {
-        background: var(--paper);
-        border-color: var(--text-3);
-    }
-
-.up-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.4);
-    border-top-color: #ffffff;
-    border-radius: 50%;
 }
 
 /* ---------- The file picker ---------- */

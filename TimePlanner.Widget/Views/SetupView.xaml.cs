@@ -38,6 +38,7 @@ namespace TimePlanner.Widget.Views
         private readonly bool _isSettings;
         private readonly List<int> _intervals;
         private readonly bool _ready;
+        private bool _revertingStartup;
 
         public SetupView(WidgetFlow flow, bool isSettings)
         {
@@ -74,6 +75,8 @@ namespace TimePlanner.Widget.Views
             }).IsChecked = true;
 
             SoundSwitch.IsChecked = preferences.SoundOnCheckIn;
+            StartupSwitch.IsChecked = preferences.StartWithWindows;
+            ShowStartup();
 
             _ready = true;
             ApplyIdleSettings();
@@ -164,6 +167,30 @@ namespace TimePlanner.Widget.Views
                 return;
             _flow.Session.Preferences.SoundOnCheckIn = SoundSwitch.IsChecked == true;
             _flow.SavePreferences();
+        }
+
+        private void Startup_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!_ready || _revertingStartup)
+                return;
+
+            if (!_flow.ChangeStartWithWindows(StartupSwitch.IsChecked == true))
+            {
+                // Windows refused: the switch goes back to what is really set, and the message says why
+                _revertingStartup = true;
+                StartupSwitch.IsChecked = _flow.Session.Preferences.StartWithWindows;
+                _revertingStartup = false;
+            }
+            ShowStartup();
+        }
+
+        private void ShowStartup()
+        {
+            StartupHelp.Text = _flow.Session.Preferences.StartWithWindows
+                ? "Opens when you sign in to Windows."
+                : "Open it yourself after signing in.";
+            StartupError.Text = _flow.StartupProblem ?? "";
+            StartupError.Visibility = _flow.StartupProblem == null ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private void ApplyIdleSettings()
