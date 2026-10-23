@@ -28,9 +28,12 @@ namespace TimePlanner.Dashboard.Controllers.Api
         private Task<ApplicationUser?> CurrentAsync() => _users.FindByIdAsync(User.IdentityId() ?? string.Empty);
 
         [HttpGet]
+        [ProducesResponseType<AccountInfo>(StatusCodes.Status200OK)]
         public async Task<ActionResult<AccountInfo>> Get() => await _account.GetAsync((await CurrentAsync())!);
 
         [HttpPut("name")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UpdateName(NameRequest request)
         {
             var result = await _account.UpdateNameAsync((await CurrentAsync())!, request.Name);
@@ -42,6 +45,9 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //limited like signing in is, because a wrong current password is a password guess
         [HttpPost("password")]
         [EnableRateLimiting(SecurityExtensions.LoginLimiter)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
         public async Task<IActionResult> ChangePassword(PasswordRequest request)
         {
             var result = await _account.ChangePasswordAsync((await CurrentAsync())!, request.CurrentPassword, request.NewPassword);

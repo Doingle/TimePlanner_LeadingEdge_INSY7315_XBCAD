@@ -11,6 +11,9 @@ namespace TimePlanner.Dashboard.Controllers.Api
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [Route("api/v1/[controller]")]
     [Produces("application/json")]
+    //every endpoint below inherits these two. Status only: the token and role checks answer with an empty body, so no schema is claimed
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public abstract class ApiControllerBase : ControllerBase
     {
         //the time tracking profile of the caller, null for a login that is not linked to one

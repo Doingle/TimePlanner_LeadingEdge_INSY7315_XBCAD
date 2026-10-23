@@ -20,11 +20,14 @@ namespace TimePlanner.Dashboard.Controllers.Api
             [Required] string Role);
 
         [HttpGet]
+        [ProducesResponseType<List<UserSummary>>(StatusCodes.Status200OK)]
         public async Task<ActionResult<List<UserSummary>>> List() => await _admin.ListAsync();
 
         //-----------------------------
         //201 with the new person and their temporary password. The password is shown here once and cannot be fetched again, only replaced by a reset
         [HttpPost]
+        [ProducesResponseType<PasswordResult>(StatusCodes.Status201Created)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<PasswordResult>> Create(CreateUserRequest request)
         {
             var result = await _admin.CreateAsync(request.Name, request.Email, request.Role);
@@ -34,6 +37,9 @@ namespace TimePlanner.Dashboard.Controllers.Api
         }
 
         [HttpPost("{id}/reset-password")]
+        [ProducesResponseType<PasswordResult>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<PasswordResult>> ResetPassword(string id)
         {
             var result = await _admin.ResetPasswordAsync(id);
@@ -41,6 +47,9 @@ namespace TimePlanner.Dashboard.Controllers.Api
         }
 
         [HttpPost("{id}/deactivate")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Deactivate(string id)
         {
             var result = await _admin.SetActiveAsync(id, active: false);
@@ -48,6 +57,9 @@ namespace TimePlanner.Dashboard.Controllers.Api
         }
 
         [HttpPost("{id}/reactivate")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Reactivate(string id)
         {
             var result = await _admin.SetActiveAsync(id, active: true);
