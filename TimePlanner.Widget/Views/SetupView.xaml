@@ -4,8 +4,9 @@
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
     <controls:WidgetCard x:Name="Card">
         <controls:WidgetCard.Banner>
+            <!-- Covers the card's 1px outline on the top and sides, so no light edge shows around the colour -->
             <Border x:Name="WelcomeBanner" Background="{StaticResource ActionBrush}" CornerRadius="{StaticResource RadiusBanner}"
-                    Padding="16">
+                    Margin="-1,-1,-1,0" Padding="16">
                 <StackPanel>
                     <Border Width="{StaticResource SizeBadge}" Height="{StaticResource SizeBadge}" CornerRadius="{StaticResource RadiusFull}"
                             Background="{StaticResource SurfaceBrush}" HorizontalAlignment="Center">

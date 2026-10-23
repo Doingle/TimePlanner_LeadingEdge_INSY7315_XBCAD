@@ -151,7 +151,7 @@
     <CornerRadius x:Key="RadiusPill">20</CornerRadius>
     <CornerRadius x:Key="RadiusSwitch">12</CornerRadius>
     <CornerRadius x:Key="RadiusGrip">2</CornerRadius>
-    <CornerRadius x:Key="RadiusBanner">15.5,15.5,0,0</CornerRadius>
+    <CornerRadius x:Key="RadiusBanner">16,16,0,0</CornerRadius>
     <CornerRadius x:Key="RadiusMark">5</CornerRadius>
 
     <!-- Line widths -->
