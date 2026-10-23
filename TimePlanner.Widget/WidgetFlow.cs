@@ -41,9 +41,11 @@ namespace TimePlanner.Widget
         private readonly StartupService _startup;
         private Screen _screen;
         private DaySummary? _endedDay;
+        private bool _loaded;
 
         public WidgetFlow(IWidgetHost host, WidgetSession session, CheckInScheduler scheduler, SnoozeManager snooze,
-            TimeLogService log, CsvExportService csv, PreferencesStore preferences, StartupService startup)
+            TimeLogService log, CsvExportService csv, PreferencesStore preferences, UnsentDayReminder reminder,
+            StartupService startup)
         {
             _host = host;
             Session = session;
@@ -52,10 +54,13 @@ namespace TimePlanner.Widget
             _log = log;
             _csv = csv;
             _preferences = preferences;
+            Reminder = reminder;
             _startup = startup;
 
             scheduler.Ticked += (_, _) =>
             {
+                if (_loaded)
+                    _ = Reminder.RefreshAsync(Scheduler.EndedToday);
                 if (_screen is Screen.Idle or Screen.Timer && Scheduler.IsDue)
                     CheckIn(announce: true);
             };
@@ -67,17 +72,23 @@ namespace TimePlanner.Widget
 
         public SnoozeManager Snooze { get; }
 
+        public UnsentDayReminder Reminder { get; }
+
         /// <summary>Why Windows startup doesn't match the setting, or null when it does. Settings shows it.</summary>
         public string? StartupProblem { get; private set; }
 
         public async Task LoadAsync()
         {
+            _loaded = false;
             Session.User = await _log.SignInAsync();
             Session.Preferences = _preferences.Load();
             // The first run registers the widget (the setting starts on); later runs follow the saved choice
             StartupProblem = _startup.Apply(Session.Preferences.StartWithWindows);
             (Session.ProjectId, Session.Activity) = await _log.GetLastChoiceAsync(Session.User.UserId);
             await Scheduler.InitialiseAsync();
+            _endedDay = Scheduler.EndedToday ? await _log.GetDayAsync(Session.User.UserId, Scheduler.Now) : null;
+            _loaded = true;
+            _ = Reminder.RefreshAsync(Scheduler.EndedToday);
         }
 
         /// <summary>The first screen: Setup, or the idle widget when today is still being tracked (the widget was restarted).</summary>
@@ -85,6 +96,8 @@ namespace TimePlanner.Widget
         {
             if (Scheduler.IsRunning)
                 ShowIdle();
+            else if (_endedDay?.Day.Date == Scheduler.Now.Date)
+                ShowDayEnded(_endedDay);
             else
                 ShowSetup();
         }
@@ -107,7 +120,7 @@ namespace TimePlanner.Widget
         {
             if (Scheduler.IsRunning)
                 ShowTimer(activate: true);
-            else if (_endedDay != null)
+            else if (_endedDay?.Day.Date == Scheduler.Now.Date)
                 ShowDayEnded(_endedDay);
             else
                 ShowSetup();
@@ -281,7 +294,15 @@ namespace TimePlanner.Widget
 
         //-----------------------------
         //sends a day to the dashboard
-        public Task<SendOutcome> SendDayAsync(DateOnly day) => _log.SendDayAsync(Session.User.UserId, day);
+        public async Task<SendOutcome> SendDayAsync(DateOnly day)
+        {
+            var outcome = await _log.SendDayAsync(Session.User.UserId, day);
+            if (outcome.Status == SendStatus.Sent)
+                Reminder.DaySent(day);
+            return outcome;
+        }
+
+        public Task OpenReminderTimesheetAsync() => ShowTimesheetAsync(Reminder.Today, ShowFromTray);
 
         //-----------------------------
         //the host name of the dashboard client

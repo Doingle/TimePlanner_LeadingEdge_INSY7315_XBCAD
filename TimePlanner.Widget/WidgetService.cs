@@ -77,6 +77,7 @@ namespace TimePlanner.Widget
             services.AddSingleton<WidgetSession>();
             services.AddSingleton<SnoozeManager>();
             services.AddSingleton<CheckInScheduler>();
+            services.AddSingleton<UnsentDayReminder>();
             services.AddSingleton<TimeLogService>();
             services.AddSingleton<CsvExportService>();
             services.AddSingleton<WidgetFlow>();

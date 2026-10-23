@@ -26,6 +26,7 @@ namespace TimePlanner.Widget.Controls
         Settings,
         Pause, Play,
         Download,
+        Send,
         ShapePill, ShapeRing, ShapeDot,
         ClockHands,
     }
@@ -161,6 +162,8 @@ namespace TimePlanner.Widget.Controls
             [IconKind.Play] = [new(Freeze(Geometry.Parse("M8,5.2 V18.8 A1,1 0 0 0 9.5,19.66 L20.7,12.86 A1,1 0 0 0 20.7,11.14 L9.5,4.34 A1,1 0 0 0 8,5.2 Z")), Filled: true)],
 
             [IconKind.Download] = [P("M12,4 V15"), P("M7,10 L12,15 L17,10"), P("M5,20 H19")],
+
+            [IconKind.Send] = [P("M22,2 L11,13"), P("M22,2 L15,22 L11,13 L2,9 Z")],
 
             [IconKind.ShapePill] = [new(Freeze(new RectangleGeometry(new Rect(1, 7, 22, 10), 5, 5)))],
             [IconKind.ShapeRing] = [Circle(12, 12, 8, strokeWidth: 2.5, opacity: 0.25), new(Arc(12, 12, 8, (50.3 - 15) / (2 * Math.PI * 8)), StrokeWidth: 2.5),],

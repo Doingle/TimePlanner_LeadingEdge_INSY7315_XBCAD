@@ -1,0 +1,20 @@
+<UserControl x:Class="TimePlanner.Widget.Views.UnsentDayReminderView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
+             Visibility="Collapsed">
+    <!-- One row: send icon, "Timesheet not sent yet" over "Open timesheet to send", chevron. The whole row opens the timesheet -->
+    <Button x:Name="OpenButton" Style="{StaticResource NavRow}" Height="Auto" Padding="16,12"
+            Margin="{StaticResource GapSection}" AutomationProperties.Name="Timesheet not sent yet. Open timesheet to send"
+            Click="Open_Click">
+        <DockPanel>
+            <controls:Icon Kind="Send" DockPanel.Dock="Left" Margin="0,0,16,0" VerticalAlignment="Center" />
+            <controls:Icon Kind="ChevronRight" DockPanel.Dock="Right" Margin="8,0,0,0" VerticalAlignment="Center"
+                           Foreground="{StaticResource TextSecondaryBrush}" />
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Timesheet not sent yet" FontWeight="{StaticResource FontWeightSemibold}" />
+                <TextBlock Style="{StaticResource Text.Caption}" Text="Open timesheet to send" Foreground="{StaticResource TextSecondaryBrush}" />
+            </StackPanel>
+        </DockPanel>
+    </Button>
+</UserControl>
