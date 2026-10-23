@@ -310,11 +310,6 @@
         border-color: var(--text-3);
     }
 
-    .ax-button:focus-visible {
-        outline: var(--focus-ring);
-        outline-offset: var(--focus-offset);
-    }
-
 /* ---------- Phones ---------- */
 
 @media (max-width: 40rem) {
