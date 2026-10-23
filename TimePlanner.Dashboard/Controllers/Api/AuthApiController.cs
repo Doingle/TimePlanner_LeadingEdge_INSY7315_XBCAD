@@ -43,6 +43,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //the refresh token is what keeps a client signed in, the access token only lasts minutes
         public record TokenResponse(string AccessToken, string TokenType, DateTime ExpiresAtUtc, string RefreshToken, DateTime RefreshExpiresAtUtc);
 
+        public record MeResponse(string? Email, string? AppUserId, IEnumerable<string> Roles);
+
         //-----------------------------
         //every failure returns the same 401 whether the email is unknown, the password is wrong or the account is locked out,
         //and failures count towards the same lockout policy as the website
@@ -50,6 +52,11 @@ namespace TimePlanner.Dashboard.Controllers.Api
         [AllowAnonymous]
         [HttpPost("login")]
         [EnableRateLimiting(SecurityExtensions.LoginLimiter)]
+        [ProducesResponseType<TokenResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
         public async Task<IActionResult> Login(LoginRequest request)
         {
             var user = await _users.FindByEmailAsync(request.Email);
@@ -85,6 +92,10 @@ namespace TimePlanner.Dashboard.Controllers.Api
         [AllowAnonymous]
         [HttpPost("refresh")]
         [EnableRateLimiting(SecurityExtensions.LoginLimiter)]
+        [ProducesResponseType<TokenResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
         public async Task<IActionResult> Refresh(RefreshRequest request)
         {
             var result = await _refresh.RotateAsync(request.RefreshToken);
@@ -103,6 +114,9 @@ namespace TimePlanner.Dashboard.Controllers.Api
         [AllowAnonymous]
         [HttpPost("logout")]
         [EnableRateLimiting(SecurityExtensions.LoginLimiter)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
         public async Task<IActionResult> Logout(RefreshRequest request)
         {
             var userId = await _refresh.RevokeAsync(request.RefreshToken);
@@ -115,14 +129,14 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //returns who the bearer token belongs to, lets a client check that its token still works
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         [HttpGet("me")]
+        [ProducesResponseType<MeResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public IActionResult Me()
         {
-            return Ok(new
-            {
-                Email = User.FindFirst("email")?.Value,
-                AppUserId = User.FindFirst("uid")?.Value,
-                Roles = User.FindAll("role").Select(c => c.Value)
-            });
+            return Ok(new MeResponse(
+                User.FindFirst("email")?.Value,
+                User.FindFirst("uid")?.Value,
+                User.FindAll("role").Select(c => c.Value)));
         }
     }
 }

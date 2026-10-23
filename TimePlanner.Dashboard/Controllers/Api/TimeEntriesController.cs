@@ -17,6 +17,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //time entries between from and to. Developers only ever receive their own, admins and billing may ask for another user with userId.
         //the owner is decided here from the token, never from the request, so changing an id in the url cannot expose someone else's data
         [HttpGet]
+        [ProducesResponseType<List<TimeEntryDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<List<TimeEntryDto>>> Get([FromQuery, Required] DateTime? from, [FromQuery, Required] DateTime? to, [FromQuery] int? userId)
         {
             if (from > to)

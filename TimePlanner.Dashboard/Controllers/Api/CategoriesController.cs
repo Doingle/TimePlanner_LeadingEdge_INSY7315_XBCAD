@@ -12,6 +12,7 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //-----------------------------
         //the whole activity tree as a flat list, clients rebuild the tree from ParentId
         [HttpGet]
+        [ProducesResponseType<List<CategoryDto>>(StatusCodes.Status200OK)]
         public async Task<ActionResult<List<CategoryDto>>> GetAll() =>
             (await _categories.GetAllAsync())
                 .OrderBy(c => c.SortOrder)
