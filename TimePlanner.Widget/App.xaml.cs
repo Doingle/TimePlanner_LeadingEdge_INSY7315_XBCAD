@@ -82,6 +82,7 @@ namespace TimePlanner.Widget
             _tray = new TrayIconManager(ShowWidget, () => _ = _flow.ShowTimesheetAsync(DateOnly.FromDateTime(DateTime.Now), _flow.ShowFromTray));
 #if DEBUG
             _tray.AddPreviews(ShowPreview);
+            _tray.AddDebugActions(CheckInNow);
 #endif
             _flow.ShowStart();
         }
@@ -134,6 +135,28 @@ namespace TimePlanner.Widget
         {
             _preview?.Dispose();
             _preview = null;
+        }
+
+        //-----------------------------
+        //triggers immediate check in for testing
+        private void CheckInNow()
+        {
+            //guard when flow is not initialized
+            if (_flow == null)
+            {
+                return;
+            }
+
+            //prompt check in alert when scheduler is active
+            if (_flow.Scheduler.IsRunning)
+            {
+                _flow.CheckIn(announce: true);
+            }
+            //otherwise navigate from tray
+            else
+            {
+                _flow.ShowFromTray();
+            }
         }
 #endif
 

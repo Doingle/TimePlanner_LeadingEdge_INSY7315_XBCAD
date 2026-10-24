@@ -60,6 +60,26 @@ namespace TimePlanner.Widget
             }
             _menu.Items.Insert(1, previews);
         }
+
+        //-----------------------------
+        //adds debug only actions to the tray menu
+        public void AddDebugActions(Action checkInNow)
+        {
+            var item = new MenuItem { Header = "Debug: Check in now" };
+            item.Click += (_, _) => checkInNow();
+
+            var previewsIndex = _menu.Items.IndexOf(_menu.Items.OfType<MenuItem>().FirstOrDefault(m => (m.Header as string) == "Preview screens"));
+            //insert directly below preview screens when present
+            if (previewsIndex >= 0)
+            {
+                _menu.Items.Insert(previewsIndex + 1, item);
+            }
+            //otherwise insert at default position
+            else
+            {
+                _menu.Items.Insert(1, item);
+            }
+        }
 #endif
 
         public void Dispose() => _icon.Dispose();

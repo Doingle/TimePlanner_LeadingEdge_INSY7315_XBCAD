@@ -84,6 +84,17 @@ namespace TimePlanner.Widget
             }),
 
             new("check-in", "Check-in alert", "Check-in alert", async s => (await Afternoon(s, 16, 35)).CheckIn()),
+
+            new("ai-settings", "Voice and AI", "Voice and AI settings", async s =>
+                (await Afternoon(s, 16, 35)).ShowAiSettings(() => s.Flow.ShowSettings())),
+            new("voice-note", "Voice and AI", "Recording a voice note", async s =>
+            {
+                var flow = await Afternoon(s, 16, 35);
+                flow.CheckIn();
+                flow.StartVoiceNote();
+            }),
+            new("day-build", "Voice and AI", "Build my day", async s =>
+                await (await Afternoon(s, 16, 35)).ShowDayBuildAsync(DateOnly.FromDateTime(PreviewSession.Day), s.Flow.ShowFromTray)),
         ];
 
         public static ScreenPreview? Find(string id) =>
