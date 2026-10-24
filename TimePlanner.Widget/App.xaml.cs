@@ -84,6 +84,10 @@ namespace TimePlanner.Widget
             _tray.AddPreviews(ShowPreview);
 #endif
             _flow.ShowStart();
+            var updates = _app.Services.GetRequiredService<Services.WidgetUpdateChecker>();
+            _window.AttachUpdates(updates);
+            _flow.DashboardSignedIn += (_, _) => _ = updates.CheckAsync();
+            _ = updates.CheckAsync();
         }
 
         protected override void OnExit(ExitEventArgs e)

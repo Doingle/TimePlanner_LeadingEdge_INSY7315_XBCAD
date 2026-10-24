@@ -18,8 +18,8 @@ namespace TimePlanner.Api.Tests
     //keeps the swagger page complete: every endpoint has to say what it can answer with
     public class OpenApiDocsTests
     {
-        //signing in and out is open to everyone, so these are the only endpoints that cannot answer 401
-        private static readonly string[] Anonymous = ["/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout"];
+        //public endpoints do not require authentication or authorization responses
+        private static readonly string[] Anonymous = ["/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/api/v1/widget/version"];
 
         [Fact]
         public async Task EveryEndpoint_ListsItsResponses()
@@ -44,7 +44,7 @@ namespace TimePlanner.Api.Tests
                         gaps.Add($"{name} lists no success response");
                     if (!Anonymous.Contains(path.Name) && !codes.Contains("401"))
                         gaps.Add($"{name} does not list 401");
-                    if (!path.Name.StartsWith("/api/v1/auth/") && !codes.Contains("403"))
+                    if (!path.Name.StartsWith("/api/v1/auth/") && !Anonymous.Contains(path.Name) && !codes.Contains("403"))
                         gaps.Add($"{name} does not list 403");
                     if (takesInput && !codes.Contains("400"))
                         gaps.Add($"{name} takes input but does not list 400");

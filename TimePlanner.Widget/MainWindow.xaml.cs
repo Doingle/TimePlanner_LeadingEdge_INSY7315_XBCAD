@@ -12,6 +12,8 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using TimePlanner.Widget.Controls;
+using TimePlanner.Widget.Services;
+using TimePlanner.Widget.Views;
 
 namespace TimePlanner.Widget
 {
@@ -36,6 +38,7 @@ namespace TimePlanner.Widget
         private Point? _anchor;        
         private bool _positioning;
         private Slot? _shown;          
+        private WidgetUpdateChecker? _updates;
 
         public MainWindow()
         {
@@ -43,6 +46,32 @@ namespace TimePlanner.Widget
             SizeChanged += (_, _) => Reposition();
             LocationChanged += (_, _) => Reanchor();
             Closed += (_, _) => Application.Current.Shutdown();
+            UpdateNotice.Dismissed += (_, _) => _updates?.Dismiss();
+        }
+
+        public void AttachUpdates(WidgetUpdateChecker updates)
+        {
+            if (_updates != null)
+                _updates.Changed -= UpdatesChanged;
+            _updates = updates;
+            _updates.Changed += UpdatesChanged;
+            UpdateNoticeVisibility();
+        }
+
+        private void UpdatesChanged(object? sender, EventArgs e) => UpdateNoticeVisibility();
+
+        private void UpdateNoticeVisibility()
+        {
+            // Defer while hidden/collapsed or working in sign-in, logging and Timesheet screens.
+            var show = _updates?.Available != null && IsVisible
+                && Host.Content is SetupView or TimerView or DayEndedView;
+            var wasVisible = UpdateNotice.Visibility == Visibility.Visible;
+            UpdateNotice.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            Host.IsEnabled = !show;
+            if (show && !wasVisible && IsActive)
+                UpdateNotice.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+            else if (!show && wasVisible && IsActive && Host.Content is FrameworkElement screen)
+                screen.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
         }
 
 
@@ -72,12 +101,15 @@ namespace TimePlanner.Widget
 
         private void Present(FrameworkElement screen, bool activate)
         {
+            if (UpdateNotice.Visibility == Visibility.Visible)
+                _updates?.Dismiss();
             Host.Content = screen;
             if (!IsVisible)
                 Show();
 
             UpdateLayout();
             Reposition();
+            UpdateNoticeVisibility();
 
             if (activate)
             {
@@ -85,13 +117,18 @@ namespace TimePlanner.Widget
                 Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
                 {
                     if (Host.Content == screen && IsActive)
-                        screen.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+                    {
+                        var target = UpdateNotice.Visibility == Visibility.Visible ? (FrameworkElement)UpdateNotice : screen;
+                        target.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+                    }
                 });
             }
         }
 
         private void HideWidget()
         {
+            if (UpdateNotice.Visibility == Visibility.Visible)
+                _updates?.Dismiss();
             Hide();
             Host.Content = null;
         }

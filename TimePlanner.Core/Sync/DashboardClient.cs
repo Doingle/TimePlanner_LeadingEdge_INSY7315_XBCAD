@@ -16,6 +16,24 @@ namespace TimePlanner.Core.Sync
         //the site this client talks to
         public Uri? Address => _http.BaseAddress;
 
+        // Optional metadata: old dashboards, offline hosts and malformed responses mean no notice.
+        public async Task<WidgetRelease?> GetWidgetReleaseAsync(CancellationToken cancellationToken = default)
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(3));
+            try
+            {
+                using var response = await _http.GetAsync("api/v1/widget/version", timeout.Token);
+                if (!response.IsSuccessStatusCode)
+                    return null;
+                return await response.Content.ReadFromJsonAsync<WidgetRelease>(cancellationToken: timeout.Token);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException or NotSupportedException)
+            {
+                return null;
+            }
+        }
+
         //-----------------------------
         //signs in and returns a token outcome
         public async Task<SignInOutcome> SignInAsync(string email, string password)
