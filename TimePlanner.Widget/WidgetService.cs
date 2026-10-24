@@ -7,12 +7,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using TimePlanner.Core.Ai;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Core.Services;
 using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
+using TimePlanner.Widget.Services.Ai;
 
 namespace TimePlanner.Widget
 {
@@ -28,7 +30,8 @@ namespace TimePlanner.Widget
             var connectionString = builder.Configuration.GetConnectionString("Default")
                 ?? DatabasePaths.GetDefaultConnectionString();
             Register(builder.Services, window, connectionString, TimeProvider.System,
-                new PreferencesStore(Path.Combine(DataFolder, "widget.json")));
+                new PreferencesStore(Path.Combine(DataFolder, "widget.json")),
+                Path.Combine(DataFolder, "voice"));
             return builder.Build();
         }
 
@@ -36,7 +39,8 @@ namespace TimePlanner.Widget
         public static IHost CreateForPreview(IWidgetHost window, string connectionString, TimeProvider clock)
         {
             var builder = CreateBuilder();
-            Register(builder.Services, window, connectionString, clock, new PreferencesStore(null));
+            var tempVoice = Path.Combine(Path.GetTempPath(), "TimePlannerPreview", "voice");
+            Register(builder.Services, window, connectionString, clock, new PreferencesStore(null), tempVoice);
             return builder.Build();
         }
 #endif
@@ -62,7 +66,7 @@ namespace TimePlanner.Widget
         }
 
         private static void Register(IServiceCollection services, IWidgetHost window, string connectionString, TimeProvider clock,
-            PreferencesStore preferences)
+            PreferencesStore preferences, string? voiceFolder = null)
         {
             services.AddTimePlannerCore(connectionString);
             services.AddTimePlannerSync();
@@ -79,6 +83,16 @@ namespace TimePlanner.Widget
             services.AddSingleton<TimeLogService>();
             services.AddSingleton<CsvExportService>();
             services.AddSingleton<WidgetFlow>();
+
+            var voicePath = voiceFolder ?? Path.Combine(DataFolder, "voice");
+            services.AddSingleton<IVoiceNoteStore>(_ => new FileVoiceNoteStore(voicePath));
+            services.AddSingleton<WhisperModelManager>();
+            services.AddSingleton(sp => new LocalWhisperTranscriber(
+                sp.GetRequiredService<WhisperModelManager>(),
+                sp.GetRequiredService<WidgetSession>().Preferences.Ai));
+            services.AddSingleton<AiKeyStore>();
+            services.AddSingleton<VoiceTranscriptionQueue>();
+            services.AddSingleton<AiService>();
         }
     }
 }
