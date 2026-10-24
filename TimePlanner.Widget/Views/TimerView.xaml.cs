@@ -6,12 +6,10 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Windows.Threading;
 using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
 
@@ -23,26 +21,16 @@ namespace TimePlanner.Widget.Views
     public partial class TimerView : UserControl
     {
         private readonly WidgetFlow _flow;
-        private readonly DispatcherTimer _leaveTimer;
 
         public TimerView(WidgetFlow flow)
         {
             InitializeComponent();
             _flow = flow;
 
-            _leaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-            _leaveTimer.Tick += (_, _) =>
-            {
-                _leaveTimer.Stop();
-                if (!Card.IsMouseOver && IsLoaded)
-                    _flow.ShowIdle();
-            };
-
             ShowState();
             Loaded += (_, _) => flow.Scheduler.Ticked += Scheduler_Ticked;
             Unloaded += (_, _) =>
             {
-                _leaveTimer.Stop();
                 flow.Scheduler.Ticked -= Scheduler_Ticked;
             };
         }
@@ -52,6 +40,7 @@ namespace TimePlanner.Widget.Views
         private void ShowState()
         {
             var scheduler = _flow.Scheduler;
+            LogButton.Content = $"Log time since {Format.Clock(_flow.GetLogPeriod().Start)}";
             var paused = scheduler.PausedAt;
             PauseIcon.Kind = paused != null ? IconKind.Play : IconKind.Pause;
             var action = paused != null ? "Resume the timer" : "Pause the timer";
@@ -80,12 +69,11 @@ namespace TimePlanner.Widget.Views
 
         private void Settings_Click(object sender, RoutedEventArgs e) => _flow.ShowSettings();
 
+        private void Exit_Click(object sender, RoutedEventArgs e) => _flow.AskExit();
+
         private async void LogNow_Click(object sender, RoutedEventArgs e) => await _flow.LogTimeAsync(LogEntryMode.LogNow);
 
         private void EndDay_Click(object sender, RoutedEventArgs e) => _flow.AskEndDay();
 
-        private void Card_MouseEnter(object sender, MouseEventArgs e) => _leaveTimer.Stop();
-
-        private void Card_MouseLeave(object sender, MouseEventArgs e) => _leaveTimer.Start();
     }
 }

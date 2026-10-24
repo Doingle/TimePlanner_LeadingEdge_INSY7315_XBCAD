@@ -35,6 +35,7 @@ namespace TimePlanner.Widget
             new("idle-ring", "Idle and timer", "Resting: ring", s => Idle(s, IdleShape.Ring)),
             new("idle-dot", "Idle and timer", "Resting: dot", s => Idle(s, IdleShape.Dot)),
             new("timer", "Idle and timer", "Timer, running", async s => (await Afternoon(s, 15, 23)).ShowTimer(activate: true)),
+            new("tray-menu", "Idle and timer", "Tray menu", async s => (await Afternoon(s, 15, 23)).ShowTimer(activate: true)),
             // Without the sample entries, which run to 3:05 PM and so would come after a morning start
             new("timer-paused", "Idle and timer", "Timer, paused", async s =>
             {

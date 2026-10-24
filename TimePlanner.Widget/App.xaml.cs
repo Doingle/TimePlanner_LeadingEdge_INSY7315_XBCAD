@@ -40,8 +40,8 @@ namespace TimePlanner.Widget
             var index = Array.FindIndex(e.Args, a => string.Equals(a, "--screen", StringComparison.OrdinalIgnoreCase));
             if (index >= 0 && index + 1 < e.Args.Length && ScreenPreviews.Find(e.Args[index + 1]) is { } preview)
             {
-                _tray = new TrayIconManager(ShowWidget, () => { if (_flow != null) _ = _flow.ShowTimesheetAsync(DateOnly.FromDateTime(DateTime.Now), _flow.ShowFromTray); });
-                _tray.AddPreviews(ShowPreview);
+                _window.ShowInTaskbar = true;
+                _tray = CreateTray();
                 await ShowPreviewAsync(preview);
                 return;
             }
@@ -79,11 +79,26 @@ namespace TimePlanner.Widget
                 return;
             }
 
-            _tray = new TrayIconManager(ShowWidget, () => _ = _flow.ShowTimesheetAsync(DateOnly.FromDateTime(DateTime.Now), _flow.ShowFromTray));
-#if DEBUG
-            _tray.AddPreviews(ShowPreview);
-#endif
+            _tray = CreateTray();
             _flow.ShowStart();
+        }
+
+        private TrayIconManager CreateTray() => new(ShowWidget,
+            () => { if (ActiveFlow is { } flow) _ = flow.LogFromTrayAsync(); },
+            () => { if (ActiveFlow is { } flow) _ = flow.ShowTimesheetAsync(DateOnly.FromDateTime(flow.Scheduler.Now), flow.ShowFromTray); },
+            () => ActiveFlow?.ShowSettings(),
+            () => { if (ActiveFlow is { } flow) flow.AskExit(); else Shutdown(); },
+            () => ActiveFlow?.Scheduler.IsRunning == true);
+
+        private WidgetFlow? ActiveFlow
+        {
+            get
+            {
+#if DEBUG
+                if (_preview != null) return _preview.Flow;
+#endif
+                return _flow;
+            }
         }
 
         protected override void OnExit(ExitEventArgs e)
@@ -121,13 +136,13 @@ namespace TimePlanner.Widget
         }
 
 #if DEBUG
-        private async void ShowPreview(ScreenPreview preview) => await ShowPreviewAsync(preview);
-
         private async Task ShowPreviewAsync(ScreenPreview preview)
         {
             ClosePreview();
             _preview = await PreviewSession.StartAsync(_window.OpenSlot(), preview.WithEntries);
             await preview.Show(_preview);
+            if (preview.Id == "tray-menu")
+                await _window.Dispatcher.InvokeAsync(() => _tray?.ShowPreviewMenu(_window), DispatcherPriority.ContextIdle);
         }
 
         private void ClosePreview()
