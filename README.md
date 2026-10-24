@@ -79,6 +79,7 @@
     </ul>
   </li>
   <li><a href="#using-the-widget">Using the Widget</a></li>
+  <li><a href="#voice-notes-and-build-my-day">Voice Notes and Build My Day</a></li>
   <li><a href="#using-the-dashboard">Using the Dashboard</a></li>
   <li><a href="#domain-model-and-business-rules">Domain Model and Business Rules</a>
     <ul>
@@ -557,7 +558,50 @@ Picking things in the widget:
 - Removing an item deletes it if nothing was logged to it. If time was logged, it's hidden instead and the logged time is kept. The internal company and the top-level categories can't be removed.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Voice notes and Build my day
 
+### What it does
+Time Planner supports hands-free voice check-ins throughout the day and automated timesheet construction at the end of the day:
+- **Voice check-ins:** At each check-in alert, click **Speak your update** to record what you worked on (up to 3 minutes) instead of manually selecting projects and activities.
+- **Background transcription:** Audio is transcribed locally in the background using Whisper.net. As soon as speech is transcribed, the audio recording file is permanently deleted.
+- **Build my day:** At the end of the day or from the timesheet, click **Build my day** to have an AI language model analyze your day's voice notes, compare them against your project and activity trees, and compile non-overlapping timesheet entries fitted into your unlogged windows.
+- **Human-in-the-loop review:** All suggested entries display an AI disclaimer banner, compiler flags, and remove buttons. You can edit any suggestion, fix transcript text, or delete notes before sending your timesheet to the dashboard.
+
+### Local and private
+- **100% on your PC:** All speech recognition (Whisper.net) and day compilation (local Ollama) run locally on your machine by default. No audio, transcripts, or project data are sent to external cloud APIs unless you explicitly configure an external OpenAI-compatible endpoint.
+- **Ephemeral audio:** Raw audio recording files are deleted from your disk the moment local transcription succeeds.
+- **Secure key storage:** When using an optional external service, API keys are encrypted with Windows DPAPI (`ProtectedData`, CurrentUser) and stored in `%LOCALAPPDATA%\TimePlanner\ai-keys.bin`—never in plaintext `widget.json`.
+
+### Setting it up
+1. Install Ollama from [ollama.com/download](https://ollama.com/download).
+2. In the widget, open **Settings › Voice and AI**.
+3. Click **Download model** under Build my day.
+4. Click **Download** or **Use a file I have** under Voice notes (models are about 150 MB, about 190 MB, and about 570 MB).
+
+If you prefer a terminal:
+```bash
+ollama pull qwen2.5:3b
+```
+
+### How to swap models
+- **Via Widget Settings:** Open **Settings › Voice and AI** to switch between Whisper models (`Fast (base)` about 150 MB, `Balanced (small)` about 190 MB, `Most accurate (large turbo)` about 570 MB) or choose an alternative compiler engine/model from the refreshed list of local Ollama models.
+- **Custom prompts:** Customize system instructions and few-shot examples by placing or modifying `instructions.md` and `examples.md` in the `Ai\` folder beside the widget executable. The widget automatically detects and uses custom prompt files on disk.
+
+### Removing the models
+- Whisper files are in `%LOCALAPPDATA%\TimePlanner\models` and can be deleted.
+- Ollama models are removed with Ollama, for example `ollama rm qwen2.5:3b`.
+- Uninstalling the widget doesn't remove either.
+
+### Model comparison
+Results are added after the harness has been run on recorded test days; see `tools/TimePlanner.AiEval`.
+
+| Model | Mode | Valid JSON | Project match | Activity match | Time overlap | Avg seconds |
+|---|---|---|---|---|---|---|
+
+| Whisper model | File | Size | Word error rate | Seconds per minute of audio |
+|---|---|---|---|---|
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Using the dashboard
 Every page needs a sign-in, except Login, Privacy, the error page, /health and (when enabled) the Swagger page.
