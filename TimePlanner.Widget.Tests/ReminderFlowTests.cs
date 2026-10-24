@@ -51,6 +51,94 @@ public class ReminderFlowTests
     private static async Task OnUi(Func<Task> test) => await (await Ui.Value).InvokeAsync(test).Task.Unwrap();
 
     [Fact]
+    public Task TrayActionsAreOrderedAndLogAvailabilityRefreshes() => OnUi(async () =>
+    {
+        var calls = new List<string>();
+        var running = false;
+        var menu = TrayIconManager.CreateMenu(() => calls.Add("open"), () => calls.Add("log"),
+            () => calls.Add("timesheet"), () => calls.Add("settings"), () => calls.Add("exit"), () => running);
+        var items = menu.Items.OfType<MenuItem>().ToArray();
+        var slotSize = (double)Application.Current.FindResource("SizeIconSm");
+        Assert.All(items, item =>
+        {
+            var icon = Assert.IsType<TimePlanner.Widget.Controls.Icon>(item.Icon);
+            Assert.Equal(slotSize, icon.Size);
+        });
+        Assert.Equal(TimePlanner.Widget.Controls.IconKind.Edit, ((TimePlanner.Widget.Controls.Icon)items[1].Icon).Kind);
+        Assert.Equal(TimePlanner.Widget.Controls.IconKind.List, ((TimePlanner.Widget.Controls.Icon)items[2].Icon).Kind);
+        Assert.Equal(new[] { "Open Time Planner", "Log time since last check-in", "Timesheet", "Settings", "Exit" },
+            items.Select(item => item.Header.ToString()));
+        Assert.False(items[1].IsEnabled);
+        running = true;
+        menu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent));
+        Assert.True(items[1].IsEnabled);
+        foreach (var item in items) item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        Assert.Equal(new[] { "open", "log", "timesheet", "settings", "exit" }, calls);
+        await Task.CompletedTask;
+    });
+
+    [Fact]
+    public Task ExitAndCancelPreserveOpenDay_AndRestartRestoresLoggingRange() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        host.Flow.ShowTimer();
+        var timer = Assert.IsType<TimerView>(host.Window.Screen);
+        var start = host.Flow.GetLogPeriod().Start;
+        Assert.Equal($"Log time since {Format.Clock(start)}", ((Button)timer.FindName("LogButton")).Content);
+        Render(timer, "timer-feedback");
+        ((Button)timer.FindName("ExitButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var confirmation = Assert.IsType<ExitView>(host.Window.Screen);
+        Assert.Contains("Your day stays open. You can log it later.", ((TextBlock)confirmation.FindName("Explanation")).Text);
+        Render(confirmation, "exit-feedback");
+        ((Button)confirmation.FindName("CancelButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Same(timer, host.Window.Screen);
+
+        var exited = false;
+        host.Flow.AskExit(() => exited = true);
+        confirmation = Assert.IsType<ExitView>(host.Window.Screen);
+        ((Button)confirmation.FindName("ExitButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.True(exited);
+        Assert.True(host.Flow.Scheduler.IsRunning);
+        using (var scope = host.Services.CreateScope())
+            Assert.Null((await scope.ServiceProvider.GetRequiredService<AppDbContext>().DaySessions.SingleAsync()).EndedAt);
+        host.Flow.Scheduler.Dispose();
+        using var restartedScheduler = ActivatorUtilities.CreateInstance<CheckInScheduler>(host.Services);
+        var restarted = ActivatorUtilities.CreateInstance<WidgetFlow>(host.Services, restartedScheduler);
+        await restarted.LoadAsync();
+        Assert.True(restartedScheduler.IsRunning);
+        Assert.Equal(start, restarted.GetLogPeriod().Start);
+        Assert.Equal(0, host.Http.Requests);
+    });
+
+    [Fact]
+    public Task LogRangeRefreshesAfterEntry_AndTrayUsesExistingLogScreen() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.LogFromTrayAsync();
+        Assert.IsType<SetupView>(host.Window.Screen);
+        await host.Flow.StartTrackingAsync();
+        host.Flow.ShowTimer();
+        var timer = Assert.IsType<TimerView>(host.Window.Screen);
+        timer.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        try
+        {
+            await host.SeedEntryAsync();
+            host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+            await host.Flow.Scheduler.LoggedAsync();
+            Assert.Equal($"Log time since {Format.Clock(host.Flow.GetLogPeriod().Start)}", ((Button)timer.FindName("LogButton")).Content);
+            await host.Flow.LogFromTrayAsync();
+            Assert.IsType<LogEntryView>(host.Window.Screen);
+            host.Flow.ShowSettings();
+            var settings = Assert.IsType<SettingsView>(host.Window.Screen);
+            host.Flow.AskExit(() => { });
+            ((Button)((ExitView)host.Window.Screen!).FindName("CancelButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Same(settings, host.Window.Screen);
+        }
+        finally { timer.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent)); }
+    });
+
+    [Fact]
     public Task TimerHasNoNotice_DayEndedRowReplacesOpenTimesheet_AndOpensItWithoutSending() => OnUi(async () =>
     {
         using var host = await TestHost.CreateAsync();

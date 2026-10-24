@@ -32,6 +32,7 @@ namespace TimePlanner.Widget
             Timesheet,
             SignIn,
             EntryEditor,
+            Exit,
         }
 
         private readonly IWidgetHost _host;
@@ -40,6 +41,7 @@ namespace TimePlanner.Widget
         private readonly PreferencesStore _preferences;
         private readonly StartupService _startup;
         private Screen _screen;
+        private FrameworkElement? _view;
         private DaySummary? _endedDay;
         private bool _loaded;
 
@@ -154,6 +156,29 @@ namespace TimePlanner.Widget
         }
 
         public void ShowSettings() => Present(Screen.Settings, new SettingsView(this));
+
+        public Task LogFromTrayAsync()
+        {
+            if (Scheduler.IsRunning)
+                return LogTimeAsync(LogEntryMode.LogNow);
+            ShowFromTray();
+            return Task.CompletedTask;
+        }
+
+        public void AskExit(Action? exit = null)
+        {
+            if (_screen == Screen.Exit)
+                return;
+            var previousScreen = _screen;
+            var previousView = _view;
+            Present(Screen.Exit, new ExitView(this, exit ?? (() => Application.Current.Shutdown()), () =>
+            {
+                if (previousScreen == Screen.Idle || previousView == null)
+                    ShowFromTray();
+                else
+                    Present(previousScreen, previousView);
+            }));
+        }
 
         public void CheckIn(bool announce = false)
         {
@@ -386,6 +411,7 @@ namespace TimePlanner.Widget
         private void Present(Screen screen, FrameworkElement view, bool activate = true)
         {
             _screen = screen;
+            _view = view;
             _host.Present(view, activate);
         }
     }
