@@ -26,6 +26,14 @@
         <Grid>
             <StackPanel x:Name="MainView">
                 <DockPanel x:Name="SettingsHeader" Margin="-8,0,0,0" Visibility="Collapsed">
+                    <Button x:Name="SettingsHelpButton" DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}"
+                            Height="{StaticResource Space32}" Padding="12,0" VerticalAlignment="Center"
+                            ToolTip="Help" AutomationProperties.Name="Help" Click="Help_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:Icon Kind="Info" Size="{StaticResource SizeIconSm}" VerticalAlignment="Center" />
+                            <TextBlock Text="Help" Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                     <Button Style="{StaticResource Button.Icon}" ToolTip="Back" AutomationProperties.Name="Back to the timer"
                             Click="BackToTimer_Click">
                         <controls:Icon Kind="ChevronLeft" />
@@ -55,6 +63,8 @@
 
                 <Button x:Name="PrimaryButton" Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}"
                         Content="Start tracking" Click="Primary_Click" />
+                <Button x:Name="HelpButton" Style="{StaticResource Button.Text}" Margin="{StaticResource GapStacked}"
+                        Content="Help" Click="Help_Click" />
             </StackPanel>
 
             <StackPanel x:Name="AdvancedView" Visibility="Collapsed">

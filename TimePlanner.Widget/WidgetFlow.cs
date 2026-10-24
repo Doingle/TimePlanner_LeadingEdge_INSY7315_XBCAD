@@ -32,6 +32,8 @@ namespace TimePlanner.Widget
             Timesheet,
             SignIn,
             EntryEditor,
+            Exit,
+            Help,
         }
 
         private readonly IWidgetHost _host;
@@ -40,6 +42,7 @@ namespace TimePlanner.Widget
         private readonly PreferencesStore _preferences;
         private readonly StartupService _startup;
         private Screen _screen;
+        private FrameworkElement? _view;
         private DaySummary? _endedDay;
         private bool _loaded;
 
@@ -82,6 +85,7 @@ namespace TimePlanner.Widget
             _loaded = false;
             Session.User = await _log.SignInAsync();
             Session.Preferences = _preferences.Load();
+            _host.ConfigurePositions(Session.Preferences, SavePreferences);
             // The first run registers the widget (the setting starts on); later runs follow the saved choice
             StartupProblem = _startup.Apply(Session.Preferences.StartWithWindows);
             (Session.ProjectId, Session.Activity) = await _log.GetLastChoiceAsync(Session.User.UserId);
@@ -148,16 +152,55 @@ namespace TimePlanner.Widget
         public void ShowTimer(bool activate = false)
         {
             if (Scheduler.IsDue)
-                CheckIn();
+                CheckIn(activate: activate);
             else
                 Present(Screen.Timer, new TimerView(this), activate);
         }
 
         public void ShowSettings() => Present(Screen.Settings, new SettingsView(this));
 
-        public void CheckIn(bool announce = false)
+        public void ShowHelp()
         {
-            Present(Screen.CheckIn, new CheckInAlertView(this), activate: false);
+            if (_screen == Screen.Help)
+                return;
+            var previousScreen = _screen;
+            var previousView = _view;
+            Present(Screen.Help, new HelpView(() =>
+            {
+                // A check-in may have become due while reading. Other screens retain their edits.
+                if (previousScreen is Screen.Idle or Screen.Timer or Screen.None || previousView == null)
+                    ShowFromTray();
+                else
+                    Present(previousScreen, previousView);
+            }));
+        }
+
+        public Task LogFromTrayAsync()
+        {
+            if (Scheduler.IsRunning)
+                return LogTimeAsync(LogEntryMode.LogNow);
+            ShowFromTray();
+            return Task.CompletedTask;
+        }
+
+        public void AskExit(Action? exit = null)
+        {
+            if (_screen == Screen.Exit)
+                return;
+            var previousScreen = _screen;
+            var previousView = _view;
+            Present(Screen.Exit, new ExitView(this, exit ?? (() => Application.Current.Shutdown()), () =>
+            {
+                if (previousScreen == Screen.Idle || previousView == null)
+                    ShowFromTray();
+                else
+                    Present(previousScreen, previousView);
+            }));
+        }
+
+        public void CheckIn(bool announce = false, bool activate = false)
+        {
+            Present(Screen.CheckIn, new CheckInAlertView(this), activate);
             if (announce && Session.Preferences.SoundOnCheckIn)
                 SystemSounds.Asterisk.Play();
         }
@@ -394,6 +437,7 @@ namespace TimePlanner.Widget
         private void Present(Screen screen, FrameworkElement view, bool activate = true)
         {
             _screen = screen;
+            _view = view;
             _host.Present(view, activate);
         }
     }

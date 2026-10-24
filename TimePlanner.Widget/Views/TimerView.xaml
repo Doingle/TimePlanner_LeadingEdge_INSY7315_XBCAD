@@ -3,12 +3,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
     
-    <controls:WidgetCard x:Name="Card" Padding="{StaticResource ShellPaddingWithFoot}"
-                         MouseEnter="Card_MouseEnter" MouseLeave="Card_MouseLeave">
+    <controls:WidgetCard x:Name="Card" Padding="{StaticResource ShellPaddingWithFoot}" MouseEnter="Card_MouseEnter" MouseLeave="Card_MouseLeave">
         <controls:WidgetCard.CornerContent>
-            <Button Style="{StaticResource Button.Icon}" ToolTip="Settings" AutomationProperties.Name="Settings" Click="Settings_Click">
-                <controls:Icon Kind="Settings" />
-            </Button>
+            <StackPanel Orientation="Horizontal">
+                <Button Style="{StaticResource Button.Icon}" ToolTip="Settings" AutomationProperties.Name="Settings" Click="Settings_Click">
+                    <controls:Icon Kind="Settings" />
+                </Button>
+                <Button x:Name="ExitButton" Style="{StaticResource Button.Icon}" ToolTip="Exit Time Planner" AutomationProperties.Name="Exit Time Planner" Click="Exit_Click">
+                    <controls:Icon Kind="Close" />
+                </Button>
+            </StackPanel>
         </controls:WidgetCard.CornerContent>
 
         <StackPanel>
@@ -26,7 +30,7 @@
             </DockPanel>
 
             <StackPanel Margin="{StaticResource GapSection}">
-                <Button Style="{StaticResource Button.Primary}" Content="Log now" Click="LogNow_Click" />
+                <Button x:Name="LogButton" Style="{StaticResource Button.Primary}" Click="LogNow_Click" />
                 <Grid Style="{StaticResource FootRow}">
                     <Button Style="{StaticResource Button.Text}" Content="End day" Click="EndDay_Click" />
                 </Grid>

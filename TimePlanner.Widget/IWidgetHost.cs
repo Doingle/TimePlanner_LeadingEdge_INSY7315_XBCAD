@@ -10,5 +10,7 @@ namespace TimePlanner.Widget
         void Present(FrameworkElement screen, bool activate = true);
 
         void HideWidget();
+
+        void ConfigurePositions(Models.WidgetPreferences preferences, Action save) { }
     }
 }

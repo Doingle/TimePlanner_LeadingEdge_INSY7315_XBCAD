@@ -39,6 +39,7 @@ namespace TimePlanner.Widget.Views
         private readonly List<int> _intervals;
         private readonly bool _ready;
         private bool _revertingStartup;
+        private Task _intervalSave = Task.CompletedTask;
 
         public SetupView(WidgetFlow flow, bool isSettings)
         {
@@ -51,6 +52,7 @@ namespace TimePlanner.Widget.Views
             if (isSettings)
             {
                 SettingsHeader.Visibility = Visibility.Visible;
+                HelpButton.Visibility = Visibility.Collapsed;
                 IntervalField.Margin = (Thickness)FindResource("GapSection");
                 PrimaryButton.Content = "Done";
             }
@@ -109,22 +111,38 @@ namespace TimePlanner.Widget.Views
 
         private async void Primary_Click(object sender, RoutedEventArgs e)
         {
+            await _intervalSave;
             if (_isSettings)
                 _flow.ShowTimer(activate: true);
             else
                 await _flow.StartTrackingAsync();
         }
 
-        private void BackToTimer_Click(object sender, RoutedEventArgs e) => _flow.ShowTimer(activate: true);
+        private async void BackToTimer_Click(object sender, RoutedEventArgs e)
+        {
+            await _intervalSave;
+            _flow.ShowTimer(activate: true);
+        }
+
+        private async void Help_Click(object sender, RoutedEventArgs e)
+        {
+            await _intervalSave;
+            _flow.ShowHelp();
+        }
 
         private async void Interval_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!_ready || IntervalSelect.SelectedIndex < 0)
                 return;
 
-            var saving = _flow.ChangeIntervalAsync(_intervals[IntervalSelect.SelectedIndex]);
-            ShowNextCheckIn();
-            await saving;
+            IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = false;
+            try
+            {
+                _intervalSave = _flow.ChangeIntervalAsync(_intervals[IntervalSelect.SelectedIndex]);
+                await _intervalSave;
+                ShowNextCheckIn();
+            }
+            finally { IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = true; }
         }
 
         private void ShowNextCheckIn()
