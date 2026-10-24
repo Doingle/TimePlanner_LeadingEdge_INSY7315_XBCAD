@@ -56,7 +56,15 @@ namespace TimePlanner.Core.Services
         //reloads settings after the user saves them
         public async Task<CheckInStatus> ReloadSettingsAsync()
         {
+            var previousInterval = _settings.CheckInIntervalMinutes;
             await LoadSettingsAsync();
+            if (_settings.CheckInIntervalMinutes != previousInterval)
+            {
+                // Recalculate from the same work anchor; an old due/snoozed prompt must not pin the timer.
+                // Keep the snooze/skip allowance and all unlogged work intact.
+                _dueSince = null;
+                _snoozedUntil = null;
+            }
             return await TickAsync();
         }
 
@@ -114,8 +122,8 @@ namespace TimePlanner.Core.Services
                 _dueSince = now;
             }
 
-            //due once the interval passes outside lunch
-            if (_dueSince == null && ActiveTimeSince(_anchor, now) >= Interval && !InLunch(now))
+            //Only explicit day-session pauses suspend check-ins.
+            if (_dueSince == null && ActiveTimeSince(_anchor, now) >= Interval)
             {
                 _dueSince = now;
             }
@@ -276,25 +284,11 @@ namespace TimePlanner.Core.Services
         }
 
         //-----------------------------
-        //true inside the lunch window
-        private bool InLunch(DateTime time)
-        {
-            var t = TimeOnly.FromDateTime(time);
-            return t >= _settings.LunchStart && t < _settings.LunchEnd;
-        }
-
-        //-----------------------------
-        //next prompt time moved past lunch
+        //next prompt time from the chosen interval and explicit pauses
         private DateTime NextDueAt(DateTime now)
         {
             var remaining = Interval - ActiveTimeSince(_anchor, now);
             var due = remaining > TimeSpan.Zero ? now + remaining : now;
-
-            //a due time in lunch waits for its end
-            if (InLunch(due))
-            {
-                due = due.Date + _settings.LunchEnd.ToTimeSpan();
-            }
 
             return due;
         }

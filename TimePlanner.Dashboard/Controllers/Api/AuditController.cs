@@ -19,6 +19,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //-----------------------------
         //the newest events first, optionally only one kind of action
         [HttpGet]
+        [ProducesResponseType<List<AuditEventDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<List<AuditEventDto>>> Get([FromQuery] string? action, [FromQuery] int take = 100)
         {
             var query = _db.AuditEvents.AsNoTracking();

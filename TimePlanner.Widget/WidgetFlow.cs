@@ -37,6 +37,8 @@ namespace TimePlanner.Widget
             VoiceNote,
             DayBuild,
             VoiceNoteDetail,
+            Exit,
+            Help,
         }
 
         private readonly IWidgetHost _host;
@@ -47,12 +49,16 @@ namespace TimePlanner.Widget
         private readonly WhisperModelManager _modelManager;
         private readonly VoiceTranscriptionQueue _voiceQueue;
         private readonly IVoiceNoteStore _voiceStore;
+        private readonly StartupService _startup;
         private Screen _screen;
+        private FrameworkElement? _view;
         private DaySummary? _endedDay;
+        private bool _loaded;
 
         public WidgetFlow(IWidgetHost host, WidgetSession session, CheckInScheduler scheduler, SnoozeManager snooze,
-            TimeLogService log, CsvExportService csv, PreferencesStore preferences,
-            AiService aiService, WhisperModelManager modelManager, VoiceTranscriptionQueue voiceQueue, IVoiceNoteStore voiceStore)
+            TimeLogService log, CsvExportService csv, PreferencesStore preferences, UnsentDayReminder reminder,
+            StartupService startup, AiService aiService, WhisperModelManager modelManager,
+            VoiceTranscriptionQueue voiceQueue, IVoiceNoteStore voiceStore)
         {
             _host = host;
             Session = session;
@@ -65,9 +71,13 @@ namespace TimePlanner.Widget
             _modelManager = modelManager;
             _voiceQueue = voiceQueue;
             _voiceStore = voiceStore;
+            Reminder = reminder;
+            _startup = startup;
 
             scheduler.Ticked += (_, _) =>
             {
+                if (_loaded)
+                    _ = Reminder.RefreshAsync(Scheduler.EndedToday);
                 if (_screen is Screen.Idle or Screen.Timer && Scheduler.IsDue)
                     CheckIn(announce: true);
             };
@@ -79,12 +89,24 @@ namespace TimePlanner.Widget
 
         public SnoozeManager Snooze { get; }
 
+        public UnsentDayReminder Reminder { get; }
+
+        /// <summary>Why Windows startup doesn't match the setting, or null when it does. Settings shows it.</summary>
+        public string? StartupProblem { get; private set; }
+
         public async Task LoadAsync()
         {
+            _loaded = false;
             Session.User = await _log.SignInAsync();
             Session.Preferences = _preferences.Load();
+            _host.ConfigurePositions(Session.Preferences, SavePreferences);
+            // The first run registers the widget (the setting starts on); later runs follow the saved choice
+            StartupProblem = _startup.Apply(Session.Preferences.StartWithWindows);
             (Session.ProjectId, Session.Activity) = await _log.GetLastChoiceAsync(Session.User.UserId);
             await Scheduler.InitialiseAsync();
+            _endedDay = Scheduler.EndedToday ? await _log.GetDayAsync(Session.User.UserId, Scheduler.Now) : null;
+            _loaded = true;
+            _ = Reminder.RefreshAsync(Scheduler.EndedToday);
             await _voiceStore.PurgeAsync(Scheduler.Now);
             _voiceQueue.Start();
         }
@@ -144,6 +166,8 @@ namespace TimePlanner.Widget
         {
             if (Scheduler.IsRunning)
                 ShowIdle();
+            else if (_endedDay?.Day.Date == Scheduler.Now.Date)
+                ShowDayEnded(_endedDay);
             else
                 ShowSetup();
         }
@@ -166,7 +190,7 @@ namespace TimePlanner.Widget
         {
             if (Scheduler.IsRunning)
                 ShowTimer(activate: true);
-            else if (_endedDay != null)
+            else if (_endedDay?.Day.Date == Scheduler.Now.Date)
                 ShowDayEnded(_endedDay);
             else
                 ShowSetup();
@@ -194,7 +218,7 @@ namespace TimePlanner.Widget
         public void ShowTimer(bool activate = false)
         {
             if (Scheduler.IsDue)
-                CheckIn();
+                CheckIn(activate: activate);
             else
                 Present(Screen.Timer, new TimerView(this), activate);
         }
@@ -209,9 +233,48 @@ namespace TimePlanner.Widget
             Present(Screen.Settings, view);
         }
 
-        public void CheckIn(bool announce = false)
+        public void ShowHelp()
         {
-            Present(Screen.CheckIn, new CheckInAlertView(this), activate: false);
+            if (_screen == Screen.Help)
+                return;
+            var previousScreen = _screen;
+            var previousView = _view;
+            Present(Screen.Help, new HelpView(() =>
+            {
+                // A check-in may have become due while reading. Other screens retain their edits.
+                if (previousScreen is Screen.Idle or Screen.Timer or Screen.None || previousView == null)
+                    ShowFromTray();
+                else
+                    Present(previousScreen, previousView);
+            }));
+        }
+
+        public Task LogFromTrayAsync()
+        {
+            if (Scheduler.IsRunning)
+                return LogTimeAsync(LogEntryMode.LogNow);
+            ShowFromTray();
+            return Task.CompletedTask;
+        }
+
+        public void AskExit(Action? exit = null)
+        {
+            if (_screen == Screen.Exit)
+                return;
+            var previousScreen = _screen;
+            var previousView = _view;
+            Present(Screen.Exit, new ExitView(this, exit ?? (() => Application.Current.Shutdown()), () =>
+            {
+                if (previousScreen == Screen.Idle || previousView == null)
+                    ShowFromTray();
+                else
+                    Present(previousScreen, previousView);
+            }));
+        }
+
+        public void CheckIn(bool announce = false, bool activate = false)
+        {
+            Present(Screen.CheckIn, new CheckInAlertView(this), activate);
             if (announce && Session.Preferences.SoundOnCheckIn)
                 SystemSounds.Asterisk.Play();
         }
@@ -348,7 +411,15 @@ namespace TimePlanner.Widget
 
         //-----------------------------
         //sends a day to the dashboard
-        public Task<SendOutcome> SendDayAsync(DateOnly day) => _log.SendDayAsync(Session.User.UserId, day);
+        public async Task<SendOutcome> SendDayAsync(DateOnly day)
+        {
+            var outcome = await _log.SendDayAsync(Session.User.UserId, day);
+            if (outcome.Status == SendStatus.Sent)
+                Reminder.DaySent(day);
+            return outcome;
+        }
+
+        public Task OpenReminderTimesheetAsync() => ShowTimesheetAsync(Reminder.Today, ShowFromTray);
 
         //-----------------------------
         //the host name of the dashboard client
@@ -356,7 +427,15 @@ namespace TimePlanner.Widget
 
         //-----------------------------
         //signs in to dashboard
-        public Task<SignInOutcome> SignInToDashboardAsync(string email, string password) => _log.SignInToDashboardAsync(email, password);
+        public event EventHandler? DashboardSignedIn;
+
+        public async Task<SignInOutcome> SignInToDashboardAsync(string email, string password)
+        {
+            var outcome = await _log.SignInToDashboardAsync(email, password);
+            if (outcome.Status == SignInStatus.SignedIn)
+                DashboardSignedIn?.Invoke(this, EventArgs.Empty);
+            return outcome;
+        }
 
         //-----------------------------
         //gets signed in dashboard email
@@ -414,9 +493,25 @@ namespace TimePlanner.Widget
 
         public void SavePreferences() => _preferences.Save(Session.Preferences);
 
+        /// <summary>
+        /// Changes Windows startup straight away. The choice is saved only when Windows accepted it, so the
+        /// setting never claims something that isn't so; returns false when it was not changed.
+        /// </summary>
+        public bool ChangeStartWithWindows(bool enabled)
+        {
+            StartupProblem = _startup.Apply(enabled);
+            if (StartupProblem != null)
+                return false;
+
+            Session.Preferences.StartWithWindows = enabled;
+            SavePreferences();
+            return true;
+        }
+
         private void Present(Screen screen, FrameworkElement view, bool activate = true)
         {
             _screen = screen;
+            _view = view;
             _host.Present(view, activate);
         }
     }

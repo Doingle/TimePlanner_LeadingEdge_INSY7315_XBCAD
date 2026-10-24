@@ -12,6 +12,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //-----------------------------
         //the caller's own tasks that are not Done, optionally for one project. Tasks belong to a user, so this never returns anyone else's
         [HttpGet]
+        [ProducesResponseType<List<TaskDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<List<TaskDto>>> GetMine([FromQuery] int? projectId)
         {
             if (CurrentAppUserId is not int userId)

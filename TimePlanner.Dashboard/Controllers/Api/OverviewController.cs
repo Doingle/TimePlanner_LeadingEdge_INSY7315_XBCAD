@@ -12,6 +12,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //-----------------------------
         //the signed in person's home screen: today's timeline, hours and goal progress, last submission, and the breakdown of today (the default) or the week
         [HttpGet]
+        [ProducesResponseType<MyOverview>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<MyOverview>> Get([FromQuery] string? period)
         {
             if (!OverviewService.IsValidPeriod(period))

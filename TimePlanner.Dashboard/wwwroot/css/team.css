@@ -8,23 +8,6 @@
 
 /* ---------- Header on ink ---------- */
 
-.tm-hero {
-    padding: var(--space-6) 0;
-    color: var(--on-ink);
-    background: var(--ink);
-}
-
-    .tm-hero :focus-visible {
-        outline: var(--focus-ring-on-ink);
-        outline-offset: var(--focus-offset);
-    }
-
-.tm-hero__inner {
-    max-width: var(--app-frame);
-    margin: 0 auto;
-    padding: 0 var(--gutter);
-}
-
 /* the Team pages' own tabs. They scroll sideways rather than wrap on a narrow screen */
 .tm-subnav {
     display: flex;
@@ -89,53 +72,6 @@
     color: var(--danger-on-ink);
 }
 
-.tm-controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-}
-
-.tm-period {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-}
-
-.tm-period__label {
-    min-width: 11.5rem;
-    margin: 0;
-    font-size: var(--text-md);
-    font-weight: var(--weight-semibold);
-    font-variant-numeric: tabular-nums;
-    text-align: center;
-}
-
-.tm-icon-button {
-    display: grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    color: var(--on-ink);
-    border-radius: var(--radius-sm);
-}
-
-    .tm-icon-button svg {
-        width: 20px;
-        height: 20px;
-    }
-
-    .tm-icon-button[href]:hover {
-        background: var(--ink-raised);
-    }
-
-    /* there is nothing after the current week or month yet */
-    .tm-icon-button[aria-disabled="true"] {
-        color: var(--lilac-dim);
-        cursor: not-allowed;
-    }
-
 /* week or month as links: the current one gets a lilac ring, solid lilac is kept for the primary button */
 .tm-toggle {
     display: inline-flex;
@@ -179,14 +115,6 @@
     letter-spacing: -0.015em;
 }
 
-.tm-hero__intro {
-    max-width: 62ch;
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-md);
-    line-height: var(--leading-body);
-    color: var(--on-ink-2);
-}
-
 /* ---------- Overview: the team's total, the submission rates and the billable split ---------- */
 
 .tm-hero__top {
@@ -194,38 +122,6 @@
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: end;
     gap: var(--space-5) var(--space-7);
-}
-
-.tm-hero__figure {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    column-gap: var(--space-3);
-    margin: var(--space-5) 0 0;
-    font-family: var(--font-display);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-tight);
-    letter-spacing: -0.02em;
-}
-
-.tm-hero__num {
-    font-size: var(--text-hero);
-    font-variant-numeric: lining-nums tabular-nums;
-}
-
-.tm-hero__unit {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-regular);
-    letter-spacing: 0;
-    color: var(--on-ink-2);
-}
-
-.tm-hero__sub {
-    max-width: 62ch;
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-md);
-    line-height: var(--leading-body);
-    color: var(--on-ink-2);
 }
 
 .tm-rates {
@@ -271,38 +167,6 @@
     color: var(--on-ink-3);
 }
 
-.tm-billing {
-    margin-top: var(--space-6);
-}
-
-.tm-billing__groups {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--space-4);
-    margin: 0 0 var(--space-3);
-}
-
-.tm-billing__group {
-    display: grid;
-    gap: 2px;
-}
-
-    .tm-billing__group dt {
-        color: var(--on-ink-2);
-    }
-
-    .tm-billing__group dd {
-        display: flex;
-        align-items: baseline;
-        gap: var(--space-2);
-        margin: 0;
-    }
-
-.tm-billing__group--nb {
-    justify-items: end;
-    text-align: right;
-}
-
 .tm-billing__hours {
     font-family: var(--font-display);
     font-size: 1.5rem;
@@ -311,74 +175,14 @@
     font-variant-numeric: lining-nums tabular-nums;
 }
 
-.tm-billing__pct {
-    font-variant-numeric: tabular-nums;
-    color: var(--on-ink-3);
-}
-
 .tm-billing__bar {
     display: flex;
     height: 32px;
 }
 
-/* each part's width is its share, the parts shrink a little to make room for the gap between them */
-.tm-seg {
-    flex: 0 1 auto;
-    min-width: 3px;
-    background: var(--lilac);
-    border-radius: var(--radius-xs);
-}
-
-.tm-seg--nb {
-    background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(185, 169, 239, 0.5) 5px 6.5px), var(--ink-raised);
-    box-shadow: inset 0 0 0 1px #8a7bb8;
-}
-
-.tm-seg--apart {
-    margin-left: 6px;
-}
-
 /* ---------- Overview: the breakdowns on paper ---------- */
 
-.tm-section {
-    padding-top: var(--space-5);
-}
-
-    .tm-section + .tm-section {
-        padding-top: var(--space-7);
-    }
-
-.tm-section__title {
-    margin: 0 0 var(--space-4);
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-head);
-    letter-spacing: -0.01em;
-}
-
-/* by category and by project side by side, by person on its own full width */
-.tm-cols {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    border-top: 1px solid var(--line);
-}
-
-.tm-cols__col {
-    padding: var(--space-5) var(--space-6) 0 0;
-}
-
-    .tm-cols__col + .tm-cols__col {
-        padding: var(--space-5) 0 0 var(--space-6);
-        border-left: 1px solid var(--line);
-    }
-
-.tm-cols__title {
-    margin: 0 0 var(--space-2);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-}
-
+/* by category and by project side by side (app.css), by person on its own full width */
 .tm-people {
     padding-top: var(--space-3);
     border-top: 1px solid var(--line);
@@ -390,12 +194,6 @@
     color: var(--text-2);
 }
 
-.tm-bars {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
 .tm-bar-row {
     display: grid;
     grid-template-columns: minmax(6rem, 10rem) 1fr 4rem 2.75rem;
@@ -405,67 +203,13 @@
     min-height: 2.75rem;
 }
 
-.tm-bar-row__label {
-    grid-area: label;
-    line-height: 1.3;
-    overflow-wrap: anywhere;
-}
-
-    .tm-bar-row__label small {
-        display: block;
-        font-size: var(--text-xs);
-        color: var(--text-3);
-    }
-
-.tm-bar-row__bar {
-    grid-area: bar;
-    height: 6px;
-}
-
-/* as long as its share of the largest row (data-percent): a category in its colour, a project by billing, a person in plain grey */
-.tm-bar-row__fill {
-    display: block;
-    width: 0;
-    min-width: 2px;
-    height: 100%;
-    background: var(--logged);
-    border-radius: 0 3px 3px 0;
-}
-
-.tm-bar-row__fill--billable {
-    background: var(--billable);
-}
-
-.tm-bar-row__fill--non-billable {
-    background: var(--non-billable);
-}
-
+/* a category in its colour, a project by billing, a person in plain grey */
 .tm-bar-row__fill--person {
     background: var(--text-2);
 }
 
-.tm-bar-row__time {
-    grid-area: time;
-    font-weight: var(--weight-semibold);
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-}
-
-.tm-bar-row__pct {
-    grid-area: pct;
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-    color: var(--text-2);
-}
-
 /* ---------- Submissions: who sent which working day ----------
    Normal days are a quiet tick, only a missing day gets colour and a word */
-
-.tm-panel {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
-}
 
 .tm-panel__empty {
     margin: 0;
@@ -760,15 +504,6 @@
     border-bottom: 1px solid var(--line);
 }
 
-.tm-field {
-    display: grid;
-    gap: 6px;
-}
-
-.tm-label {
-    font-weight: var(--weight-medium);
-}
-
 .tm-input {
     min-height: 44px;
     padding: 0 var(--space-3);
@@ -778,16 +513,6 @@
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-sm);
 }
-
-    .tm-input:hover {
-        border-color: var(--text-3);
-    }
-
-    .tm-input:focus-visible {
-        outline: var(--focus-ring);
-        outline-offset: 0;
-        border-color: var(--brand-600);
-    }
 
     .tm-input[type="date"] {
         width: 10.5rem;
@@ -834,26 +559,11 @@
     cursor: pointer;
 }
 
-    .tm-button:hover {
-        background: var(--brand-700);
-        border-color: var(--brand-700);
-    }
-
-    .tm-button:focus-visible {
-        outline: var(--focus-ring);
-        outline-offset: var(--focus-offset);
-    }
-
 .tm-button--secondary {
     color: var(--text);
     background: var(--surface);
     border-color: var(--line-strong);
 }
-
-    .tm-button--secondary:hover {
-        background: var(--paper);
-        border-color: var(--text-3);
-    }
 
 .tm-button__icon {
     width: 16px;
@@ -1028,14 +738,6 @@
 .tm-button[aria-disabled="true"] {
     cursor: progress;
     opacity: 0.85;
-}
-
-.tm-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.4);
-    border-top-color: #ffffff;
-    border-radius: 50%;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1458,34 +1160,11 @@
     .tm-hero__top {
         grid-template-columns: 1fr;
     }
-
-    .tm-cols {
-        grid-template-columns: 1fr;
-    }
-
-    .tm-cols__col,
-    .tm-cols__col + .tm-cols__col {
-        padding: var(--space-5) 0 0;
-        border-left: 0;
-    }
-
-        .tm-cols__col + .tm-cols__col {
-            margin-top: var(--space-5);
-            border-top: 1px solid var(--line);
-        }
 }
 
 /* ---------- Phones ---------- */
 
 @media (max-width: 40rem) {
-    .tm-hero {
-        padding: var(--space-4) 0 var(--space-5);
-    }
-
-    .tm-hero__unit {
-        font-size: var(--text-xl);
-    }
-
     .tm-hero__sub,
     .tm-hero__intro {
         font-size: var(--text-sm);
@@ -1501,25 +1180,6 @@
 
     .tm-subnav__link {
         min-height: var(--target-touch);
-    }
-
-    .tm-controls {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .tm-period {
-        justify-content: space-between;
-    }
-
-    .tm-period__label {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .tm-icon-button {
-        width: var(--target-touch);
-        height: var(--target-touch);
     }
 
     .tm-toggle {
@@ -1538,10 +1198,6 @@
     .tm-rate__value,
     .tm-billing__hours {
         font-size: 1.375rem;
-    }
-
-    .tm-section + .tm-section {
-        padding-top: var(--space-6);
     }
 
     /* the table makes way for one block per person, the key is only for the table */

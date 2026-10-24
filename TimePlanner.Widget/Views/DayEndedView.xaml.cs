@@ -22,6 +22,10 @@ namespace TimePlanner.Widget.Views
 
             if (day.Entries.Count > 0)
             {
+                // A day with entries can be sent, so it can be not sent yet
+                ReminderNotice.ShownChanged += (_, _) => ShowOpenTimesheet();
+                ReminderNotice.Initialise(flow, DateOnly.FromDateTime(day.Day));
+                ShowOpenTimesheet();
                 LoggedValue.Text = Format.Duration(day.Logged);
                 EntriesValue.Text = day.Entries.Count.ToString(CultureInfo.InvariantCulture);
             }
@@ -55,7 +59,7 @@ namespace TimePlanner.Widget.Views
                 BuildMyDayExportButton.Content = label;
                 BuildMyDayExportButton.Visibility = Visibility.Visible;
                 ExportButton.Style = (Style)FindResource("Button.Secondary");
-                OpenTimesheetExportButton.Style = (Style)FindResource("Button.Secondary");
+                OpenTimesheetButton.Style = (Style)FindResource("Button.Secondary");
 
                 BuildMyDayEmptyButton.Content = label;
                 BuildMyDayEmptyButton.Visibility = Visibility.Visible;
@@ -73,6 +77,9 @@ namespace TimePlanner.Widget.Views
 
         //-----------------------------
         //exports day entries as csv file
+        private void ShowOpenTimesheet() =>
+            OpenTimesheetButton.Visibility = ReminderNotice.IsShown ? Visibility.Collapsed : Visibility.Visible;
+
         private async void Export_Click(object sender, RoutedEventArgs e) => await _flow.ExportCsvAsync(_day);
 
         //-----------------------------

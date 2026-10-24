@@ -4,8 +4,9 @@
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
     <controls:WidgetCard x:Name="Card">
         <controls:WidgetCard.Banner>
+            <!-- Covers the card's 1px outline on the top and sides, so no light edge shows around the colour -->
             <Border x:Name="WelcomeBanner" Background="{StaticResource ActionBrush}" CornerRadius="{StaticResource RadiusBanner}"
-                    Padding="16">
+                    Margin="-1,-1,-1,0" Padding="16">
                 <StackPanel>
                     <Border Width="{StaticResource SizeBadge}" Height="{StaticResource SizeBadge}" CornerRadius="{StaticResource RadiusFull}"
                             Background="{StaticResource SurfaceBrush}" HorizontalAlignment="Center">
@@ -25,6 +26,14 @@
         <Grid>
             <StackPanel x:Name="MainView">
                 <DockPanel x:Name="SettingsHeader" Margin="-8,0,0,0" Visibility="Collapsed">
+                    <Button x:Name="SettingsHelpButton" DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}"
+                            Height="{StaticResource Space32}" Padding="12,0" VerticalAlignment="Center"
+                            ToolTip="Help" AutomationProperties.Name="Help" Click="Help_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:Icon Kind="Info" Size="{StaticResource SizeIconSm}" VerticalAlignment="Center" />
+                            <TextBlock Text="Help" Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                     <Button Style="{StaticResource Button.Icon}" ToolTip="Back" AutomationProperties.Name="Back to the timer"
                             Click="BackToTimer_Click">
                         <controls:Icon Kind="ChevronLeft" />
@@ -62,6 +71,8 @@
 
                 <Button x:Name="PrimaryButton" Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}"
                         Content="Start tracking" Click="Primary_Click" />
+                <Button x:Name="HelpButton" Style="{StaticResource Button.Text}" Margin="{StaticResource GapStacked}"
+                        Content="Help" Click="Help_Click" />
             </StackPanel>
 
             <StackPanel x:Name="AdvancedView" Visibility="Collapsed">
@@ -116,6 +127,17 @@
                                   Checked="Sound_Changed" Unchecked="Sound_Changed" />
                     <TextBlock x:Name="SoundLabel" Text="Sound on check-in" VerticalAlignment="Center" />
                 </DockPanel>
+
+                <StackPanel Margin="{StaticResource GapFieldToField}">
+                    <DockPanel MinHeight="{StaticResource SizeControl}">
+                        <ToggleButton x:Name="StartupSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}" Margin="16,0,0,0"
+                                      AutomationProperties.LabeledBy="{Binding ElementName=StartupLabel}"
+                                      Checked="Startup_Changed" Unchecked="Startup_Changed" />
+                        <TextBlock x:Name="StartupLabel" Text="Start with Windows" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock x:Name="StartupHelp" Style="{StaticResource Text.Help}" Text="Opens when you sign in to Windows." />
+                    <TextBlock x:Name="StartupError" Style="{StaticResource Text.Error}" TextWrapping="Wrap" Visibility="Collapsed" />
+                </StackPanel>
 
                 <Button Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}" Content="Done"
                         Click="CloseAdvanced_Click" />

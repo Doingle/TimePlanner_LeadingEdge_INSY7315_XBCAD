@@ -30,7 +30,7 @@ namespace TimePlanner.Widget
             var connectionString = builder.Configuration.GetConnectionString("Default")
                 ?? DatabasePaths.GetDefaultConnectionString();
             Register(builder.Services, window, connectionString, TimeProvider.System,
-                new PreferencesStore(Path.Combine(DataFolder, "widget.json")),
+                new PreferencesStore(Path.Combine(DataFolder, "widget.json")), new RunKeyStartupRegistration(),
                 Path.Combine(DataFolder, "voice"));
             return builder.Build();
         }
@@ -40,7 +40,7 @@ namespace TimePlanner.Widget
         {
             var builder = CreateBuilder();
             var tempVoice = Path.Combine(Path.GetTempPath(), "TimePlannerPreview", "voice");
-            Register(builder.Services, window, connectionString, clock, new PreferencesStore(null), tempVoice);
+            Register(builder.Services, window, connectionString, clock, new PreferencesStore(null), new InMemoryStartupRegistration(), tempVoice);
             return builder.Build();
         }
 #endif
@@ -66,7 +66,7 @@ namespace TimePlanner.Widget
         }
 
         private static void Register(IServiceCollection services, IWidgetHost window, string connectionString, TimeProvider clock,
-            PreferencesStore preferences, string? voiceFolder = null)
+            PreferencesStore preferences, IStartupRegistration startup, string? voiceFolder = null)
         {
             services.AddTimePlannerCore(connectionString);
             services.AddTimePlannerSync();
@@ -77,9 +77,14 @@ namespace TimePlanner.Widget
             services.AddSingleton(window);
             services.AddSingleton(clock);
             services.AddSingleton(preferences);
+            services.AddSingleton(provider => new StartupService(startup, Environment.ProcessPath, provider.GetRequiredService<ILogger<StartupService>>()));
             services.AddSingleton<WidgetSession>();
             services.AddSingleton<SnoozeManager>();
             services.AddSingleton<CheckInScheduler>();
+            services.AddSingleton<UnsentDayReminder>();
+            services.AddSingleton(provider => new WidgetUpdateChecker(provider.GetRequiredService<DashboardClient>(),
+                System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(App).Assembly)?.InformationalVersion
+                ?? typeof(App).Assembly.GetName().Version!.ToString()));
             services.AddSingleton<TimeLogService>();
             services.AddSingleton<CsvExportService>();
             services.AddSingleton<WidgetFlow>();

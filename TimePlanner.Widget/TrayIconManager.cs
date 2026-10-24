@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using TimePlanner.Widget.Controls;
 
 namespace TimePlanner.Widget
 {
@@ -13,73 +14,71 @@ namespace TimePlanner.Widget
         private const int SmallIconWidth = 49;   
 
         private readonly TaskbarIcon _icon;
-        private readonly ContextMenu _menu = new();
+        private readonly ContextMenu _menu;
 
         //-----------------------------
-        //initialises tray icon with show, timesheet and exit menu options
-        public TrayIconManager(Action show, Action timesheet)
+        // Menu actions share the widget's navigation and confirmation flow.
+        public TrayIconManager(Action show, Action log, Action timesheet, Action settings, Action help, Action exit, Func<bool> canLog)
         {
-            var open = new MenuItem { Header = "Show INSY", FontWeight = FontWeights.Bold };
-            open.Click += (_, _) => show();
-            _menu.Items.Add(open);
-
-            //opens timesheet view for current day
-            var timesheetItem = new MenuItem { Header = "Timesheet" };
-            timesheetItem.Click += (_, _) => timesheet();
-            _menu.Items.Add(timesheetItem);
-
-            _menu.Items.Add(new Separator());
-            var exit = new MenuItem { Header = "Exit" };
-            exit.Click += (_, _) => Application.Current.Shutdown();
-            _menu.Items.Add(exit);
-
+            _menu = CreateMenu(show, log, timesheet, settings, help, exit, canLog);
             _icon = new TaskbarIcon
             {
                 Icon = LoadIcon(),
-                ToolTipText = "INSY",
+                ToolTipText = "Time Planner",
                 ContextMenu = _menu,
                 NoLeftClickDelay = true,
             };
             _icon.TrayLeftMouseUp += (_, _) => show();
         }
 
+        public static ContextMenu CreateMenu(Action show, Action log, Action timesheet, Action settings, Action help, Action exit, Func<bool> canLog)
+        {
+            var menu = new TrayMenu();
+            Icon MenuIcon(IconKind kind) => new() { Kind = kind, Size = (double)Application.Current.FindResource("SizeIconSm") };
+            var open = new MenuItem { Header = "Open Time Planner", FontWeight = FontWeights.Bold, Icon = MenuIcon(IconKind.Clock) };
+            open.Click += (_, _) => show();
+            menu.Items.Add(open);
+
+            var logItem = new MenuItem { Header = "Log time since last check-in", IsEnabled = canLog(), Icon = MenuIcon(IconKind.Edit) };
+            logItem.Click += (_, _) => log();
+            menu.Items.Add(logItem);
+            void RefreshLogAvailability()
+            {
+                logItem.IsEnabled = canLog();
+                logItem.Opacity = logItem.IsEnabled ? 1 : 0.5;
+            }
+            RefreshLogAvailability();
+            menu.Opened += (_, _) => RefreshLogAvailability();
+
+            //opens timesheet view for current day
+            var timesheetItem = new MenuItem { Header = "Timesheet", Icon = MenuIcon(IconKind.List) };
+            timesheetItem.Click += (_, _) => timesheet();
+            menu.Items.Add(timesheetItem);
+
+            var settingsItem = new MenuItem { Header = "Settings", Icon = MenuIcon(IconKind.Settings) };
+            settingsItem.Click += (_, _) => settings();
+            menu.Items.Add(settingsItem);
+
+            menu.Items.Add(new Separator { Style = (Style)Application.Current.FindResource("Menu.Separator") });
+            var helpItem = new MenuItem { Header = "Help", Icon = MenuIcon(IconKind.Help) };
+            helpItem.Click += (_, _) => help();
+            menu.Items.Add(helpItem);
+
+            menu.Items.Add(new Separator { Style = (Style)Application.Current.FindResource("Menu.Separator") });
+            var exitItem = new MenuItem { Header = "Exit", Icon = MenuIcon(IconKind.Close) };
+            exitItem.Click += (_, _) => exit();
+            menu.Items.Add(exitItem);
+            return menu;
+        }
+
 #if DEBUG
-        public void AddPreviews(Action<ScreenPreview> showPreview)
+        public void ShowPreviewMenu(FrameworkElement target)
         {
-            var previews = new MenuItem { Header = "Preview screens" };
-            foreach (var section in ScreenPreviews.All.GroupBy(p => p.Section))
-            {
-                if (previews.Items.Count > 0)
-                    previews.Items.Add(new Separator());
-                foreach (var preview in section)
-                {
-                    var item = new MenuItem { Header = $"{section.Key}: {preview.Title}" };
-                    item.Click += (_, _) => showPreview(preview);
-                    previews.Items.Add(item);
-                }
-            }
-            _menu.Items.Insert(1, previews);
+            _menu.PlacementTarget = target;
+            _menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+            _menu.IsOpen = true;
         }
 
-        //-----------------------------
-        //adds debug only actions to the tray menu
-        public void AddDebugActions(Action checkInNow)
-        {
-            var item = new MenuItem { Header = "Debug: Check in now" };
-            item.Click += (_, _) => checkInNow();
-
-            var previewsIndex = _menu.Items.IndexOf(_menu.Items.OfType<MenuItem>().FirstOrDefault(m => (m.Header as string) == "Preview screens"));
-            //insert directly below preview screens when present
-            if (previewsIndex >= 0)
-            {
-                _menu.Items.Insert(previewsIndex + 1, item);
-            }
-            //otherwise insert at default position
-            else
-            {
-                _menu.Items.Insert(1, item);
-            }
-        }
 #endif
 
         public void Dispose() => _icon.Dispose();

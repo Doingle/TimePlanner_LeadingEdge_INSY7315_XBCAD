@@ -58,6 +58,8 @@ namespace TimePlanner.Widget.Services
         /// <summary>The day has started and has not ended.</summary>
         public bool IsRunning => _day != null;
 
+        public bool EndedToday => _ended?.EndedAt?.Date == Now.Date;
+
         /// <summary>Where the time not logged yet begins: the end of the last entry, or the start of the day.</summary>
         public DateTime PeriodStart { get; private set; }
 
@@ -175,6 +177,13 @@ namespace TimePlanner.Widget.Services
             await using var scope = _scopes.CreateAsyncScope();
             var services = scope.ServiceProvider;
             _day = await services.GetRequiredService<DaySessionService>().GetOpenSessionAsync(UserId);
+
+            if (_day == null)
+            {
+                var days = await services.GetRequiredService<IDaySessionRepository>()
+                    .GetForUserBetweenAsync(UserId, Now.Date, Now.Date.AddDays(1));
+                _ended = days.LastOrDefault(day => day.EndedAt?.Date == Now.Date);
+            }
 
             // Where Core starts the time still to log
             var latest = await services.GetRequiredService<ITimeEntryRepository>().GetLatestForUserAsync(UserId);

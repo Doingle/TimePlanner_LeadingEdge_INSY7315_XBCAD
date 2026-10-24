@@ -127,17 +127,17 @@ namespace TimePlanner.Core.Tests.Services
         }
 
         //-----------------------------
-        //a prompt due during lunch is deferred until lunch ends
+        //The selected interval applies at midday; breaks are controlled by explicit pauses.
         [Fact]
-        public async Task Lunch_DefersPrompt()
+        public async Task Midday_DoesNotDeferPrompt()
         {
             var (_, engine) = await CreateSetupAsync(new DateTime(2026, 9, 28, 10, 45, 0));
 
             _clock.Now = new DateTime(2026, 9, 28, 12, 15, 0);
             var status1 = await engine.TickAsync();
 
-            Assert.Equal(CheckInPhase.Waiting, status1.Phase);
-            Assert.Equal(new DateTime(2026, 9, 28, 13, 0, 0), status1.NextCheckInAt);
+            Assert.Equal(CheckInPhase.Due, status1.Phase);
+            Assert.Equal(new DateTime(2026, 9, 28, 12, 15, 0), status1.DueSince);
 
             _clock.Now = new DateTime(2026, 9, 28, 13, 0, 0);
             var status2 = await engine.TickAsync();

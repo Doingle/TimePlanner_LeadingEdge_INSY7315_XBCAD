@@ -38,6 +38,8 @@ namespace TimePlanner.Widget.Views
         private readonly bool _isSettings;
         private readonly List<int> _intervals;
         private readonly bool _ready;
+        private bool _revertingStartup;
+        private Task _intervalSave = Task.CompletedTask;
 
         public SetupView(WidgetFlow flow, bool isSettings)
         {
@@ -50,6 +52,7 @@ namespace TimePlanner.Widget.Views
             if (isSettings)
             {
                 SettingsHeader.Visibility = Visibility.Visible;
+                HelpButton.Visibility = Visibility.Collapsed;
                 IntervalField.Margin = (Thickness)FindResource("GapSection");
                 PrimaryButton.Content = "Done";
                 AiSettingsRow.Visibility = Visibility.Visible;
@@ -75,6 +78,8 @@ namespace TimePlanner.Widget.Views
             }).IsChecked = true;
 
             SoundSwitch.IsChecked = preferences.SoundOnCheckIn;
+            StartupSwitch.IsChecked = preferences.StartWithWindows;
+            ShowStartup();
 
             _ready = true;
             ApplyIdleSettings();
@@ -107,22 +112,38 @@ namespace TimePlanner.Widget.Views
 
         private async void Primary_Click(object sender, RoutedEventArgs e)
         {
+            await _intervalSave;
             if (_isSettings)
                 _flow.ShowTimer(activate: true);
             else
                 await _flow.StartTrackingAsync();
         }
 
-        private void BackToTimer_Click(object sender, RoutedEventArgs e) => _flow.ShowTimer(activate: true);
+        private async void BackToTimer_Click(object sender, RoutedEventArgs e)
+        {
+            await _intervalSave;
+            _flow.ShowTimer(activate: true);
+        }
+
+        private async void Help_Click(object sender, RoutedEventArgs e)
+        {
+            await _intervalSave;
+            _flow.ShowHelp();
+        }
 
         private async void Interval_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!_ready || IntervalSelect.SelectedIndex < 0)
                 return;
 
-            var saving = _flow.ChangeIntervalAsync(_intervals[IntervalSelect.SelectedIndex]);
-            ShowNextCheckIn();
-            await saving;
+            IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = false;
+            try
+            {
+                _intervalSave = _flow.ChangeIntervalAsync(_intervals[IntervalSelect.SelectedIndex]);
+                await _intervalSave;
+                ShowNextCheckIn();
+            }
+            finally { IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = true; }
         }
 
         private void ShowNextCheckIn()
@@ -165,6 +186,30 @@ namespace TimePlanner.Widget.Views
                 return;
             _flow.Session.Preferences.SoundOnCheckIn = SoundSwitch.IsChecked == true;
             _flow.SavePreferences();
+        }
+
+        private void Startup_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!_ready || _revertingStartup)
+                return;
+
+            if (!_flow.ChangeStartWithWindows(StartupSwitch.IsChecked == true))
+            {
+                // Windows refused: the switch goes back to what is really set, and the message says why
+                _revertingStartup = true;
+                StartupSwitch.IsChecked = _flow.Session.Preferences.StartWithWindows;
+                _revertingStartup = false;
+            }
+            ShowStartup();
+        }
+
+        private void ShowStartup()
+        {
+            StartupHelp.Text = _flow.Session.Preferences.StartWithWindows
+                ? "Opens when you sign in to Windows."
+                : "Open it yourself after signing in.";
+            StartupError.Text = _flow.StartupProblem ?? "";
+            StartupError.Visibility = _flow.StartupProblem == null ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private void ApplyIdleSettings()

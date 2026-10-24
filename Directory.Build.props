@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <!--product version every project will report. release workflow overrides with a tag -->
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
 
     <!-- every security rule is switched on, the reliability rules at the recommended level, and the rules that matter for this app fail the build.
          Everything else stays a warning, so style and performance suggestions never block a teammate's work -->

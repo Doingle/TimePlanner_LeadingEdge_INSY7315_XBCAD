@@ -12,6 +12,7 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //-----------------------------
         //every company, ordered by name
         [HttpGet]
+        [ProducesResponseType<List<CompanyDto>>(StatusCodes.Status200OK)]
         public async Task<ActionResult<List<CompanyDto>>> GetAll() =>
             (await _companies.GetAllAsync()).Select(c => new CompanyDto(c.CompanyId, c.Name)).ToList();
     }
