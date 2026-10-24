@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -52,6 +52,7 @@ namespace TimePlanner.Widget.Views
                 SettingsHeader.Visibility = Visibility.Visible;
                 IntervalField.Margin = (Thickness)FindResource("GapSection");
                 PrimaryButton.Content = "Done";
+                AiSettingsRow.Visibility = Visibility.Visible;
             }
             ShowWelcome(!isSettings);
 
@@ -178,6 +179,13 @@ namespace TimePlanner.Widget.Views
             AdvancedSummary.Text = off
                 ? "Hidden"
                 : $"{preferences.IdleShape}, {(preferences.IdleVisibility == IdleVisibility.Faded ? "faded" : "visible")}";
+        }
+
+        //-----------------------------
+        //opens voice and ai settings view
+        private void AiSettings_Click(object sender, RoutedEventArgs e)
+        {
+            _flow.ShowAiSettings(() => _flow.ShowSettings());
         }
     }
 }
