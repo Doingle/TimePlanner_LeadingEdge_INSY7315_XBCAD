@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -28,6 +28,8 @@ namespace TimePlanner.Widget.Controls
         Download,
         ShapePill, ShapeRing, ShapeDot,
         ClockHands,
+        Mic,
+        Stop,
     }
 
     public sealed class Icon : FrameworkElement
@@ -168,6 +170,8 @@ namespace TimePlanner.Widget.Controls
             [IconKind.ShapeDot] = [new(Freeze(new EllipseGeometry(new Point(12, 12), 4.5, 4.5)), Filled: true)],
 
             [IconKind.ClockHands] = [new(Freeze(Geometry.Parse("M12,7 V12 L15,14")), StrokeWidth: 2.75)],
+            [IconKind.Mic] = [P("M12,3 A3,3 0 0 0 9,6 V12 A3,3 0 0 0 15,12 V6 A3,3 0 0 0 12,3 Z"), P("M19,11 A7,7 0 0 1 5,11"), P("M12,18 V21")],
+            [IconKind.Stop] = [P("M7,7 H17 V17 H7 Z")],
         };
     }
 }
