@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Threading;
+using TimePlanner.Core.Ai;
 using TimePlanner.Core.Services;
 using TimePlanner.Core.Services.Models;
 using TimePlanner.Core.Sync;
@@ -21,6 +23,9 @@ namespace TimePlanner.Widget.Views
         private readonly DateOnly _day;
         private readonly DayPreview _preview;
         private readonly Action _back;
+        private readonly IReadOnlyList<TimesheetSlot> _slots;
+        private HashSet<int> _aiEntryIds = new();
+        private List<VoiceNote> _unbuiltNotes = new();
         private DispatcherTimer? _undoTimer;
         private Action? _undoAction;
 
@@ -31,6 +36,7 @@ namespace TimePlanner.Widget.Views
             _day = day;
             _preview = preview;
             _back = back;
+            _slots = slots;
 
             var dayDate = day.ToDateTime(TimeOnly.MinValue);
             var totalLogged = slots.Where(s => s.Kind == SlotKind.Entry).Sum(s => (s.End - s.Start).TotalMinutes);
@@ -56,8 +62,70 @@ namespace TimePlanner.Widget.Views
 
             SendButton.IsEnabled = preview.CanSend;
 
-            RenderSlots(slots);
+            RenderSlots();
             _ = LoadAccountStatusAsync();
+
+            Loaded += async (s, e) => await LoadAiAndRenderAsync();
+            _flow.Ai.NoteChanged += OnNoteChanged;
+            Unloaded += (s, e) => _flow.Ai.NoteChanged -= OnNoteChanged;
+        }
+
+        //-----------------------------
+        //reloads notes when transcription state updates
+        private void OnNoteChanged(Guid id) => _ = Dispatcher.InvokeAsync(LoadAiAndRenderAsync);
+
+        //-----------------------------
+        //loads voice notes and ai markers for the day and renders slots
+        private async Task LoadAiAndRenderAsync()
+        {
+            var notes = await _flow.Ai.GetNotesAsync(_day);
+            _unbuiltNotes = notes.Where(n => n.Status != VoiceNoteStatus.Built).ToList();
+
+            var aiIds = await _flow.Ai.GetAiEntryIdsAsync(_day);
+            _aiEntryIds = aiIds.ToHashSet();
+
+            UpdateUnbuiltBanner();
+            RenderSlots();
+        }
+
+        //-----------------------------
+        //updates banner with pending voice notes count and state
+        private void UpdateUnbuiltBanner()
+        {
+            //hide banner when no unbuilt notes exist
+            if (_unbuiltNotes.Count == 0)
+            {
+                UnbuiltBanner.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            UnbuiltBanner.Visibility = Visibility.Visible;
+            var readyCount = _unbuiltNotes.Count(n => n.Status == VoiceNoteStatus.Transcribed);
+            var pendingCount = _unbuiltNotes.Count(n => n.Status != VoiceNoteStatus.Transcribed);
+
+            //render appropriate summary caption
+            if (pendingCount == 0)
+            {
+                var noteWord = readyCount == 1 ? "voice note" : "voice notes";
+                UnbuiltBannerText.Text = $"{readyCount} {noteWord} ready";
+            }
+            else if (readyCount > 0)
+            {
+                UnbuiltBannerText.Text = $"{readyCount} ready · {pendingCount} still transcribing";
+            }
+            else
+            {
+                UnbuiltBannerText.Text = $"{pendingCount} still transcribing";
+            }
+
+            BuildDayButton.IsEnabled = readyCount > 0;
+        }
+
+        //-----------------------------
+        //opens day build view from banner
+        private async void BuildDay_Click(object sender, RoutedEventArgs e)
+        {
+            await _flow.ShowDayBuildAsync(_day, ReopenTimesheet);
         }
 
         //-----------------------------
@@ -87,13 +155,13 @@ namespace TimePlanner.Widget.Views
         }
 
         //-----------------------------
-        //renders timesheet slot cards
-        private void RenderSlots(IReadOnlyList<TimesheetSlot> slots)
+        //renders timesheet slot cards and voice note cards in chronological order
+        private void RenderSlots()
         {
             SlotContainer.Children.Clear();
 
-            //shows message when day has no slots
-            if (slots.Count == 0)
+            //shows message when day has no slots and no voice notes
+            if (_slots.Count == 0 && _unbuiltNotes.Count == 0)
             {
                 var empty = new TextBlock
                 {
@@ -104,22 +172,98 @@ namespace TimePlanner.Widget.Views
                 return;
             }
 
-            //builds card for each slot
-            foreach (var slot in slots)
+            var items = new List<(DateTime Start, TimesheetSlot? Slot, VoiceNote? Note)>();
+            foreach (var slot in _slots)
             {
-                if (slot.Kind == SlotKind.Entry)
+                items.Add((slot.Start, slot, null));
+            }
+            foreach (var note in _unbuiltNotes)
+            {
+                items.Add((note.WindowStart, null, note));
+            }
+            items.Sort((a, b) => a.Start.CompareTo(b.Start));
+
+            //builds card for each slot or unbuilt voice note
+            foreach (var item in items)
+            {
+                if (item.Note != null)
                 {
-                    SlotContainer.Children.Add(BuildEntryCard(slot));
+                    SlotContainer.Children.Add(BuildVoiceNoteCard(item.Note));
                 }
-                else if (slot.Kind == SlotKind.Gap)
+                else if (item.Slot != null)
                 {
-                    SlotContainer.Children.Add(BuildGapCard(slot));
-                }
-                else if (slot.Kind == SlotKind.Break)
-                {
-                    SlotContainer.Children.Add(BuildBreakCard(slot));
+                    if (item.Slot.Kind == SlotKind.Entry)
+                    {
+                        SlotContainer.Children.Add(BuildEntryCard(item.Slot));
+                    }
+                    else if (item.Slot.Kind == SlotKind.Gap)
+                    {
+                        SlotContainer.Children.Add(BuildGapCard(item.Slot));
+                    }
+                    else if (item.Slot.Kind == SlotKind.Break)
+                    {
+                        SlotContainer.Children.Add(BuildBreakCard(item.Slot));
+                    }
                 }
             }
+        }
+
+        //-----------------------------
+        //builds UI card for an unbuilt voice note
+        private Border BuildVoiceNoteCard(VoiceNote note)
+        {
+            var border = new Border
+            {
+                Style = (Style)FindResource("Stat"),
+                Padding = new Thickness(12),
+                Margin = new Thickness(0, 0, 0, 8),
+                Cursor = System.Windows.Input.Cursors.Hand
+            };
+
+            var dock = new DockPanel();
+
+            var icon = new Icon
+            {
+                Kind = IconKind.Mic,
+                Size = (double)FindResource("SizeIconSm"),
+                Foreground = (Brush)FindResource("TextSecondaryBrush"),
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            DockPanel.SetDock(icon, Dock.Left);
+            dock.Children.Add(icon);
+
+            var statusText = note.Status switch
+            {
+                VoiceNoteStatus.Transcribed => "Transcribed",
+                VoiceNoteStatus.Recorded => "Transcribing…",
+                VoiceNoteStatus.Failed => "Couldn't transcribe · Retry",
+                _ => note.Status.ToString()
+            };
+
+            var text = new TextBlock
+            {
+                Text = $"Voice note · {Format.Range(note.WindowStart, note.WindowEnd)} · {statusText}",
+                Style = (Style)FindResource("Text.Body"),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            //highlight failed status in accent color
+            if (note.Status == VoiceNoteStatus.Failed)
+            {
+                text.Foreground = (Brush)FindResource("TextAccentBrush");
+            }
+
+            dock.Children.Add(text);
+            border.Child = dock;
+
+            //open voice note details on card click
+            border.MouseLeftButtonUp += async (sender, e) =>
+            {
+                await _flow.ShowVoiceNoteAsync(note.Id, ReopenTimesheet);
+            };
+
+            return border;
         }
 
         //-----------------------------
@@ -183,10 +327,24 @@ namespace TimePlanner.Widget.Views
 
             var projectText = new TextBlock
             {
-                Text = $"{slot.Project} · {slot.Company}",
-                Style = (Style)FindResource("Text.Caption"),
-                Foreground = (Brush)FindResource("TextSecondaryBrush")
+                Style = (Style)FindResource("Text.Caption")
             };
+
+            //add ai tag when entry was created by day compilation
+            if (slot.EntryId.HasValue && _aiEntryIds.Contains(slot.EntryId.Value))
+            {
+                projectText.Inlines.Add(new Run("AI · ")
+                {
+                    Foreground = (Brush)FindResource("TextAccentBrush"),
+                    FontWeight = (FontWeight)FindResource("FontWeightSemibold")
+                });
+            }
+
+            projectText.Inlines.Add(new Run($"{slot.Project} · {slot.Company}")
+            {
+                Foreground = (Brush)FindResource("TextSecondaryBrush")
+            });
+
             stack.Children.Add(projectText);
 
             //adds note line when present
@@ -371,10 +529,30 @@ namespace TimePlanner.Widget.Views
         //sends current day to dashboard
         private async void Send_Click(object sender, RoutedEventArgs e)
         {
-            var confirm = MessageBox.Show(
-                $"Send {_preview.Rows.Count} entries ({_preview.Hours:0.##} h) for {Format.Day(_day.ToDateTime(TimeOnly.MinValue))} to the dashboard?",
-                "Send day",
-                MessageBoxButton.YesNo);
+            var aiCount = _slots.Count(s => s.EntryId.HasValue && _aiEntryIds.Contains(s.EntryId.Value));
+            var unbuiltCount = _unbuiltNotes.Count;
+
+            var sb = new System.Text.StringBuilder();
+
+            //warn about ai entries
+            if (aiCount > 0)
+            {
+                var entryWord = aiCount == 1 ? "AI-built entry" : "AI-built entries";
+                sb.AppendLine($"This day includes {aiCount} {entryWord}. AI can be inaccurate, so check them before sending.");
+            }
+
+            sb.Append($"Send {_preview.Rows.Count} entries ({_preview.Hours:0.##} h) for {Format.Day(_day.ToDateTime(TimeOnly.MinValue))} to the dashboard?");
+
+            //warn about unbuilt notes
+            if (unbuiltCount > 0)
+            {
+                var noteWord = unbuiltCount == 1 ? "voice note hasn't" : "voice notes haven't";
+                var themWord = unbuiltCount == 1 ? "it" : "them";
+                sb.AppendLine();
+                sb.Append($"{unbuiltCount} {noteWord} been added yet. Send without {themWord}?");
+            }
+
+            var confirm = MessageBox.Show(sb.ToString(), "Send day", MessageBoxButton.YesNo);
 
             //user cancelled send
             if (confirm != MessageBoxResult.Yes)
@@ -412,6 +590,7 @@ namespace TimePlanner.Widget.Views
             //reloads timesheet when sent
             if (outcome.Status == SendStatus.Sent)
             {
+                await _flow.Ai.ClearAiEntryIdsAsync(_day);
                 ConfirmSent();
                 ReopenTimesheet();
                 return;
@@ -427,6 +606,7 @@ namespace TimePlanner.Widget.Views
                     //confirms sent or shows failure on retry
                     if (retry.Status == SendStatus.Sent)
                     {
+                        await _flow.Ai.ClearAiEntryIdsAsync(_day);
                         ConfirmSent();
                     }
                     else

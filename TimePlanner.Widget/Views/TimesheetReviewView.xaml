@@ -40,6 +40,15 @@
                 <Button x:Name="SignOutButton" Style="{StaticResource Button.Text}" Content="Sign out" Margin="4,0,0,0" Click="SignOut_Click" />
             </StackPanel>
 
+            <Border x:Name="UnbuiltBanner" Background="{StaticResource AccentFillBrush}" CornerRadius="{StaticResource RadiusBanner}"
+                    Padding="12,8" Margin="0,8,0,0" Visibility="Collapsed">
+                <DockPanel>
+                    <Button x:Name="BuildDayButton" Style="{StaticResource Button.Primary}" Content="Build my day"
+                            DockPanel.Dock="Right" Margin="8,0,0,0" Click="BuildDay_Click" />
+                    <TextBlock x:Name="UnbuiltBannerText" Style="{StaticResource Text.Body}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                </DockPanel>
+            </Border>
+
             <ScrollViewer x:Name="EntryScroller" Margin="{StaticResource GapSection}" MaxHeight="300"
                           VerticalScrollBarVisibility="Auto" Focusable="False">
                 <StackPanel x:Name="SlotContainer" />
