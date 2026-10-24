@@ -84,6 +84,7 @@ namespace TimePlanner.Widget
             _loaded = false;
             Session.User = await _log.SignInAsync();
             Session.Preferences = _preferences.Load();
+            _host.ConfigurePositions(Session.Preferences, SavePreferences);
             // The first run registers the widget (the setting starts on); later runs follow the saved choice
             StartupProblem = _startup.Apply(Session.Preferences.StartWithWindows);
             (Session.ProjectId, Session.Activity) = await _log.GetLastChoiceAsync(Session.User.UserId);
@@ -150,7 +151,7 @@ namespace TimePlanner.Widget
         public void ShowTimer(bool activate = false)
         {
             if (Scheduler.IsDue)
-                CheckIn();
+                CheckIn(activate: activate);
             else
                 Present(Screen.Timer, new TimerView(this), activate);
         }
@@ -180,9 +181,9 @@ namespace TimePlanner.Widget
             }));
         }
 
-        public void CheckIn(bool announce = false)
+        public void CheckIn(bool announce = false, bool activate = false)
         {
-            Present(Screen.CheckIn, new CheckInAlertView(this), activate: false);
+            Present(Screen.CheckIn, new CheckInAlertView(this), activate);
             if (announce && Session.Preferences.SoundOnCheckIn)
                 SystemSounds.Asterisk.Play();
         }

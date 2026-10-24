@@ -11,5 +11,7 @@ namespace TimePlanner.Widget.Models
         public bool SoundOnCheckIn { get; set; } = true;
         // On for a first run and for a widget.json saved before the setting existed; a saved choice is kept on every update
         public bool StartWithWindows { get; set; } = true;
+        public WidgetPosition? IdlePosition { get; set; }
+        public WidgetPosition? MainPosition { get; set; }
     }
 }

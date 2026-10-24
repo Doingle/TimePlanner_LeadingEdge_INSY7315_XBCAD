@@ -12,6 +12,8 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
+using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace TimePlanner.Widget.Views
 {
@@ -21,16 +23,31 @@ namespace TimePlanner.Widget.Views
     public partial class TimerView : UserControl
     {
         private readonly WidgetFlow _flow;
+        private readonly DispatcherTimer _leaveTimer = new() { Interval = TimeSpan.FromSeconds(5) };
 
         public TimerView(WidgetFlow flow)
         {
             InitializeComponent();
             _flow = flow;
+            _leaveTimer.Tick += (_, _) =>
+            {
+                _leaveTimer.Stop();
+                if (!IsLoaded || Card.IsMouseOver) return;
+                if (Mouse.LeftButton == MouseButtonState.Pressed || IsMouseCaptureWithin)
+                    _leaveTimer.Start();
+                else
+                    _flow.ShowIdle();
+            };
 
             ShowState();
-            Loaded += (_, _) => flow.Scheduler.Ticked += Scheduler_Ticked;
+            Loaded += (_, _) =>
+            {
+                flow.Scheduler.Ticked += Scheduler_Ticked;
+                if (!Card.IsMouseOver) _leaveTimer.Start();
+            };
             Unloaded += (_, _) =>
             {
+                _leaveTimer.Stop();
                 flow.Scheduler.Ticked -= Scheduler_Ticked;
             };
         }
@@ -70,6 +87,13 @@ namespace TimePlanner.Widget.Views
         private void Settings_Click(object sender, RoutedEventArgs e) => _flow.ShowSettings();
 
         private void Exit_Click(object sender, RoutedEventArgs e) => _flow.AskExit();
+
+        private void Card_MouseEnter(object sender, MouseEventArgs e) => _leaveTimer.Stop();
+        private void Card_MouseLeave(object sender, MouseEventArgs e)
+        {
+            _leaveTimer.Stop();
+            _leaveTimer.Start();
+        }
 
         private async void LogNow_Click(object sender, RoutedEventArgs e) => await _flow.LogTimeAsync(LogEntryMode.LogNow);
 

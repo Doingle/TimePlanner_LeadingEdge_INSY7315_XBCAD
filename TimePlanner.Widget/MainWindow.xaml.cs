@@ -12,6 +12,8 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using TimePlanner.Widget.Controls;
+using TimePlanner.Widget.Models;
+using TimePlanner.Widget.Views;
 
 namespace TimePlanner.Widget
 {
@@ -36,27 +38,53 @@ namespace TimePlanner.Widget
         private Point? _anchor;        
         private bool _positioning;
         private Slot? _shown;          
+        private bool _idle;
+        private bool _presenting;
+        private bool _positionDirty;
+        private Services.DesktopVisibility? _desktop;
 
         public MainWindow()
         {
             InitializeComponent();
             SizeChanged += (_, _) => Reposition();
             LocationChanged += (_, _) => Reanchor();
-            Closed += (_, _) => Application.Current.Shutdown();
+            Closed += (_, _) => { _desktop?.Dispose(); Application.Current.Shutdown(); };
+            StateChanged += (_, _) =>
+            {
+                if (WindowState == WindowState.Minimized && Host.Content != null)
+                    Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () => RestoreVisible(activate: false));
+            };
         }
 
 
         public IWidgetHost OpenSlot()
         {
+            SavePosition();
             var slot = new Slot(this);
             _shown = slot;
             return slot;
         }
 
-        public void UseSlot(IWidgetHost slot) => _shown = (Slot)slot;
+        public void UseSlot(IWidgetHost slot)
+        {
+            if (_shown == slot) return;
+            SavePosition();
+            _shown = (Slot)slot;
+            LoadPosition();
+        }
 
         private sealed class Slot(MainWindow window) : IWidgetHost
         {
+            public WidgetPreferences? Preferences { get; private set; }
+            public Action? Save { get; private set; }
+
+            public void ConfigurePositions(WidgetPreferences preferences, Action save)
+            {
+                Preferences = preferences;
+                Save = save;
+                if (window._shown == this) window.LoadPosition();
+            }
+
             public void Present(FrameworkElement screen, bool activate = true)
             {
                 if (window._shown == this)
@@ -72,16 +100,22 @@ namespace TimePlanner.Widget
 
         private void Present(FrameworkElement screen, bool activate)
         {
+            SavePosition();
+            _presenting = true;
+            _idle = screen is IdleView;
+            LoadPosition();
             Host.Content = screen;
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
             if (!IsVisible)
                 Show();
 
             UpdateLayout();
             Reposition();
+            _presenting = false;
 
             if (activate)
             {
-                Activate();
+                RestoreVisible(activate: true);
                 Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
                 {
                     if (Host.Content == screen && IsActive)
@@ -92,6 +126,7 @@ namespace TimePlanner.Widget
 
         private void HideWidget()
         {
+            SavePosition();
             Hide();
             Host.Content = null;
         }
@@ -101,6 +136,8 @@ namespace TimePlanner.Widget
         {
             base.OnSourceInitialized(e);
             DeviceLines.Apply(VisualTreeHelper.GetDpi(this));
+            HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WindowMessage);
+            _desktop = new Services.DesktopVisibility(Dispatcher, () => RestoreVisible(activate: false));
         }
 
         protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
@@ -116,24 +153,22 @@ namespace TimePlanner.Widget
 
             var area = WorkArea();
             var m = ShadowMargin;
-            _anchor ??= new Point(area.Right - ScreenInset, area.Bottom - ScreenInset);
+            _anchor ??= new Point(area.Right - ScreenInset, _idle ? area.Top + ScreenInset : area.Bottom - ScreenInset);
             var anchor = _anchor.Value;
 
-            var left = _corner is Corner.TopLeft or Corner.BottomLeft ? anchor.X - m.Left : anchor.X - ActualWidth + m.Right;
-            var top = _corner is Corner.TopLeft or Corner.TopRight ? anchor.Y - m.Top : anchor.Y - ActualHeight + m.Bottom;
-
-            left = Math.Max(area.Left - m.Left, Math.Min(left, area.Right - ActualWidth + m.Right));
-            top = Math.Max(area.Top - m.Top, Math.Min(top, area.Bottom - ActualHeight + m.Bottom));
+            var location = new WidgetPosition(anchor.X, anchor.Y,
+                _corner is Corner.TopRight or Corner.BottomRight, _corner is Corner.BottomLeft or Corner.BottomRight)
+                .Locate(area, new Size(ActualWidth, ActualHeight), m);
 
             _positioning = true;
-            Left = left;
-            Top = top;
+            Left = location.X;
+            Top = location.Y;
             _positioning = false;
         }
 
         private void Reanchor()
         {
-            if (_positioning || !IsVisible || ActualWidth <= 0)
+            if (_positioning || _presenting || WindowState != WindowState.Normal || !IsVisible || ActualWidth <= 0)
                 return;
 
             var area = WorkArea();
@@ -150,6 +185,67 @@ namespace TimePlanner.Widget
                 _ => Corner.TopLeft,
             };
             _anchor = new Point(right ? card.Right : card.Left, bottom ? card.Bottom : card.Top);
+            _positionDirty = true;
+        }
+
+        private void LoadPosition()
+        {
+            var saved = _idle ? _shown?.Preferences?.IdlePosition : _shown?.Preferences?.MainPosition;
+            if (saved?.IsValid == true)
+            {
+                _anchor = new Point(saved.X, saved.Y);
+                _corner = (saved.Right, saved.Bottom) switch
+                {
+                    (true, true) => Corner.BottomRight,
+                    (true, false) => Corner.TopRight,
+                    (false, true) => Corner.BottomLeft,
+                    _ => Corner.TopLeft,
+                };
+            }
+            else
+            {
+                _anchor = null;
+                _corner = _idle ? Corner.TopRight : Corner.BottomRight;
+            }
+            _positionDirty = false;
+        }
+
+        public void SavePosition()
+        {
+            if (!_positionDirty || _anchor == null || _shown?.Preferences is not { } preferences) return;
+            Reposition();
+            Reanchor();
+            var saved = new WidgetPosition(_anchor.Value.X, _anchor.Value.Y,
+                _corner is Corner.TopRight or Corner.BottomRight, _corner is Corner.BottomLeft or Corner.BottomRight);
+            if (_idle) preferences.IdlePosition = saved;
+            else preferences.MainPosition = saved;
+            try { _shown.Save?.Invoke(); }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+            {
+                System.Diagnostics.Trace.TraceWarning("The widget position could not be saved.");
+            }
+            _positionDirty = false;
+        }
+
+        private IntPtr WindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (message == 0x0232) SavePosition(); // WM_EXITSIZEMOVE: main card's left drag ended.
+            if (message == 0x007E) // WM_DISPLAYCHANGE: a monitor may have gone away.
+                Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, Reposition);
+            return IntPtr.Zero;
+        }
+
+        private void RestoreVisible(bool activate)
+        {
+            if (Host.Content == null) return; // Respect the user's Hidden idle preference.
+            _presenting = true;
+            WindowState = WindowState.Normal;
+            Show();
+            Reposition();
+            _presenting = false;
+            Topmost = false;
+            Topmost = true;
+            if (activate) Activate();
         }
 
         private Rect WorkArea()
@@ -160,7 +256,8 @@ namespace TimePlanner.Widget
                 return SystemParameters.WorkArea;
 
             var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
-            if (!GetMonitorInfo(MonitorFromWindow(handle, MonitorDefaultToNearest), ref info))
+            var point = source.CompositionTarget.TransformToDevice.Transform(_anchor.Value);
+            if (!GetMonitorInfo(MonitorFromPoint(new NativePoint { X = (int)point.X, Y = (int)point.Y }, MonitorDefaultToNearest), ref info))
                 return SystemParameters.WorkArea;
 
             var pixels = info.Work;
@@ -175,7 +272,10 @@ namespace TimePlanner.Widget
 
         [DllImport("user32.dll")]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        private static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
+        private static extern IntPtr MonitorFromPoint(NativePoint point, uint flags);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativePoint { public int X; public int Y; }
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]

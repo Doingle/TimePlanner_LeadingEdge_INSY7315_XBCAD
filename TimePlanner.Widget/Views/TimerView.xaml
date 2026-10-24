@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
     
-    <controls:WidgetCard x:Name="Card" Padding="{StaticResource ShellPaddingWithFoot}">
+    <controls:WidgetCard x:Name="Card" Padding="{StaticResource ShellPaddingWithFoot}" MouseEnter="Card_MouseEnter" MouseLeave="Card_MouseLeave">
         <controls:WidgetCard.CornerContent>
             <StackPanel Orientation="Horizontal">
                 <Button Style="{StaticResource Button.Icon}" ToolTip="Settings" AutomationProperties.Name="Settings" Click="Settings_Click">

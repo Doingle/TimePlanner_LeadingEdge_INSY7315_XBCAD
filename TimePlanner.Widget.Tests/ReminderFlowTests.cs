@@ -50,6 +50,80 @@ public class ReminderFlowTests
 
     private static async Task OnUi(Func<Task> test) => await (await Ui.Value).InvokeAsync(test).Task.Unwrap();
 
+    [Theory]
+    [InlineData(90, 30, 20, 10, 10)]
+    [InlineData(5, 60, 50, 10, 10)]
+    [InlineData(20, 15, 15, 12, 0)]
+    [InlineData(20, 15, 5, 12, 10)]
+    public Task IntervalChangeImmediatelyUpdatesTimer(int oldMinutes, int newMinutes, int remainingMinutes, int localHour, int elapsedMinutes) => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        host.Clock.UtcNow = new DateTimeOffset(2026, 10, 23, localHour - 2, 15, 0, TimeSpan.Zero);
+        await host.Flow.ChangeIntervalAsync(oldMinutes);
+        await host.Flow.StartTrackingAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(elapsedMinutes);
+        await host.Flow.Scheduler.RefreshAsync();
+        host.Flow.ShowSettings();
+        var settings = Assert.IsType<SettingsView>(host.Window.Screen);
+        var updated = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnTick(object? sender, EventArgs e) => updated.TrySetResult();
+        host.Flow.Scheduler.Ticked += OnTick;
+        var periodStart = host.Flow.GetLogPeriod().Start;
+        ((ComboBox)settings.FindName("IntervalSelect")).SelectedIndex = CheckInPolicy.ChoicesIncluding(oldMinutes).IndexOf(newMinutes);
+        await updated.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        host.Flow.Scheduler.Ticked -= OnTick;
+        Assert.Equal(TimeSpan.FromMinutes(remainingMinutes), host.Flow.Scheduler.TimeLeft);
+        Assert.Equal(periodStart, host.Flow.GetLogPeriod().Start);
+        using (var scope = host.Services.CreateScope())
+            Assert.Equal(newMinutes, (await scope.ServiceProvider.GetRequiredService<SettingsService>().GetAsync(host.Flow.Session.User.UserId)).CheckInIntervalMinutes);
+        host.Flow.ShowTimer();
+        Assert.IsType<TimerView>(host.Window.Screen);
+    });
+
+    [Fact]
+    public Task TrayActivatesEvenWhenCheckInIsDue() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        host.Clock.UtcNow += TimeSpan.FromHours(3);
+        await host.Flow.Scheduler.RefreshAsync();
+        Assert.True(host.Flow.Scheduler.IsDue);
+        host.Flow.ShowFromTray();
+        Assert.IsType<CheckInAlertView>(host.Window.Screen);
+        Assert.True(host.Window.Activated);
+    });
+
+    [Theory]
+    [InlineData(IdleShape.Pill)]
+    [InlineData(IdleShape.Ring)]
+    [InlineData(IdleShape.Dot)]
+    public Task IdleHoverFillRenders_AndTrayAlwaysOpensMainWidget(IdleShape shape) => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        host.Flow.Session.Preferences.IdleShape = shape;
+        await host.Flow.StartTrackingAsync();
+        var idle = Assert.IsType<IdleView>(host.Window.Screen);
+        var root = (FrameworkElement)idle.FindName("Root");
+        root.RaiseEvent(new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0)
+        { RoutedEvent = System.Windows.Input.Mouse.MouseEnterEvent });
+        Assert.Same(idle, host.Window.Screen);
+        var fill = (TimePlanner.Widget.Controls.HoverProgress)idle.FindName("HoverFill");
+        fill.Fraction = 0.5;
+        var preview = new Grid { Width = 160, Height = 120 };
+        preview.Children.Add(idle);
+        Render(preview, $"idle-hover-{shape}");
+        preview.Children.Remove(idle);
+        root.RaiseEvent(new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0)
+        { RoutedEvent = System.Windows.Input.Mouse.MouseLeaveEvent });
+        Assert.Equal(0, fill.Fraction);
+        host.Flow.ShowFromTray();
+        Assert.IsType<TimerView>(host.Window.Screen);
+        host.Flow.Session.Preferences.IdleVisibility = IdleVisibility.Hidden;
+        host.Flow.ShowIdle();
+        host.Flow.ShowFromTray();
+        Assert.IsType<TimerView>(host.Window.Screen);
+    });
+
     [Fact]
     public Task TrayActionsAreOrderedAndLogAvailabilityRefreshes() => OnUi(async () =>
     {
@@ -284,9 +358,11 @@ public class ReminderFlowTests
 
     private sealed class RecordingHost : IWidgetHost
     {
+        public bool Activated { get; private set; }
         public FrameworkElement? Screen { get; private set; }
         public void Present(FrameworkElement screen, bool activate = true)
         {
+            Activated = activate;
             if (Screen?.FindName("ReminderNotice") is UnsentDayReminderView old)
                 old.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
             Screen = screen;

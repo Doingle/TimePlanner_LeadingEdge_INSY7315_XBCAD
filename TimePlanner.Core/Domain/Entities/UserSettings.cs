@@ -30,7 +30,7 @@ namespace TimePlanner.Core.Domain.Entities
         public int IgnoredCheckInMinutes { get; set; } = 5;
         public IgnoredCheckInAction IgnoredCheckInAction { get; set; } = IgnoredCheckInAction.KeepAsking;
 
-        //no check ins are prompted between LunchStart and LunchEnd
+        //Legacy fields retained for data/API compatibility; check-ins now pause only through an explicit session pause.
         public TimeOnly LunchStart { get; set; } = new TimeOnly(12, 0);
         public TimeOnly LunchEnd { get; set; } = new TimeOnly(13, 0);
     }
