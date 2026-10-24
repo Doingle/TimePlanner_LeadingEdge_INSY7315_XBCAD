@@ -81,6 +81,10 @@ namespace TimePlanner.Widget
 
             _tray = CreateTray();
             _flow.ShowStart();
+            var updates = _app.Services.GetRequiredService<Services.WidgetUpdateChecker>();
+            _window.AttachUpdates(updates);
+            _flow.DashboardSignedIn += (_, _) => _ = updates.CheckAsync();
+            _ = updates.CheckAsync();
         }
 
         private TrayIconManager CreateTray() => new(ShowWidget,

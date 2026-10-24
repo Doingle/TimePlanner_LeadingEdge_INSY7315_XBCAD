@@ -48,7 +48,7 @@ public class ReminderFlowTests
         return ready.Task;
     });
 
-    private static async Task OnUi(Func<Task> test) => await (await Ui.Value).InvokeAsync(test).Task.Unwrap();
+    internal static async Task OnUi(Func<Task> test) => await (await Ui.Value).InvokeAsync(test).Task.Unwrap();
 
     [Theory]
     [InlineData(90, 30, 20, 10, 10)]
@@ -414,6 +414,43 @@ public class ReminderFlowTests
         Assert.Equal(Visibility.Collapsed, ((UnsentDayReminderView)ended.FindName("ReminderNotice")).Visibility);
     });
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task UpdateCheckAtSignInNeverBlocksSendDay(bool slowCheck) => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        host.Http.StallVersionCheck = slowCheck;
+        using var checker = new WidgetUpdateChecker(host.Services.GetRequiredService<DashboardClient>(), "1.0.0");
+        Task? check = null;
+        host.Flow.DashboardSignedIn += (_, _) => check = checker.CheckAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        var login = await host.Flow.SignInToDashboardAsync("test@example.invalid", "test-only").WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(SignInStatus.SignedIn, login.Status);
+        Assert.NotNull(check);
+        if (slowCheck)
+            Assert.False(check.IsCompleted);
+        else
+            Assert.NotNull(checker.Available);
+        var sent = await host.Flow.SendDayAsync(DateOnly.FromDateTime(host.Clock.LocalNow())).WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(SendStatus.Sent, sent.Status);
+        Assert.Single(host.History.Days);
+    });
+
+    [Fact]
+    public Task StartupOverlayFitsExistingSetup() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var setup = host.Flow.ShowSetup();
+        var layers = new Grid { Width = 320 };
+        layers.Children.Add(setup);
+        layers.Children.Add(new UpdateAvailableView(() => { }));
+        Render(layers, "update-startup");
+    });
+
     private static void Render(FrameworkElement view, string name)
     {
         view.Measure(new Size(380, double.PositiveInfinity));
@@ -452,14 +489,27 @@ public class ReminderFlowTests
     {
         public int Requests { get; private set; }
         public bool Succeeds { get; set; } = true;
+        public bool StallVersionCheck { get; set; }
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            if (request.RequestUri!.AbsolutePath == "/api/v1/widget/version")
+                return StallVersionCheck ? WaitForCancellation(cancellationToken) : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                { Content = JsonContent.Create(new WidgetRelease("2.0.0")) });
+            if (request.RequestUri.AbsolutePath == "/api/v1/auth/login")
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                { Content = JsonContent.Create(new { accessToken = "test-only", tokenType = "Bearer", expiresAtUtc = DateTime.UtcNow.AddHours(1) }) });
             Requests++;
             Assert.Equal("/api/v1/timesheets/import", request.RequestUri!.AbsolutePath);
             return Task.FromResult(new HttpResponseMessage(Succeeds ? HttpStatusCode.OK : HttpStatusCode.InternalServerError)
             {
                 Content = JsonContent.Create(new { created = 1, skipped = 0, errors = Array.Empty<string>() })
             });
+        }
+
+        private static async Task<HttpResponseMessage> WaitForCancellation(CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            throw new InvalidOperationException("The test request must be cancelled.");
         }
     }
 

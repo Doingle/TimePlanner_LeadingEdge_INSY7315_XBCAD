@@ -78,6 +78,9 @@ namespace TimePlanner.Widget
             services.AddSingleton<SnoozeManager>();
             services.AddSingleton<CheckInScheduler>();
             services.AddSingleton<UnsentDayReminder>();
+            services.AddSingleton(provider => new WidgetUpdateChecker(provider.GetRequiredService<DashboardClient>(),
+                System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(App).Assembly)?.InformationalVersion
+                ?? typeof(App).Assembly.GetName().Version!.ToString()));
             services.AddSingleton<TimeLogService>();
             services.AddSingleton<CsvExportService>();
             services.AddSingleton<WidgetFlow>();

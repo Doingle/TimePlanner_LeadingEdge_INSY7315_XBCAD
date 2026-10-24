@@ -1,0 +1,39 @@
+<UserControl x:Class="TimePlanner.Widget.Views.UpdateAvailableView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
+             Focusable="True" KeyboardNavigation.TabNavigation="Cycle"
+             AutomationProperties.Name="New version available" PreviewKeyDown="Notice_KeyDown">
+    <Grid>
+        <Button x:Name="DismissBackdrop" Background="Transparent" BorderThickness="0" Padding="0"
+                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                Focusable="False" AutomationProperties.Name="Dismiss update notice" Click="Dismiss_Click">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{StaticResource ScrimBrush}" Opacity="0.58" CornerRadius="{StaticResource RadiusShell}" />
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
+        <Border Margin="14" Padding="16,10,16,12" VerticalAlignment="Center"
+                Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="1" CornerRadius="{StaticResource RadiusControl}" Effect="{StaticResource ShadowMenu}">
+            <StackPanel>
+                <DockPanel>
+                    <Button x:Name="CloseButton" DockPanel.Dock="Right" Style="{StaticResource Button.Icon}"
+                            ToolTip="Dismiss" AutomationProperties.Name="Dismiss update notice" Click="Dismiss_Click">
+                        <controls:Icon Kind="Close" />
+                    </Button>
+                    <controls:Icon Kind="Download" Foreground="{StaticResource TextAccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <TextBlock Text="New version available" Style="{StaticResource Text.Body}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </DockPanel>
+                <TextBlock Text="A newer widget is ready. You can update whenever you're ready."
+                           Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" />
+                <Button x:Name="UpdateButton" Style="{StaticResource Button.Text}" Content="View update"
+                        HorizontalAlignment="Left" Click="Update_Click" />
+                <TextBlock x:Name="ProblemText" Style="{StaticResource Text.Help}" Visibility="Collapsed"
+                           Text="Couldn't open your browser. You can close this notice and keep working."
+                           AutomationProperties.LiveSetting="Polite" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
