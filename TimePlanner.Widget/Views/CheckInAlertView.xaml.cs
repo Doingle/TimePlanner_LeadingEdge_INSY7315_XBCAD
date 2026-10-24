@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using TimePlanner.Widget.Models;
 
@@ -15,7 +15,7 @@ namespace TimePlanner.Widget.Views
         {
             InitializeComponent();
             _flow = flow;
-            Subtitle.Text = $"Log what you did since {Format.Clock(flow.Scheduler.PeriodStart)}.";
+            Subtitle.Text = $"Log or say what you did since {Format.Clock(flow.Scheduler.PeriodStart)}.";
 
             var snoozes = flow.Snooze.Left;
             SnoozeButton.Content = $"Snooze {Format.Interval(flow.Snooze.Minutes)} ({snoozes} left)";
@@ -24,6 +24,8 @@ namespace TimePlanner.Widget.Views
         }
 
         private async void LogTime_Click(object sender, RoutedEventArgs e) => await _flow.LogTimeAsync(LogEntryMode.CheckIn);
+
+        private void SpeakUpdate_Click(object sender, RoutedEventArgs e) => _flow.StartVoiceNote();
 
         private async void Snooze_Click(object sender, RoutedEventArgs e) => await _flow.SnoozeCheckInAsync();
     }
