@@ -18,9 +18,9 @@ namespace TimePlanner.Widget
 
         //-----------------------------
         // Menu actions share the widget's navigation and confirmation flow.
-        public TrayIconManager(Action show, Action log, Action timesheet, Action settings, Action exit, Func<bool> canLog)
+        public TrayIconManager(Action show, Action log, Action timesheet, Action settings, Action help, Action exit, Func<bool> canLog)
         {
-            _menu = CreateMenu(show, log, timesheet, settings, exit, canLog);
+            _menu = CreateMenu(show, log, timesheet, settings, help, exit, canLog);
             _icon = new TaskbarIcon
             {
                 Icon = LoadIcon(),
@@ -31,7 +31,7 @@ namespace TimePlanner.Widget
             _icon.TrayLeftMouseUp += (_, _) => show();
         }
 
-        public static ContextMenu CreateMenu(Action show, Action log, Action timesheet, Action settings, Action exit, Func<bool> canLog)
+        public static ContextMenu CreateMenu(Action show, Action log, Action timesheet, Action settings, Action help, Action exit, Func<bool> canLog)
         {
             var menu = new TrayMenu();
             Icon MenuIcon(IconKind kind) => new() { Kind = kind, Size = (double)Application.Current.FindResource("SizeIconSm") };
@@ -58,6 +58,11 @@ namespace TimePlanner.Widget
             var settingsItem = new MenuItem { Header = "Settings", Icon = MenuIcon(IconKind.Settings) };
             settingsItem.Click += (_, _) => settings();
             menu.Items.Add(settingsItem);
+
+            menu.Items.Add(new Separator { Style = (Style)Application.Current.FindResource("Menu.Separator") });
+            var helpItem = new MenuItem { Header = "Help", Icon = MenuIcon(IconKind.Help) };
+            helpItem.Click += (_, _) => help();
+            menu.Items.Add(helpItem);
 
             menu.Items.Add(new Separator { Style = (Style)Application.Current.FindResource("Menu.Separator") });
             var exitItem = new MenuItem { Header = "Exit", Icon = MenuIcon(IconKind.Close) };

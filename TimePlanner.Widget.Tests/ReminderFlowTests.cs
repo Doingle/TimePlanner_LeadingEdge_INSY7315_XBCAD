@@ -130,7 +130,7 @@ public class ReminderFlowTests
         var calls = new List<string>();
         var running = false;
         var menu = TrayIconManager.CreateMenu(() => calls.Add("open"), () => calls.Add("log"),
-            () => calls.Add("timesheet"), () => calls.Add("settings"), () => calls.Add("exit"), () => running);
+            () => calls.Add("timesheet"), () => calls.Add("settings"), () => calls.Add("help"), () => calls.Add("exit"), () => running);
         var items = menu.Items.OfType<MenuItem>().ToArray();
         var slotSize = (double)Application.Current.FindResource("SizeIconSm");
         Assert.All(items, item =>
@@ -140,15 +140,91 @@ public class ReminderFlowTests
         });
         Assert.Equal(TimePlanner.Widget.Controls.IconKind.Edit, ((TimePlanner.Widget.Controls.Icon)items[1].Icon).Kind);
         Assert.Equal(TimePlanner.Widget.Controls.IconKind.List, ((TimePlanner.Widget.Controls.Icon)items[2].Icon).Kind);
-        Assert.Equal(new[] { "Open Time Planner", "Log time since last check-in", "Timesheet", "Settings", "Exit" },
+        Assert.IsType<Separator>(menu.Items[4]);
+        Assert.IsType<Separator>(menu.Items[6]);
+        Assert.Equal(new[] { "Open Time Planner", "Log time since last check-in", "Timesheet", "Settings", "Help", "Exit" },
             items.Select(item => item.Header.ToString()));
         Assert.False(items[1].IsEnabled);
         running = true;
         menu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent));
         Assert.True(items[1].IsEnabled);
         foreach (var item in items) item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-        Assert.Equal(new[] { "open", "log", "timesheet", "settings", "exit" }, calls);
+        Assert.Equal(new[] { "open", "log", "timesheet", "settings", "help", "exit" }, calls);
         await Task.CompletedTask;
+    });
+
+    [Fact]
+    public Task HelpStaysOpenWhenCheckInBecomesDue_AndBackShowsCheckIn() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        var start = host.Flow.GetLogPeriod().Start;
+        host.Flow.ShowHelp();
+        var help = Assert.IsType<HelpView>(host.Window.Screen);
+        Assert.True(host.Window.Activated);
+        host.Flow.ShowHelp();
+        Assert.Same(help, host.Window.Screen);
+        host.Clock.UtcNow += TimeSpan.FromHours(3);
+        await host.Flow.Scheduler.RefreshAsync();
+        Assert.True(host.Flow.Scheduler.IsDue);
+        Assert.Same(help, host.Window.Screen);
+        ((Button)help.FindName("BackButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.IsType<CheckInAlertView>(host.Window.Screen);
+        Assert.Equal(start, host.Flow.GetLogPeriod().Start);
+        Assert.True(host.Flow.Scheduler.IsRunning);
+        Assert.Equal(0, host.Http.Requests);
+    });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task HelpFromSetupAndSettingsReturnsToSameView(bool settings) => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        if (settings) host.Flow.ShowSettings(); else host.Flow.ShowSetup();
+        var original = Assert.IsAssignableFrom<SetupView>(host.Window.Screen);
+        ((Button)original.FindName(settings ? "SettingsHelpButton" : "HelpButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var help = Assert.IsType<HelpView>(host.Window.Screen);
+        ((Button)help.FindName("BackButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Same(original, host.Window.Screen);
+        Assert.False(host.Flow.Scheduler.IsRunning);
+        Assert.Equal(0, host.Http.Requests);
+    });
+
+    [Fact]
+    public Task HelpAnswersExpandAndScrollWithinTheCard() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        host.Flow.ShowHelp();
+        var help = Assert.IsType<HelpView>(host.Window.Screen);
+        Render(help, "help");
+        var questions = (ItemsControl)help.FindName("Questions");
+        var container = (ContentPresenter)questions.ItemContainerGenerator.ContainerFromIndex(1);
+        var expander = Assert.IsType<Expander>(VisualTreeHelper.GetChild(container, 0));
+        var peer = new System.Windows.Automation.Peers.ExpanderAutomationPeer(expander);
+        var provider = (System.Windows.Automation.Provider.IExpandCollapseProvider)peer;
+        Assert.False(expander.IsExpanded);
+        provider.Expand();
+        help.UpdateLayout();
+        Assert.True(expander.IsExpanded);
+        var answer = (Border)expander.Template.FindName("AnswerPanel", expander);
+        Assert.Equal(Visibility.Visible, answer.Visibility);
+        Assert.True(answer.ActualWidth > 0);
+        var scroll = (ScrollViewer)help.FindName("QuestionsScroll");
+        Assert.True(scroll.ScrollableHeight > 0);
+        Assert.True(scroll.ActualHeight <= scroll.MaxHeight);
+        provider.Collapse();
+        help.UpdateLayout();
+        Assert.Equal(Visibility.Collapsed, answer.Visibility);
+
+        provider.Expand();
+        host.Flow.ShowSetup();
+        host.Flow.ShowHelp();
+        var reopened = Assert.IsType<HelpView>(host.Window.Screen);
+        Render(reopened, "help-reopened");
+        var reopenedQuestions = (ItemsControl)reopened.FindName("Questions");
+        var reopenedContainer = (ContentPresenter)reopenedQuestions.ItemContainerGenerator.ContainerFromIndex(1);
+        Assert.False(((Expander)VisualTreeHelper.GetChild(reopenedContainer, 0)).IsExpanded);
     });
 
     [Fact]

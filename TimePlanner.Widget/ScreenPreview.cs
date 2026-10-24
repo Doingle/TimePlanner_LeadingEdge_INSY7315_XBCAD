@@ -17,6 +17,7 @@ namespace TimePlanner.Widget
         public static IReadOnlyList<ScreenPreview> All { get; } =
         [
             new("setup", "Setup", "Setup", Do(s => s.At(8, 30).Flow.ShowSetup())),
+            new("help", "Setup", "Help", Do(s => { s.Flow.ShowSetup(); s.Flow.ShowHelp(); })),
             new("settings", "Setup", "Settings, reached from the timer", async s =>
             {
                 (await s.StartDayAtAsync(8, 30)).Session.Settings.CheckInIntervalMinutes = 45;

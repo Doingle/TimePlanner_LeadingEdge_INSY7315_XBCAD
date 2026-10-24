@@ -33,6 +33,7 @@ namespace TimePlanner.Widget
             SignIn,
             EntryEditor,
             Exit,
+            Help,
         }
 
         private readonly IWidgetHost _host;
@@ -157,6 +158,22 @@ namespace TimePlanner.Widget
         }
 
         public void ShowSettings() => Present(Screen.Settings, new SettingsView(this));
+
+        public void ShowHelp()
+        {
+            if (_screen == Screen.Help)
+                return;
+            var previousScreen = _screen;
+            var previousView = _view;
+            Present(Screen.Help, new HelpView(() =>
+            {
+                // A check-in may have become due while reading. Other screens retain their edits.
+                if (previousScreen is Screen.Idle or Screen.Timer or Screen.None || previousView == null)
+                    ShowFromTray();
+                else
+                    Present(previousScreen, previousView);
+            }));
+        }
 
         public Task LogFromTrayAsync()
         {

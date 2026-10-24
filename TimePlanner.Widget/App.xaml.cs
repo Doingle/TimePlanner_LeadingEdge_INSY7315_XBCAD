@@ -87,6 +87,7 @@ namespace TimePlanner.Widget
             () => { if (ActiveFlow is { } flow) _ = flow.LogFromTrayAsync(); },
             () => { if (ActiveFlow is { } flow) _ = flow.ShowTimesheetAsync(DateOnly.FromDateTime(flow.Scheduler.Now), flow.ShowFromTray); },
             () => ActiveFlow?.ShowSettings(),
+            () => ActiveFlow?.ShowHelp(),
             () => { if (ActiveFlow is { } flow) flow.AskExit(); else Shutdown(); },
             () => ActiveFlow?.Scheduler.IsRunning == true);
 

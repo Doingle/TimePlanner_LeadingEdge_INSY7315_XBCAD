@@ -30,6 +30,8 @@ namespace TimePlanner.Widget.Controls
         ShapePill, ShapeRing, ShapeDot,
         ClockHands,
         Edit, List,
+        Help,
+        Info,
     }
 
     public sealed class Icon : FrameworkElement
@@ -147,6 +149,13 @@ namespace TimePlanner.Widget.Controls
             [IconKind.Edit] = [P("M14,5 L19,10 M4,15 L16,3 Q17,2 18,3 L21,6 Q22,7 21,8 L9,20 L3,21 Z M14,21 H22")],
             [IconKind.List] = [P("M3,5 H4 M8,5 H21 M3,12 H4 M8,12 H21 M3,19 H4 M8,19 H21")],
             [IconKind.Alert] = [Circle(12, 12, 9), P("M12,8 V13"), P("M12,16 H12.01")],
+            [IconKind.Help] = [Circle(12, 12, 9), P("M9,9 A3,3 0 0 1 15,9 C15,11 12,11 12,13"), P("M12,16 H12.01")],
+            [IconKind.Info] =
+            [
+                Circle(12, 12, 9),
+                new(Freeze(new EllipseGeometry(new Point(12, 7.5), 1, 1)), Filled: true),
+                P("M10.5,11 H12 V17 M10.5,17 H13.5"),
+            ],
             [IconKind.Lock] =
             [
                 new(Freeze(new RectangleGeometry(new Rect(5, 11, 14, 10), 2, 2))),

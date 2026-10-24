@@ -52,6 +52,7 @@ namespace TimePlanner.Widget.Views
             if (isSettings)
             {
                 SettingsHeader.Visibility = Visibility.Visible;
+                HelpButton.Visibility = Visibility.Collapsed;
                 IntervalField.Margin = (Thickness)FindResource("GapSection");
                 PrimaryButton.Content = "Done";
             }
@@ -121,6 +122,12 @@ namespace TimePlanner.Widget.Views
         {
             await _intervalSave;
             _flow.ShowTimer(activate: true);
+        }
+
+        private async void Help_Click(object sender, RoutedEventArgs e)
+        {
+            await _intervalSave;
+            _flow.ShowHelp();
         }
 
         private async void Interval_SelectionChanged(object sender, SelectionChangedEventArgs e)

@@ -1,0 +1,112 @@
+<UserControl x:Class="TimePlanner.Widget.Views.HelpView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
+             PreviewKeyDown="View_KeyDown">
+    <controls:WidgetCard AutomationProperties.Name="Help">
+        <StackPanel>
+            <DockPanel Margin="-8,0,0,0">
+                <Button x:Name="BackButton" Style="{StaticResource Button.Icon}" Click="Back_Click"
+                        ToolTip="Back" AutomationProperties.Name="Back to previous screen">
+                    <controls:Icon Kind="ChevronLeft" />
+                </Button>
+                <TextBlock Style="{StaticResource Text.Title}" Text="Help" Margin="4,0,0,0" VerticalAlignment="Center" />
+            </DockPanel>
+            <ScrollViewer x:Name="QuestionsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Margin="0,16,-16,0">
+                <ScrollViewer.Resources>
+                    <Style TargetType="ScrollBar">
+                        <Setter Property="Width" Value="{StaticResource Space8}" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ScrollBar">
+                                    <Track x:Name="PART_Track" IsDirectionReversed="True" Orientation="Vertical">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" Opacity="0" />
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb MinHeight="{StaticResource SizeControl}">
+                                                <Thumb.Template>
+                                                    <ControlTemplate TargetType="Thumb">
+                                                        <Grid Background="Transparent">
+                                                            <Border Width="2" HorizontalAlignment="Center" Background="{StaticResource HandleBrush}" CornerRadius="{StaticResource RadiusGrip}" />
+                                                        </Grid>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+                                        </Track.Thumb>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" Opacity="0" />
+                                        </Track.IncreaseRepeatButton>
+                                    </Track>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ScrollViewer.Resources>
+                <ScrollViewer.Template>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Content="{TemplateBinding Content}"
+                                                    ContentTemplate="{TemplateBinding ContentTemplate}" CanContentScroll="{TemplateBinding CanContentScroll}" />
+                            <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical"
+                                       Style="{StaticResource {x:Type ScrollBar}}" Maximum="{TemplateBinding ScrollableHeight}"
+                                       ViewportSize="{TemplateBinding ViewportHeight}" Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                                       Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                        </Grid>
+                    </ControlTemplate>
+                </ScrollViewer.Template>
+                <ItemsControl x:Name="Questions" Margin="0,0,4,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Expander Header="{Binding Question}" AutomationProperties.Name="{Binding Question}" IsExpanded="{Binding InitiallyExpanded, Mode=OneWay}">
+                                <Expander.Template>
+                                    <ControlTemplate TargetType="Expander">
+                                        <StackPanel>
+                                            <Border BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0">
+                                                <ToggleButton x:Name="HeaderToggle" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                              AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}"
+                                                              MinHeight="{StaticResource SizeControl}" HorizontalContentAlignment="Stretch">
+                                                    <ToggleButton.Template>
+                                                        <ControlTemplate TargetType="ToggleButton">
+                                                            <Border x:Name="HeaderSurface" Background="Transparent" Padding="0,16" BorderBrush="Transparent" BorderThickness="1">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="{StaticResource FontWeightSemibold}"
+                                                                               Text="{Binding Question}" VerticalAlignment="Center" />
+                                                                    <controls:Icon x:Name="Arrow" Kind="ChevronDown" Grid.Column="1" Margin="16,0,4,0"
+                                                                                   Size="{StaticResource SizeIconSm}" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}"
+                                                                                   RenderTransformOrigin="0.5,0.5" />
+                                                                </Grid>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsChecked" Value="True">
+                                                                    <Setter TargetName="Arrow" Property="RenderTransform"><Setter.Value><RotateTransform Angle="180" /></Setter.Value></Setter>
+                                                                </Trigger>
+                                                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="HeaderSurface" Property="Background" Value="{StaticResource SurfaceSubtleBrush}" /></Trigger>
+                                                                <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="HeaderSurface" Property="BorderBrush" Value="{StaticResource BorderControlBrush}" /></Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </ToggleButton.Template>
+                                                </ToggleButton>
+                                            </Border>
+                                            <Border x:Name="AnswerPanel" Visibility="Collapsed" Background="{StaticResource SurfaceSubtleBrush}"
+                                                    CornerRadius="{StaticResource RadiusControl}" Padding="12" Margin="0,0,0,12">
+                                                <ContentPresenter />
+                                            </Border>
+                                        </StackPanel>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsExpanded" Value="True"><Setter TargetName="AnswerPanel" Property="Visibility" Value="Visible" /></Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Expander.Template>
+                                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding Answer}" />
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+    </controls:WidgetCard>
+</UserControl>
