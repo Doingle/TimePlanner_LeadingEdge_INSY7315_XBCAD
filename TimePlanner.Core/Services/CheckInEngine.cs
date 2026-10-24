@@ -188,6 +188,20 @@ namespace TimePlanner.Core.Services
         }
 
         //-----------------------------
+        //a voice note answers the prompt without an entry
+        public async Task<CheckInStatus> NotifyAnsweredWithoutEntryAsync(DateTime coveredUntil)
+        {
+            //the anchor never moves back
+            if (coveredUntil > _anchor)
+            {
+                _anchor = coveredUntil;
+            }
+
+            ResolvePrompt();
+            return await TickAsync();
+        }
+
+        //-----------------------------
         //handles a prompt left unanswered
         private async Task ApplyIgnoredRuleAsync(DateTime now)
         {
