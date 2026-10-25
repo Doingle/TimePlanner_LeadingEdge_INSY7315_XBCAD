@@ -36,13 +36,13 @@ namespace TimePlanner.Core.Sync
 
         //-----------------------------
         //signs in and returns a token outcome
-        public async Task<SignInOutcome> SignInAsync(string email, string password)
+        public async Task<SignInOutcome> SignInAsync(string email, string password, string? otp = null)
         {
             HttpResponseMessage response;
 
             try
             {
-                response = await _http.PostAsJsonAsync("api/v1/auth/login", new { email, password });
+                response = await _http.PostAsJsonAsync("api/v1/auth/login", new { email, password, otp = string.IsNullOrWhiteSpace(otp) ? null : otp.Trim() });
             }
             //no connection or a timeout means offline
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
@@ -60,10 +60,13 @@ namespace TimePlanner.Core.Sync
                     return new SignInOutcome(SignInStatus.SignedIn, token, null);
                 }
 
-                //wrong email or password
+                //wrong email or password, or the password was right and a code from the authenticator app is needed too
                 if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    return new SignInOutcome(SignInStatus.InvalidDetails, null, "Invalid email or password.");
+                    var codeTitle = await TwoFactorTitleAsync(response);
+                    return codeTitle != null
+                        ? new SignInOutcome(SignInStatus.TwoFactorRequired, null, codeTitle)
+                        : new SignInOutcome(SignInStatus.InvalidDetails, null, "Invalid email or password.");
                 }
 
                 //the account must set a new password on the website first
@@ -186,6 +189,27 @@ namespace TimePlanner.Core.Sync
                 //a server error can pass, anything else the server refused will not
                 return SendOutcome.Of(SendStatus.Failed, $"The dashboard answered {(int)response.StatusCode}.", retryable: (int)response.StatusCode >= 500);
             }
+        }
+
+        //-----------------------------
+        //the title of a 401 that says a two-factor code is needed (twoFactorRequired), or null for any other 401
+        private static async Task<string?> TwoFactorTitleAsync(HttpResponseMessage response)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+                if (doc.RootElement.TryGetProperty("twoFactorRequired", out var required) && required.ValueKind == JsonValueKind.True)
+                {
+                    return doc.RootElement.TryGetProperty("title", out var title) ? title.GetString() : "A two-factor code is required.";
+                }
+            }
+            //a body that is not json is an ordinary refusal
+            catch (JsonException)
+            {
+            }
+
+            return null;
         }
 
         //-----------------------------

@@ -483,6 +483,55 @@ public class ReminderFlowTests
     });
 
     [Fact]
+    public Task SignIn_AsksForTheCodeOnlyWhenTheDashboardNeedsOne() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        host.Http.RequiresCode = true;
+        var signedIn = false;
+        host.Flow.ShowSignIn(() => { signedIn = true; return Task.CompletedTask; }, () => { });
+        var view = Assert.IsType<SignInView>(host.Window.Screen);
+        var codeLine = (FrameworkElement)view.FindName("CodeLine");
+        var button = (Button)view.FindName("SignInButton");
+        var error = (TextBlock)view.FindName("ErrorText");
+        var code = (TextBox)view.FindName("CodeBox");
+        Assert.Equal(Visibility.Collapsed, codeLine.Visibility);
+        ((TextBox)view.FindName("EmailBox")).Text = "admin@example.com";
+        ((PasswordBox)view.FindName("PasswordBox")).Password = "a-password";
+
+        //the password is right but a code is needed: the box appears, nothing is signed in
+        Click(button);
+        await WaitFor(() => codeLine.Visibility == Visibility.Visible && button.IsEnabled);
+        Assert.Contains("two-factor code is required", error.Text);
+        Assert.False(signedIn);
+
+        //a wrong code is refused and the box stays
+        code.Text = "000000";
+        Click(button);
+        await WaitFor(() => error.Text.Contains("not right") && button.IsEnabled);
+        Assert.False(signedIn);
+
+        code.Text = "123456";
+        Click(button);
+        await WaitFor(() => signedIn);
+    });
+
+    [Fact]
+    public Task SignIn_WithoutTwoFactor_NeverShowsTheCodeBox() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var signedIn = false;
+        host.Flow.ShowSignIn(() => { signedIn = true; return Task.CompletedTask; }, () => { });
+        var view = Assert.IsType<SignInView>(host.Window.Screen);
+        ((TextBox)view.FindName("EmailBox")).Text = "developer@example.com";
+        ((PasswordBox)view.FindName("PasswordBox")).Password = "a-password";
+
+        Click((Button)view.FindName("SignInButton"));
+        await WaitFor(() => signedIn);
+
+        Assert.Equal(Visibility.Collapsed, ((FrameworkElement)view.FindName("CodeLine")).Visibility);
+    });
+
+    [Fact]
     public Task EditThatCoversAnEntry_AsksBeforeRemovingIt() => OnUi(async () =>
     {
         using var host = await TestHost.CreateAsync();
@@ -836,11 +885,27 @@ public class ReminderFlowTests
         public int Requests { get; private set; }
         public bool Succeeds { get; set; } = true;
         public bool StallVersionCheck { get; set; }
+        //an account with two-factor on: the login only works when the request carries the code 123456
+        public bool RequiresCode { get; set; }
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             if (request.RequestUri!.AbsolutePath == "/api/v1/widget/version")
                 return StallVersionCheck ? WaitForCancellation(cancellationToken) : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 { Content = JsonContent.Create(new WidgetRelease("2.0.0")) });
+            if (request.RequestUri.AbsolutePath == "/api/v1/auth/login" && RequiresCode)
+            {
+                using var body = System.Text.Json.JsonDocument.Parse(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+                var otp = body.RootElement.TryGetProperty("otp", out var sent) && sent.ValueKind == System.Text.Json.JsonValueKind.String ? sent.GetString() : null;
+                if (otp != "123456")
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                    {
+                        Content = JsonContent.Create(new Dictionary<string, object>
+                        {
+                            ["title"] = otp == null ? "A two-factor code is required." : "The two-factor code is not right.",
+                            ["twoFactorRequired"] = true
+                        })
+                    });
+            }
             if (request.RequestUri.AbsolutePath == "/api/v1/auth/login")
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 { Content = JsonContent.Create(new { accessToken = "test-only", tokenType = "Bearer", expiresAtUtc = DateTime.UtcNow.AddHours(1) }) });

@@ -588,10 +588,10 @@ namespace TimePlanner.Widget.Services
 
         //-----------------------------
         //signs in to the dashboard and saves the token
-        public async Task<SignInOutcome> SignInToDashboardAsync(string email, string password)
+        public async Task<SignInOutcome> SignInToDashboardAsync(string email, string password, string? otp = null)
         {
             await using var scope = scopes.CreateAsyncScope();
-            return await scope.ServiceProvider.GetRequiredService<DaySendService>().SignInAsync(email, password);
+            return await scope.ServiceProvider.GetRequiredService<DaySendService>().SignInAsync(email, password, otp);
         }
 
         //-----------------------------

@@ -1,0 +1,109 @@
+@model TwoFactorPageModel
+@{
+    ViewData["Title"] = "Two-factor sign in";
+    ViewData["Nav"] = "Settings";
+    Layout = "_AppLayout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/settings.css" asp-append-version="true" />
+}
+
+@section Hero {
+    <section class="st-hero" aria-labelledby="st-title">
+        <div class="st-hero__inner">
+            <div class="st-narrow">
+                <h1 class="st-hero__title" id="st-title">Two-factor sign in</h1>
+                <p class="st-hero__sub">Sign in with a code from an authenticator app on your phone, as well as your password.</p>
+            </div>
+        </div>
+    </section>
+}
+
+<div class="st-settings">
+    <div class="st-sheet st-narrow">
+        @if (Model.Error != null)
+        {
+            <p class="st-status st-status--error" role="alert">
+                <svg class="st-status__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+                @Model.Error
+            </p>
+        }
+        @if (Model.Message != null)
+        {
+            <p class="st-status st-status--ok" role="status">
+                <svg class="st-status__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                @Model.Message
+            </p>
+        }
+
+        @if (Model.RecoveryCodes.Count > 0)
+        {
+            @* shown once, straight after turning it on. They are not stored anywhere readable and cannot be shown again *@
+            <section class="st-setting" aria-labelledby="st-codes-title">
+                <h2 class="st-setting__title" id="st-codes-title">Two-factor sign in is on</h2>
+                <p class="st-field__hint">Save these recovery codes somewhere safe, such as a password manager. Each one works once if you lose your phone. They will not be shown again.</p>
+                <ul class="st-codes">
+                    @foreach (var recoveryCode in Model.RecoveryCodes)
+                    {
+                        <li><code>@recoveryCode</code></li>
+                    }
+                </ul>
+            </section>
+        }
+        else if (Model.Setup != null)
+        {
+            <section class="st-setting" aria-labelledby="st-setup-title">
+                <h2 class="st-setting__title" id="st-setup-title">Set up your authenticator app</h2>
+                <ol class="st-field__hint">
+                    <li>Open an authenticator app, such as Microsoft Authenticator or Google Authenticator, and add an account using a setup key.</li>
+                    <li>Enter this key: <code>@Model.Setup.Key</code> (on a phone, <a href="@Model.Setup.Uri">open it in your app</a>).</li>
+                    <li>Type the 6 digit code the app shows to finish.</li>
+                </ol>
+                <form class="st-form" method="post" asp-action="TwoFactorEnable">
+                    <div class="st-field">
+                        <label class="st-label" for="code">Code from the app</label>
+                        <input class="st-input" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required autofocus />
+                    </div>
+                    <div class="st-form__actions">
+                        <button class="st-button" type="submit">Turn on</button>
+                    </div>
+                </form>
+            </section>
+        }
+        else if (Model.Enabled)
+        {
+            <section class="st-setting" aria-labelledby="st-on-title">
+                <h2 class="st-setting__title" id="st-on-title">Two-factor sign in is on</h2>
+                <p class="st-field__hint">You have @Model.RecoveryCodesLeft unused recovery @(Model.RecoveryCodesLeft == 1 ? "code" : "codes"). If you lose your phone and have none left, ask an admin to reset it.</p>
+                <form class="st-form" method="post" asp-action="TwoFactorDisable">
+                    <div class="st-field">
+                        <label class="st-label" for="password">Password</label>
+                        <input class="st-input" id="password" name="password" type="password" autocomplete="current-password" required />
+                    </div>
+                    <div class="st-field">
+                        <label class="st-label" for="code">Code from the app, or a recovery code</label>
+                        <input class="st-input" id="code" name="code" autocomplete="one-time-code" maxlength="32" required />
+                    </div>
+                    <div class="st-form__actions">
+                        <button class="st-button" type="submit">Turn off</button>
+                    </div>
+                </form>
+            </section>
+        }
+        else
+        {
+            <section class="st-setting" aria-labelledby="st-off-title">
+                <h2 class="st-setting__title" id="st-off-title">Two-factor sign in is off</h2>
+                <p class="st-field__hint">Turn it on so a stolen password alone is not enough to get into your account. You will need an authenticator app on your phone.</p>
+                <form class="st-form" method="post" asp-action="TwoFactorStart">
+                    <div class="st-form__actions">
+                        <button class="st-button" type="submit">Set up</button>
+                    </div>
+                </form>
+            </section>
+        }
+    </div>
+
+    <p class="st-note st-narrow"><a asp-action="Index">Back to settings</a></p>
+</div>

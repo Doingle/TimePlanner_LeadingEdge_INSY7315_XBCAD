@@ -38,7 +38,7 @@ namespace TimePlanner.Widget.Views
             {
                 var email = EmailBox.Text;
                 var password = PasswordBox.Password;
-                var outcome = await _flow.SignInToDashboardAsync(email, password);
+                var outcome = await _flow.SignInToDashboardAsync(email, password, CodeBox.Text);
 
                 //check outcome status
                 if (outcome.Status == SignInStatus.SignedIn)
@@ -47,6 +47,13 @@ namespace TimePlanner.Widget.Views
                 }
                 else
                 {
+                    //the account has two-factor on: the code box appears and the next sign in sends the code with the password
+                    if (outcome.Status == SignInStatus.TwoFactorRequired)
+                    {
+                        CodeLine.Visibility = Visibility.Visible;
+                        CodeBox.Focus();
+                    }
+
                     ErrorText.Text = outcome.Message ?? "Sign in failed.";
                     ErrorLine.Visibility = Visibility.Visible;
                 }

@@ -40,7 +40,9 @@ namespace TimePlanner.Core.Sync
         InvalidDetails,
         PasswordChangeRequired,
         Offline,
-        Failed
+        Failed,
+        //the password was right but the account has two-factor on, so the client has to ask for a code and sign in again with it
+        TwoFactorRequired
     }
 
     //-----------------------------
