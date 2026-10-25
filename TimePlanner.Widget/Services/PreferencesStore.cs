@@ -38,7 +38,9 @@ namespace TimePlanner.Widget.Services
             Enum.IsDefined(preferences.IdleShape) &&
             preferences.Ai != null &&
             Enum.IsDefined(preferences.Ai.Compiler) &&
-            Enum.IsDefined(preferences.Ai.Transcriber);
+            Enum.IsDefined(preferences.Ai.Transcriber) &&
+            Enum.IsDefined(preferences.Ai.DayHardware) &&
+            Enum.IsDefined(preferences.Ai.VoiceHardware);
 
         public void Save(WidgetPreferences preferences)
         {

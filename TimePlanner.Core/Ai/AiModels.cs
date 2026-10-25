@@ -19,7 +19,35 @@ namespace TimePlanner.Core.Ai
     public enum CompilerKind
     {
         Ollama,
-        OpenAiCompatible
+        OpenAiCompatible,
+        Dashboard
+    }
+
+    //-----------------------------
+    //supported hardware choices for day model
+    public enum HardwareChoice
+    {
+        Automatic,
+        Graphics,
+        Processor
+    }
+
+    //-----------------------------
+    //supported hardware choices for voice recognition
+    public enum VoiceHardwareChoice
+    {
+        Automatic,
+        Processor
+    }
+
+    //-----------------------------
+    //speed benchmark outcome
+    public sealed record SpeedResult(int? GraphicsTokensPerSec, int? ProcessorTokensPerSec,
+        double? VoiceSecondsGraphics, double? VoiceSecondsProcessor, DateTime? CheckedAt)
+    {
+        public int? GpuLayers => (GraphicsTokensPerSec.HasValue && ProcessorTokensPerSec.HasValue && GraphicsTokensPerSec.Value >= ProcessorTokensPerSec.Value * 1.15)
+            ? null
+            : (GraphicsTokensPerSec.HasValue && !ProcessorTokensPerSec.HasValue ? null : 0);
     }
 
     //-----------------------------
@@ -88,6 +116,7 @@ namespace TimePlanner.Core.Ai
     public sealed class AiSettings
     {
         public bool VoiceEnabled { get; set; }
+        public bool SetupCompleted { get; set; }
         public CompilerKind Compiler { get; set; } = CompilerKind.Ollama;
         public string CompilerUrl { get; set; } = "http://localhost:11434";
         public string CompilerModel { get; set; } = "qwen2.5:3b";
@@ -95,8 +124,12 @@ namespace TimePlanner.Core.Ai
         public int TimeoutSeconds { get; set; } = 300;
         //null lets ollama decide and 0 means cpu only
         public int? GpuLayers { get; set; }
+        public HardwareChoice DayHardware { get; set; } = HardwareChoice.Automatic;
+        public VoiceHardwareChoice VoiceHardware { get; set; } = VoiceHardwareChoice.Automatic;
+        public SpeedResult? LastSpeedCheck { get; set; }
         public TranscriberKind Transcriber { get; set; } = TranscriberKind.LocalWhisper;
         public string WhisperModel { get; set; } = "ggml-small.en-q5_1.bin";
+        public string? WhisperModelPath { get; set; }
         public string TranscriberUrl { get; set; } = "";
         public string TranscriberModel { get; set; } = "whisper-large-v3-turbo";
     }
