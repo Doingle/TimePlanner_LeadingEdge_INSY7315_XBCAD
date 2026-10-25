@@ -61,6 +61,19 @@
                     </DockPanel>
                 </Button>
 
+                <!-- Settings only: clients, projects and activities, so nobody needs a database editor -->
+                <Button x:Name="ManageListsRow" Style="{StaticResource NavRow}" Margin="{StaticResource GapStacked}"
+                        Visibility="Collapsed" Click="ManageLists_Click">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <TextBlock Text="Rename, hide, add" Margin="0,0,4,0" VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" />
+                            <controls:Icon Kind="ChevronRight" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
+                        </StackPanel>
+                        <TextBlock Text="Manage lists" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Button>
+
                 <Button x:Name="PrimaryButton" Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}"
                         Content="Start tracking" Click="Primary_Click" />
                 <Button x:Name="HelpButton" Style="{StaticResource Button.Text}" Margin="{StaticResource GapStacked}"
