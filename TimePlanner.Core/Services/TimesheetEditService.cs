@@ -125,7 +125,7 @@ namespace TimePlanner.Core.Services
             }
 
             var task = await ResolveTaskAsync(userId, edit);
-            var entry = _factory.CreateManual(userId, task.TaskID, edit.Start, edit.End, edit.Note);
+            var entry = _factory.CreateManual(userId, task.TaskID, TimeRules.ToMinute(edit.Start), TimeRules.ToMinute(edit.End), edit.Note);
             await _entries.AddAsync(entry);
             return EditResult.Done(entry.TimeEntryId, null);
         }
@@ -152,8 +152,8 @@ namespace TimePlanner.Core.Services
 
             var previous = await ToEditAsync(entry);
             var task = await ResolveTaskAsync(userId, edit);
-            entry.StartTime = edit.Start;
-            entry.EndTime = edit.End;
+            entry.StartTime = TimeRules.ToMinute(edit.Start);
+            entry.EndTime = TimeRules.ToMinute(edit.End);
             entry.TaskId = task.TaskID;
             entry.Task = null;
             entry.Note = string.IsNullOrWhiteSpace(edit.Note) ? null : edit.Note.Trim();
@@ -182,14 +182,17 @@ namespace TimePlanner.Core.Services
         //returns the first broken rule or null
         private async Task<string?> ValidateAsync(int userId, EntryEdit edit, DateTime now, int? ignoreId)
         {
+            var startMin = TimeRules.ToMinute(edit.Start);
+            var endMin = TimeRules.ToMinute(edit.End);
+
             //end must come after start
-            if (edit.End <= edit.Start)
+            if (endMin <= startMin)
             {
                 return "End must be after start.";
             }
 
             //very short pieces are not entries
-            if (edit.End - edit.Start < EntryService.MinimumPiece)
+            if (endMin - startMin < EntryService.MinimumPiece)
             {
                 return "An entry must be at least one minute.";
             }
@@ -201,7 +204,7 @@ namespace TimePlanner.Core.Services
             }
 
             //time cannot be logged ahead of the clock
-            if (edit.End > now)
+            if (endMin > TimeRules.ToMinute(now))
             {
                 return "An entry can't end in the future.";
             }
@@ -228,7 +231,7 @@ namespace TimePlanner.Core.Services
             var others = await _entries.GetForUserAsync(userId, dayStart, dayStart.AddDays(1));
 
             //two entries cannot cover the same minute
-            if (others.Any(e => e.TimeEntryId != ignoreId && e.StartTime < edit.End && e.EndTime > edit.Start))
+            if (others.Any(e => e.TimeEntryId != ignoreId && TimeRules.ToMinute(e.StartTime) < endMin && TimeRules.ToMinute(e.EndTime) > startMin))
             {
                 return "This overlaps another entry.";
             }

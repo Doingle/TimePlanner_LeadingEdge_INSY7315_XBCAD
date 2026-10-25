@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using TimePlanner.Core.Services;
 
 namespace TimePlanner.Core.Ai
 {
@@ -54,8 +55,10 @@ namespace TimePlanner.Core.Ai
                     continue;
                 }
 
-                var parsedStartOk = TryParseTime(entry.S, request.Day, out var start);
-                var parsedEndOk = TryParseTime(entry.E, request.Day, out var end);
+                var parsedStartOk = TryParseTime(entry.S, request.Day, out var startRaw);
+                var parsedEndOk = TryParseTime(entry.E, request.Day, out var endRaw);
+                var start = TimeRules.ToMinute(startRaw);
+                var end = TimeRules.ToMinute(endRaw);
                 var validTimeRange = parsedStartOk && parsedEndOk && end > start;
 
                 var timeLabel = validTimeRange
@@ -67,20 +70,8 @@ namespace TimePlanner.Core.Ai
                 var isA0 = string.Equals(entry.A, "A0", StringComparison.OrdinalIgnoreCase);
                 CatalogProject? project = null;
                 CatalogActivity? activity = null;
-                var hasKnownProject = entry.P != null && projectMap.TryGetValue(entry.P, out project);
-                var hasKnownActivity = entry.A != null && activityMap.TryGetValue(entry.A, out activity);
-
-                //unmatched project or activity flags the window
-                if (isP0 || isA0 || !hasKnownProject || !hasKnownActivity)
-                {
-                    //add missing match flag if window has no flag yet
-                    if (!flags.Any(f => f.WindowId == window.Id))
-                    {
-                        flags.Add(new BuildFlag(window.Id, $"Couldn't match a project or activity for {timeLabel}. Log this time yourself."));
-                    }
-
-                    continue;
-                }
+                var hasKnownProject = !isP0 && entry.P != null && projectMap.TryGetValue(entry.P, out project);
+                var hasKnownActivity = !isA0 && entry.A != null && activityMap.TryGetValue(entry.A, out activity);
 
                 //bad time syntax or backwards range flags the window
                 if (!validTimeRange)
@@ -94,9 +85,12 @@ namespace TimePlanner.Core.Ai
                     continue;
                 }
 
+                var wStart = TimeRules.ToMinute(window.Start);
+                var wEnd = TimeRules.ToMinute(window.End);
+
                 //clip proposed range to window bounds
-                var clippedStart = start < window.Start ? window.Start : start;
-                var clippedEnd = end > window.End ? window.End : end;
+                var clippedStart = start < wStart ? wStart : start;
+                var clippedEnd = end > wEnd ? wEnd : end;
 
                 //skip if clipped range is invalid
                 if (clippedEnd <= clippedStart)
@@ -117,15 +111,25 @@ namespace TimePlanner.Core.Ai
                     //add each non overlapping slice
                     foreach (var piece in availablePieces)
                     {
+                        var pStart = TimeRules.ToMinute(piece.Start);
+                        var pEnd = TimeRules.ToMinute(piece.End);
+
+                        //drop pieces shorter than one minute
+                        if (pEnd - pStart < TimeSpan.FromMinutes(1))
+                        {
+                            continue;
+                        }
+
+                        var pieceRange = new TimeRange(pStart, pEnd);
                         accepted.Add(new SuggestedEntry(
                             window.Id,
-                            piece.Start,
-                            piece.End,
-                            [project!.Company, project.Project],
-                            activity!.Path,
+                            pStart,
+                            pEnd,
+                            project != null ? [project.Company, project.Project] : Array.Empty<string>(),
+                            activity != null ? activity.Path : Array.Empty<string>(),
                             note));
 
-                        occupiedRanges.Add(piece);
+                        occupiedRanges.Add(pieceRange);
                     }
                 }
             }

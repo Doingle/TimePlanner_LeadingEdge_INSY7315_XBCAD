@@ -108,9 +108,9 @@ namespace TimePlanner.Core.Tests.Ai
         }
 
         //-----------------------------
-        //skips P0 or unknown id and adds flag
+        //unmatched project produces suggestion with empty project path and no flags
         [Fact]
-        public void Check_P0OrUnknownId_SkippedWithFlag()
+        public void Check_P0OrUnknownId_ProducesUnmatchedSuggestion()
         {
             var window = new VoiceWindow("W1", Guid.NewGuid(), new DateTime(2026, 10, 22, 9, 0, 0), new DateTime(2026, 10, 22, 10, 0, 0),
                 [new TimeRange(new DateTime(2026, 10, 22, 9, 0, 0), new DateTime(2026, 10, 22, 10, 0, 0))], "update");
@@ -123,9 +123,9 @@ namespace TimePlanner.Core.Tests.Ai
 
             var (entries, flags) = DayBuildChecker.Check(request, reply);
 
-            Assert.Empty(entries);
-            Assert.Single(flags);
-            Assert.Contains("Couldn't match a project or activity", flags[0].Message);
+            Assert.Single(entries);
+            Assert.Empty(entries[0].ProjectPath);
+            Assert.Empty(flags);
         }
 
         //-----------------------------
