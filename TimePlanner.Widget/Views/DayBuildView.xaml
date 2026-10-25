@@ -5,10 +5,10 @@
     <controls:WidgetCard AutomationProperties.Name="Build my day">
         <StackPanel>
             <StackPanel x:Name="BuildingPanel" Visibility="Visible">
-                <TextBlock Style="{StaticResource Text.Title}" Text="Building your day" />
+                <TextBlock x:Name="BuildingTitle" Style="{StaticResource Text.Title}" Text="Reading your notes…" />
                 <TextBlock x:Name="BuildingCaption" Style="{StaticResource Text.Body}" Margin="0,8,0,0" TextWrapping="Wrap" />
                 <TextBlock x:Name="TimerText" Style="{StaticResource Text.Timer}" Margin="0,16,0,0" HorizontalAlignment="Center" Text="0:00" />
-                <Button Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapSection}" Content="Cancel" Click="Cancel_Click" />
+                <Button Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapSection}" Content="Cancel" ToolTip="Cancel" AutomationProperties.Name="Cancel" Click="Cancel_Click" />
             </StackPanel>
 
             <StackPanel x:Name="ResultsPanel" Visibility="Collapsed">
@@ -40,26 +40,33 @@
                            TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed" />
 
                 <StackPanel Margin="{StaticResource GapSection}">
-                    <Button x:Name="AddButton" Style="{StaticResource Button.Primary}" Content="Add to timesheet" Click="Add_Click" />
-                    <Button Style="{StaticResource Button.Text}" Content="Back" Margin="0,4,0,0" Click="Back_Click" />
+                    <Button x:Name="AddButton" Style="{StaticResource Button.Primary}" Content="Add entries" ToolTip="Add the checked suggestions to your timesheet" Click="Add_Click" />
+                    <Button Style="{StaticResource Button.Text}" Content="Cancel" Margin="0,4,0,0" ToolTip="Cancel" AutomationProperties.Name="Cancel" Click="Back_Click" />
                 </StackPanel>
+            </StackPanel>
+
+            <StackPanel x:Name="AddedPanel" Visibility="Collapsed">
+                <TextBlock x:Name="AddedTitle" Style="{StaticResource Text.Title}" Text="Added entries" />
+                <TextBlock x:Name="AddedSummary" Style="{StaticResource Text.Body}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                <StackPanel x:Name="RefusedContainer" Margin="0,8,0,0" />
+                <Button Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}" Content="Go to timesheet" ToolTip="Open your timesheet for this day" AutomationProperties.Name="Go to timesheet" Click="GoToTimesheet_Click" />
             </StackPanel>
 
             <StackPanel x:Name="ErrorPanel" Visibility="Collapsed">
                 <TextBlock Style="{StaticResource Text.Title}" Text="Couldn't build day" />
                 <TextBlock x:Name="ErrorMessage" Style="{StaticResource Text.Error}" Margin="0,8,0,0" TextWrapping="Wrap" />
                 <Button x:Name="SetupModelButton" Style="{StaticResource Button.Primary}" Margin="0,12,0,0"
-                        Content="Set up the model" Visibility="Collapsed" Click="SetupModel_Click" />
+                        Content="Set up the model" ToolTip="Open voice and AI settings to install or configure models" AutomationProperties.Name="Set up the model" Visibility="Collapsed" Click="SetupModel_Click" />
                 <StackPanel Margin="{StaticResource GapSection}">
-                    <Button Style="{StaticResource Button.Primary}" Content="Try again" Click="TryAgain_Click" />
-                    <Button Style="{StaticResource Button.Text}" Content="Back" Margin="0,4,0,0" Click="Back_Click" />
+                    <Button Style="{StaticResource Button.Primary}" Content="Try again" ToolTip="Try building your day again" AutomationProperties.Name="Try again" Click="TryAgain_Click" />
+                    <Button Style="{StaticResource Button.Text}" Content="Back" Margin="0,4,0,0" ToolTip="Back" AutomationProperties.Name="Back" Click="Back_Click" />
                 </StackPanel>
             </StackPanel>
 
             <StackPanel x:Name="EmptyPanel" Visibility="Collapsed">
                 <TextBlock Style="{StaticResource Text.Title}" Text="Build my day" />
                 <TextBlock Style="{StaticResource Text.Help}" Margin="0,8,0,0" Text="No voice notes ready for this day." />
-                <Button Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}" Content="Back" Click="Back_Click" />
+                <Button Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}" Content="Back" ToolTip="Back" AutomationProperties.Name="Back" Click="Back_Click" />
             </StackPanel>
         </StackPanel>
     </controls:WidgetCard>
