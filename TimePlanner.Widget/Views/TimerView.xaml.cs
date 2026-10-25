@@ -72,7 +72,7 @@ namespace TimePlanner.Widget.Views
             StatusText.Text = paused is { } pausedAt ? $"Paused at {Format.Clock(pausedAt)}"
                 : left == null ? "No more check-ins today"
                 : scheduler.IsSnoozed && _flow.Snooze.SnoozedUntil is { } until ? $"Check-in snoozed until {Format.Clock(until)}"
-                : "Until your next check-in";
+                : "until next check-in";
 
             var ai = _flow.Session.Preferences.Ai;
             var voiceAvailable = ai.SetupCompleted && ai.VoiceEnabled;

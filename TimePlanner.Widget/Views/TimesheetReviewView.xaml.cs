@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
@@ -26,10 +28,12 @@ namespace TimePlanner.Widget.Views
         private readonly IReadOnlyList<TimesheetSlot> _slots;
         private HashSet<int> _aiEntryIds = new();
         private List<VoiceNote> _unbuiltNotes = new();
+        private readonly string _sendLabel;
         private DispatcherTimer? _undoTimer;
         private Action? _undoAction;
 
-        public TimesheetReviewView(WidgetFlow flow, DateOnly day, IReadOnlyList<TimesheetSlot> slots, DayPreview preview, SentDay? sent, Action back)
+        public TimesheetReviewView(WidgetFlow flow, DateOnly day, IReadOnlyList<TimesheetSlot> slots, DayPreview preview, SentDay? sent, Action back,
+            PendingDay? pending = null, bool sendNow = false)
         {
             InitializeComponent();
             _flow = flow;
@@ -38,12 +42,21 @@ namespace TimePlanner.Widget.Views
             _back = back;
             _slots = slots;
 
-            var dayDate = day.ToDateTime(TimeOnly.MinValue);
+            var today = DateOnly.FromDateTime(flow.Scheduler.Now);
             var totalLogged = slots.Where(s => s.Kind == SlotKind.Entry).Sum(s => (s.End - s.Start).TotalMinutes);
-            Subtitle.Text = $"{Format.Day(dayDate)} · {Format.Duration(TimeSpan.FromMinutes(totalLogged))}";
+            Subtitle.Text = $"{DayLabel(day, today)} · {Format.Duration(TimeSpan.FromMinutes(totalLogged))}";
+            AutomationProperties.SetName(DayButton, $"Day shown: {Format.Date(day)}. Choose another day");
 
-            //sets send status caption
-            if (sent == null)
+            //sets send status caption. A send that is still on its way comes first, whatever was sent before
+            if (pending is { Rejected: false })
+            {
+                StatusText.Text = "Waiting to send · will retry";
+            }
+            else if (pending is { Rejected: true })
+            {
+                StatusText.Text = $"Not sent · {pending.Message ?? "the dashboard refused it"}";
+            }
+            else if (sent == null)
             {
                 StatusText.Text = "Not sent";
             }
@@ -53,13 +66,21 @@ namespace TimePlanner.Widget.Views
             }
             else
             {
-                StatusText.Text = $"Sent {Format.Clock(sent.SentAt)}";
+                StatusText.Text = DateOnly.FromDateTime(sent.SentAt) == today
+                    ? $"Sent {Format.Clock(sent.SentAt)}"
+                    : $"Sent {Format.Date(DateOnly.FromDateTime(sent.SentAt))}, {Format.Clock(sent.SentAt)}";
             }
 
+            //an earlier day is still open to changes, and today is one click away
+            PastDayHelp.Visibility = day < today ? Visibility.Visible : Visibility.Collapsed;
+            TodayButton.Visibility = day < today ? Visibility.Visible : Visibility.Collapsed;
+
             //disables next day navigation on today
-            var today = DateOnly.FromDateTime(DateTime.Now);
             NextDayButton.IsEnabled = day < today;
 
+            //a day sent before goes again, which replaces it on the dashboard
+            _sendLabel = sent != null ? "Send again" : "Send day";
+            SendButton.Content = _sendLabel;
             SendButton.IsEnabled = preview.CanSend;
 
             RenderSlots();
@@ -68,6 +89,98 @@ namespace TimePlanner.Widget.Views
             Loaded += async (s, e) => await LoadAiAndRenderAsync();
             _flow.Ai.NoteChanged += OnNoteChanged;
             Unloaded += (s, e) => _flow.Ai.NoteChanged -= OnNoteChanged;
+            //an edit that also changed other entries offers to undo all of it. The editor has already closed, so the offer waits in the flow
+            if (flow.TakeUndo() is { } offer)
+            {
+                ShowUndo(offer.Message, async () =>
+                {
+                    var undone = await offer.Undo();
+
+                    //an undo that can no longer be done safely says why
+                    if (!undone.Ok)
+                    {
+                        MessageBox.Show(undone.Error ?? "Could not undo.", "Undo");
+                    }
+
+                    ReopenTimesheet();
+                });
+            }
+
+            //send now from a not-sent notice starts sending once the entries are in view
+            if (sendNow && preview.CanSend)
+            {
+                Loaded += SendOnceLoaded;
+            }
+        }
+
+        //-----------------------------
+        //starts the send once the view has rendered
+        private async void SendOnceLoaded(object sender, RoutedEventArgs e)
+        {
+            Loaded -= SendOnceLoaded;
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+            await SendAsync();
+        }
+
+        //-----------------------------
+        //today, yesterday or the date
+        private static string DayLabel(DateOnly day, DateOnly today) =>
+            (today.DayNumber - day.DayNumber) switch
+            {
+                0 => $"Today, {Format.Date(day)}",
+                1 => $"Yesterday, {Format.Date(day)}",
+                _ => Format.Date(day),
+            };
+
+        //-----------------------------
+        //goes back to today
+        private void Today_Click(object sender, RoutedEventArgs e) =>
+            _ = _flow.ShowTimesheetAsync(DateOnly.FromDateTime(_flow.Scheduler.Now), _back);
+
+        //-----------------------------
+        //opens the list of recent days with what was logged and sent on each
+        private async void DayButton_Click(object sender, RoutedEventArgs e)
+        {
+            var today = DateOnly.FromDateTime(_flow.Scheduler.Now);
+            var days = await _flow.GetRecentDaysAsync();
+
+            var menu = new ContextMenu { Style = (Style)FindResource("Menu.Dropdown"), PlacementTarget = DayButton };
+            AutomationProperties.SetName(menu, "Choose a day");
+            foreach (var choice in days)
+            {
+                var caption = choice.Entries == 0 ? "Nothing logged"
+                    : choice.Sent == null ? $"{Format.Duration(choice.Logged)} · Not sent"
+                    : choice.Sent.ChangedAt > choice.Sent.SentAt ? $"{Format.Duration(choice.Logged)} · Changed"
+                    : $"{Format.Duration(choice.Logged)} · Sent";
+
+                var header = new DockPanel();
+                var right = new TextBlock
+                {
+                    Text = caption,
+                    Style = (Style)FindResource("Text.Caption"),
+                    Foreground = (Brush)FindResource(choice.Entries > 0 && choice.Sent == null && choice.Day < today ? "TextAccentBrush" : "TextTertiaryBrush"),
+                    Margin = new Thickness(8, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                DockPanel.SetDock(right, Dock.Right);
+                header.Children.Add(right);
+                header.Children.Add(new TextBlock
+                {
+                    Text = (today.DayNumber - choice.Day.DayNumber) switch { 0 => "Today", 1 => "Yesterday", _ => Format.Date(choice.Day) },
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                });
+
+                var row = new MenuItem { Style = (Style)FindResource("Menu.Row"), Header = header, IsChecked = choice.Day == _day };
+                AutomationProperties.SetName(row, $"{Format.Date(choice.Day)}, {caption}");
+                var picked = choice.Day;
+                row.Click += (_, _) => _ = _flow.ShowTimesheetAsync(picked, _back);
+                menu.Items.Add(row);
+            }
+
+            Field.SetIsOpen(DayButton, true);
+            menu.Closed += (_, _) => Field.SetIsOpen(DayButton, false);
+            menu.IsOpen = true;
         }
 
         //-----------------------------
@@ -568,7 +681,11 @@ namespace TimePlanner.Widget.Views
 
         //-----------------------------
         //sends current day to dashboard
-        private async void Send_Click(object sender, RoutedEventArgs e)
+        private async void Send_Click(object sender, RoutedEventArgs e) => await SendAsync();
+
+        //-----------------------------
+        //asks, then sends the day
+        private async Task SendAsync()
         {
             var aiCount = _slots.Count(s => s.EntryId.HasValue && _aiEntryIds.Contains(s.EntryId.Value));
             var unbuiltCount = _unbuiltNotes.Count;
@@ -611,7 +728,7 @@ namespace TimePlanner.Widget.Views
             finally
             {
                 SendButton.IsEnabled = true;
-                SendButton.Content = "Send day";
+                SendButton.Content = _sendLabel;
             }
         }
 
@@ -669,6 +786,12 @@ namespace TimePlanner.Widget.Views
             }
 
             MessageBox.Show(outcome.Message, "Send day");
+
+            //a day that is now waiting to be sent shows that in its status
+            if (outcome.Retryable)
+            {
+                ReopenTimesheet();
+            }
         }
 
         //-----------------------------

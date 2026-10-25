@@ -27,13 +27,17 @@ namespace TimePlanner.Dashboard.Services.Users
         private readonly AuditLogger _audit;
         private readonly IHttpContextAccessor _http;
 
-        public UserAdminService(UserManager<ApplicationUser> users, AuthDbContext auth, AppDbContext app, AuditLogger audit, IHttpContextAccessor http)
+        private readonly TwoFactorService _twoFactor;
+
+        public UserAdminService(UserManager<ApplicationUser> users, AuthDbContext auth, AppDbContext app, AuditLogger audit, IHttpContextAccessor http,
+            TwoFactorService twoFactor)
         {
             _users = users;
             _auth = auth;
             _app = app;
             _audit = audit;
             _http = http;
+            _twoFactor = twoFactor;
         }
 
         //-----------------------------
@@ -126,6 +130,22 @@ namespace TimePlanner.Dashboard.Services.Users
 
             await _audit.LogAsync(AuditActions.PasswordReset, user.Email);
             return new PasswordResult(true, null, await SummaryAsync(user), temporary);
+        }
+
+        //-----------------------------
+        //removes two-factor from someone who lost their phone: the switch, the key and every recovery code go, and their open sessions end.
+        //they sign in with their password again and can set it up afresh. Nothing happens for an account that never turned it on
+        public async Task<OpResult> ResetTwoFactorAsync(string id)
+        {
+            var user = await _users.FindByIdAsync(id);
+            if (user == null)
+                return OpResult.Fail(NotFound);
+            if (!await _users.GetTwoFactorEnabledAsync(user))
+                return OpResult.Ok();
+
+            await _twoFactor.ClearAsync(user);
+            await _audit.LogAsync(AuditActions.TwoFactorReset, user.Email);
+            return OpResult.Ok();
         }
 
         //-----------------------------

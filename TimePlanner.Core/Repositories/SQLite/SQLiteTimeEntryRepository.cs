@@ -69,6 +69,26 @@ namespace TimePlanner.Core.Repositories.SQLite
         }
 
         //-----------------------------
+        //one save for all of it, so an edit that moves several entries either happens completely or not at all
+        public async Task ApplyAsync(IEnumerable<TimeEntry> changed, IEnumerable<int> removedIds, IEnumerable<TimeEntry> added)
+        {
+            _db.ChangeTracker.Clear();
+
+            foreach (var entry in changed)
+            {
+                _db.Entry(entry).State = EntityState.Modified;
+            }
+
+            foreach (var id in removedIds)
+            {
+                _db.Entry(new TimeEntry { TimeEntryId = id }).State = EntityState.Deleted;
+            }
+
+            _db.TimeEntries.AddRange(added);
+            await _db.SaveChangesAsync();
+        }
+
+        //-----------------------------
         //deletes an entry by id
         public async Task DeleteAsync(int id)
         {

@@ -24,6 +24,17 @@ namespace TimePlanner.Widget.Controls
         public static readonly DependencyProperty GripBrushProperty = DependencyProperty.Register(
             nameof(GripBrush), typeof(Brush), typeof(WidgetCard), new PropertyMetadata(null));
 
+        /// <summary>
+        /// The status line at the top of the time-tracking cards: a dot, green while tracking, and the date.
+        /// Set on a screen, it flows down to the card inside it; null hides it.
+        /// </summary>
+        public static readonly DependencyProperty StatusProperty = DependencyProperty.RegisterAttached(
+            "Status", typeof(CardStatus), typeof(WidgetCard), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.Inherits));
+
+        public static CardStatus? GetStatus(DependencyObject d) => (CardStatus?)d.GetValue(StatusProperty);
+
+        public static void SetStatus(DependencyObject d, CardStatus? value) => d.SetValue(StatusProperty, value);
+
 
         public bool IsRaised
         {

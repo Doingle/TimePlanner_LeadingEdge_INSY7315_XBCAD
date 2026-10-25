@@ -46,11 +46,14 @@ namespace TimePlanner.Widget
         }
 #endif
 
-        // Core registers its database context per scope, so the migration runs in a scope of its own
+        // Core registers its database context per scope, so the migration runs in a scope of its own.
+        // A dated copy of the database is taken first. If the copy fails the migration does not run, and the caller closes the widget
         public static async Task MigrateAsync(IServiceProvider services)
         {
             await using var scope = services.CreateAsyncScope();
-            await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await DatabaseBackup.BackUpBeforeMigratingAsync(db, DateTime.Now);
+            await db.Database.MigrateAsync();
         }
 
         private static HostApplicationBuilder CreateBuilder()

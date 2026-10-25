@@ -84,7 +84,23 @@
                                 
                                 <!-- Banner: lets pointer input through -->
                                 <ContentPresenter Grid.Row="0" Content="{TemplateBinding Banner}" IsHitTestVisible="False" />
-                                <ContentPresenter Grid.Row="1" Margin="{TemplateBinding Padding}" />
+                                <DockPanel Grid.Row="1" Margin="{TemplateBinding Padding}">
+                                    <!-- Status line on the time-tracking cards: a dot, green while tracking and grey otherwise,
+                                         then the date. The state is also in words for screen readers and the tooltip -->
+                                    <StackPanel x:Name="StatusLine" DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,88,8"
+                                                Background="Transparent"
+                                                ToolTip="{Binding Path=(controls:WidgetCard.Status).Spoken, RelativeSource={RelativeSource TemplatedParent}}"
+                                                AutomationProperties.Name="{Binding Path=(controls:WidgetCard.Status).Spoken, RelativeSource={RelativeSource TemplatedParent}}"
+                                                AutomationProperties.LiveSetting="Polite">
+                                        <Ellipse x:Name="StatusDot" Width="{StaticResource Space8}" Height="{StaticResource Space8}"
+                                                 Margin="0,0,8,0" VerticalAlignment="Center" Fill="{StaticResource BorderControlBrush}" />
+                                        <TextBlock Text="{Binding Path=(controls:WidgetCard.Status).Date, RelativeSource={RelativeSource TemplatedParent}}"
+                                                   FontSize="{StaticResource FontSizeBody}" LineHeight="{StaticResource LineHeightBody}"
+                                                   LineStackingStrategy="BlockLineHeight" Foreground="{StaticResource TextPrimaryBrush}"
+                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <ContentPresenter />
+                                </DockPanel>
                                 
                                 <!-- Grip: 32 x 4, centred, 8 from the top -->
                                 <Border x:Name="PART_Grip" Grid.RowSpan="2" Width="{StaticResource Space32}" Height="{StaticResource Space4}"
@@ -106,6 +122,15 @@
                             <Setter TargetName="RaisedGlow" Property="Visibility" Value="Visible" />
                             <Setter TargetName="RaisedGlowEdge" Property="Visibility" Value="Visible" />
                         </Trigger>
+                        <Trigger Property="controls:WidgetCard.Status" Value="{x:Null}">
+                            <Setter TargetName="StatusLine" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="CornerContent" Value="{x:Null}">
+                            <Setter TargetName="StatusLine" Property="Margin" Value="0,0,0,8" />
+                        </Trigger>
+                        <DataTrigger Binding="{Binding Path=(controls:WidgetCard.Status).Live, RelativeSource={RelativeSource Self}}" Value="True">
+                            <Setter TargetName="StatusDot" Property="Fill" Value="{StaticResource LiveBrush}" />
+                        </DataTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
                 

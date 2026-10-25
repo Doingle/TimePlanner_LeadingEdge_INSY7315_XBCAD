@@ -98,6 +98,7 @@ builder.Services.AddScoped<UserAdminService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.Configure<AiServerOptions>(builder.Configuration.GetSection("Ai"));
 builder.Services.AddHttpClient("ai");
+builder.Services.AddScoped<TwoFactorService>();
 builder.Services.AddAuthentication().AddJwtBearer(o =>
 {
     // keep the short claim names ("email", "role") instead of renaming them to long schema urls

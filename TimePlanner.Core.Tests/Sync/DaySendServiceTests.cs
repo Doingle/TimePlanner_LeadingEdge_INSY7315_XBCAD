@@ -13,15 +13,19 @@ namespace TimePlanner.Core.Tests.Sync
     public class DaySendServiceTests : IDisposable
     {
         private readonly string _historyPath = Path.Combine(Path.GetTempPath(), $"sent-days-{Guid.NewGuid():N}.json");
+        private readonly string _pendingPath = Path.Combine(Path.GetTempPath(), $"pending-sends-{Guid.NewGuid():N}.json");
 
         //-----------------------------
-        //deletes temporary test history file
+        //deletes temporary test history files
         public void Dispose()
         {
-            //removes history file created during tests
-            if (File.Exists(_historyPath))
+            //removes history files created during tests
+            foreach (var path in new[] { _historyPath, _pendingPath })
             {
-                File.Delete(_historyPath);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
             }
         }
 
@@ -34,6 +38,7 @@ namespace TimePlanner.Core.Tests.Sync
                 s.AddSingleton(new DashboardClient(new HttpClient(handler) { BaseAddress = new Uri("https://dashboard.test/") }));
                 s.AddSingleton<ITokenStore>(tokens);
                 s.AddSingleton<ISendHistoryStore>(new FileSendHistoryStore(_historyPath));
+                s.AddSingleton<IPendingSendStore>(new FilePendingSendStore(_pendingPath));
                 s.AddScoped<DaySendService>();
             });
         }

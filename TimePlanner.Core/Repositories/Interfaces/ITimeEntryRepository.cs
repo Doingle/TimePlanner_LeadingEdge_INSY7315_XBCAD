@@ -24,6 +24,9 @@ namespace TimePlanner.Core.Repositories.Interfaces
         //saves a changed entry
         Task UpdateAsync(TimeEntry entry);
 
+        //saves changed entries, deletes others by id and adds new ones in a single transaction, nothing is stored if one fails
+        Task ApplyAsync(IEnumerable<TimeEntry> changed, IEnumerable<int> removedIds, IEnumerable<TimeEntry> added);
+
         //deletes an entry by id
         Task DeleteAsync(int id);
     }

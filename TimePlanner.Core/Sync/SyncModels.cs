@@ -40,7 +40,9 @@ namespace TimePlanner.Core.Sync
         InvalidDetails,
         PasswordChangeRequired,
         Offline,
-        Failed
+        Failed,
+        //the password was right but the account has two-factor on, so the client has to ask for a code and sign in again with it
+        TwoFactorRequired
     }
 
     //-----------------------------
@@ -61,12 +63,18 @@ namespace TimePlanner.Core.Sync
     }
 
     //-----------------------------
-    //result of a send with stored count and any row errors
-    public sealed record SendOutcome(SendStatus Status, int Created, IReadOnlyList<string> Errors, string? Message)
+    //result of a send with stored count and any row errors. Retryable is true when trying again later can work (no connection, too many requests, a server error)
+    public sealed record SendOutcome(SendStatus Status, int Created, IReadOnlyList<string> Errors, string? Message, bool Retryable = false)
     {
         //-----------------------------
         //an outcome with only a status and message
-        public static SendOutcome Of(SendStatus status, string? message) => new(status, 0, Array.Empty<string>(), message);
+        public static SendOutcome Of(SendStatus status, string? message, bool retryable = false) =>
+            new(status, 0, Array.Empty<string>(), message, retryable);
     }
+
+    //-----------------------------
+    //a day the user pressed Send day on that has not reached the dashboard yet. Attempts counts the tries that failed.
+    //A rejected day is no longer retried and keeps the reason, until the user sends it again
+    public sealed record PendingDay(DateOnly Day, DateTime QueuedAt, int Attempts, DateTime NextAttemptUtc, bool Rejected = false, string? Message = null);
 }
 //------------------------------EOF-----------------------------\\

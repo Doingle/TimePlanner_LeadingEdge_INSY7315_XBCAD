@@ -31,8 +31,14 @@ namespace TimePlanner.Widget.Services
         // Today's open day with its pauses, or null before the day starts and after it ends
         private DaySession? _day;
 
-        // The day that was just ended, so Resume day can carry it on
+        // The latest day that has ended, so Resume day can carry it on when it is from today
         private DaySession? _ended;
+
+        // A close running at midnight, so a second tick does not start another
+        private bool _closingLeftOpen;
+
+        // How far back the latest ended day is looked for
+        private const int EndedLookBackDays = 14;
 
         public CheckInScheduler(WidgetSession session, CheckInEngine engine, IServiceScopeFactory scopes, TimeProvider clock,
             ILogger<CheckInScheduler> logger, TimePlanner.Core.Ai.IVoiceNoteStore voiceStore)
@@ -55,10 +61,22 @@ namespace TimePlanner.Widget.Services
         /// <summary>What the engine said last.</summary>
         public CheckInStatus Status { get; private set; } = new(CheckInPhase.NotTracking, null, null, null, 0, 0, false, false);
 
+        /// <summary>A day left open overnight that the widget closed at its last activity, until today is started.</summary>
+        public event EventHandler? DayClosedOvernight;
+
         /// <summary>The day has started and has not ended.</summary>
         public bool IsRunning => _day != null;
 
-        public bool EndedToday => _ended?.EndedAt?.Date == Now.Date;
+        /// <summary>What today looks like, by Core's day rules.</summary>
+        public DayState State => DayRules.StateOn(Now, _day, _ended);
+
+        public bool EndedToday => State == DayState.Ended;
+
+        /// <summary>The latest day that has ended, from today or an earlier date.</summary>
+        public DaySession? LastEnded => _ended;
+
+        /// <summary>The day the widget closed because it was left open overnight, until today is started.</summary>
+        public DaySession? ClosedOvernight { get; private set; }
 
         /// <summary>Where the time not logged yet begins: the end of the last entry, or the start of the day.</summary>
         public DateTime PeriodStart { get; private set; }
@@ -78,7 +96,7 @@ namespace TimePlanner.Widget.Services
         /// <summary>After sign-in: picks up a day that is still open (the widget was restarted) and starts the clock.</summary>
         public async Task InitialiseAsync()
         {
-            await ReloadDayAsync();
+            await CloseLeftOpenDayAsync();
             await RunAsync(() => _engine.InitialiseAsync(UserId));
             var today = DateOnly.FromDateTime(Now);
             var latestVoiceEnd = await _voiceStore.GetLatestWindowEndAsync(today);
@@ -89,7 +107,11 @@ namespace TimePlanner.Widget.Services
             _timer.Start();
         }
 
-        public Task StartAsync() => ChangeDayAsync(days => days.StartDayAsync(UserId, Now));
+        public Task StartAsync()
+        {
+            ClosedOvernight = null;
+            return ChangeDayAsync(days => days.StartDayAsync(UserId, Now));
+        }
 
         public async Task PauseAsync()
         {
@@ -109,11 +131,20 @@ namespace TimePlanner.Widget.Services
                 await ChangeDayAsync(async days => _ended = await days.EndDayAsync(UserId, Now));
         }
 
-        /// <summary>Carries on after Day ended, as if the day had not been ended.</summary>
+        /// <summary>
+        /// Carries on after Day ended, as if the day had not been ended. Only a day from today can be
+        /// carried on: once the date has changed, today starts as a day of its own instead.
+        /// </summary>
         public async Task ResumeDayAsync()
         {
             if (IsRunning)
                 return;
+
+            if (_ended != null && !DayRules.CanResume(_ended, Now))
+            {
+                await StartAsync();
+                return;
+            }
 
             await using (var scope = _scopes.CreateAsyncScope())
             {
@@ -149,8 +180,38 @@ namespace TimePlanner.Widget.Services
                 await RunAsync(_engine.SnoozeAsync);
         }
 
-        /// <summary>Asks the engine where things stand now.</summary>
-        public Task RefreshAsync() => RunAsync(_engine.TickAsync);
+        /// <summary>Asks the engine where things stand now. A day still open after midnight closes first.</summary>
+        public async Task RefreshAsync()
+        {
+            if (DayRules.IsLeftOpen(_day, Now) && !_closingLeftOpen)
+            {
+                _closingLeftOpen = true;
+                try
+                {
+                    await CloseLeftOpenDayAsync();
+                    await RunAsync(_engine.NotifySessionChangedAsync);
+                }
+                finally
+                {
+                    _closingLeftOpen = false;
+                }
+                DayClosedOvernight?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            await RunAsync(_engine.TickAsync);
+        }
+
+        /// <summary>Closes a day left open from an earlier date at its last activity, remembering it so the widget can say so.</summary>
+        private async Task CloseLeftOpenDayAsync()
+        {
+            await using (var scope = _scopes.CreateAsyncScope())
+            {
+                if (await scope.ServiceProvider.GetRequiredService<DaySessionService>().CloseStaleSessionsAsync(UserId, Now) is { } closed)
+                    ClosedOvernight = closed;
+            }
+            await ReloadDayAsync();
+        }
 
         private async Task ChangeDayAsync(Func<DaySessionService, Task> change)
         {
@@ -181,8 +242,8 @@ namespace TimePlanner.Widget.Services
             if (_day == null)
             {
                 var days = await services.GetRequiredService<IDaySessionRepository>()
-                    .GetForUserBetweenAsync(UserId, Now.Date, Now.Date.AddDays(1));
-                _ended = days.LastOrDefault(day => day.EndedAt?.Date == Now.Date);
+                    .GetForUserBetweenAsync(UserId, Now.Date.AddDays(-EndedLookBackDays), Now.Date.AddDays(1));
+                _ended = days.LastOrDefault(day => day.EndedAt != null);
             }
 
             // Where Core starts the time still to log

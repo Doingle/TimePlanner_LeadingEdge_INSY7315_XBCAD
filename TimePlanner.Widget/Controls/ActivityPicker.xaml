@@ -3,6 +3,30 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
              Focusable="False">
+    <UserControl.Resources>
+        <!-- One row of the dropdown: the label fills it, and the row builds its own check, chevron and actions -->
+        <Style x:Key="Picker.Row" TargetType="MenuItem">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Height" Value="{StaticResource Space32}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Grid Background="Transparent" SnapsToDevicePixels="True">
+                            <Border x:Name="Bg" CornerRadius="{StaticResource RadiusRow}" Background="Transparent" />
+                            <ContentPresenter ContentSource="Header" Margin="8,0,4,0" VerticalAlignment="Center" RecognizesAccessKey="False" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
     <StackPanel>
         <!-- Closed: the chosen level reads first; the levels above it are smaller context -->
         <Button x:Name="PickerButton" Style="{StaticResource SelectButton}" Click="PickerButton_Click">

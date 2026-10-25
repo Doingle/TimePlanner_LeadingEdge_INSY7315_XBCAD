@@ -16,7 +16,9 @@ using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Core.Services;
+using TimePlanner.Core.Services.Models;
 using TimePlanner.Core.Sync;
+using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
 using TimePlanner.Widget.Services.Ai;
@@ -406,6 +408,189 @@ public class ReminderFlowTests
         Assert.Equal(success ? 1 : 0, host.History.Days.Count);
     });
 
+    private static async Task WaitFor(Func<bool> condition) => await WaitFor(() => Task.FromResult(condition()));
+
+    //the save and the undo run after the click, so the test waits for their result rather than for the click to return
+    private static async Task WaitFor(Func<Task<bool>> condition)
+    {
+        for (var i = 0; i < 100 && !await condition(); i++)
+            await Task.Delay(30);
+        Assert.True(await condition(), "The screen did not update in time.");
+    }
+
+    private static Button? FindButton(DependencyObject root, string content)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            if (child is Button button && Equals(button.Content, content))
+                return button;
+            if (FindButton(child, content) is { } found)
+                return found;
+        }
+        return null;
+    }
+
+    [Fact]
+    public Task EditThatChangesAnotherEntry_AsksFirst_SavesBothOnYes_AndUndoPutsBothBack() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var userId = host.Flow.Session.User.UserId;
+        var day = DateOnly.FromDateTime(host.Clock.LocalNow());
+        DateTime At(int hour, int minute) => day.ToDateTime(new TimeOnly(hour, minute));
+        string[] project = ["Client A", "Project A"];
+        var first = (await host.Flow.AddEntryAsync(new EntryEdit(At(8, 0), At(9, 0), project, ["Coding"], "first"))).EntryId!.Value;
+        var second = (await host.Flow.AddEntryAsync(new EntryEdit(At(9, 0), At(9, 30), project, ["Coding"], "second"))).EntryId!.Value;
+
+        async Task<(DateTime Start, DateTime End)> TimesOf(int id)
+        {
+            var slot = (await host.Flow.GetTimesheetAsync(userId, day)).Single(s => s.EntryId == id);
+            return (slot.Start, slot.End);
+        }
+
+        var slot = (await host.Flow.GetTimesheetAsync(userId, day)).Single(s => s.EntryId == first);
+        await host.Flow.ShowEntryEditorAsync(day, slot, slot.Start, slot.End, () => { });
+        var editor = Assert.IsType<EntryEditView>(host.Window.Screen);
+        var banner = (Border)editor.FindName("ConfirmBanner");
+        ((TextBox)editor.FindName("EndBox")).Text = "08:45";
+
+        //saving asks first and stores nothing yet
+        Click((Button)editor.FindName("SaveButton"));
+        await WaitFor(() => banner.Visibility == Visibility.Visible);
+        Assert.Equal("This changes Coding · Project A to 8:45 AM–9:30 AM. Continue?", ((TextBlock)editor.FindName("BannerText")).Text);
+        Assert.Equal((At(8, 0), At(9, 0)), await TimesOf(first));
+
+        //No keeps the editor open with nothing saved
+        Click(FindButton(banner, "No")!);
+        Assert.Equal(Visibility.Collapsed, banner.Visibility);
+        Assert.Same(editor, host.Window.Screen);
+        Assert.Equal((At(9, 0), At(9, 30)), await TimesOf(second));
+
+        //Yes saves both together and goes back to the timesheet
+        Click((Button)editor.FindName("SaveButton"));
+        await WaitFor(() => banner.Visibility == Visibility.Visible);
+        Click(FindButton(banner, "Yes")!);
+        await WaitFor(async () => await TimesOf(first) == (At(8, 0), At(8, 45)));
+        Assert.Equal((At(8, 0), At(8, 45)), await TimesOf(first));
+        Assert.Equal((At(8, 45), At(9, 30)), await TimesOf(second));
+
+        //the timesheet offers an undo that reverses both
+        await host.Flow.ShowTimesheetAsync(day, () => { });
+        var timesheet = Assert.IsType<TimesheetReviewView>(host.Window.Screen);
+        var undoBar = (Grid)timesheet.FindName("UndoBar");
+        Assert.Equal(Visibility.Visible, undoBar.Visibility);
+        Assert.Equal("Entry updated · other entries changed", ((TextBlock)timesheet.FindName("UndoText")).Text);
+        Click(FindButton(undoBar, "Undo")!);
+        await WaitFor(async () => await TimesOf(first) == (At(8, 0), At(9, 0)));
+        Assert.Equal((At(9, 0), At(9, 30)), await TimesOf(second));
+    });
+
+    [Fact]
+    public Task SignIn_AsksForTheCodeOnlyWhenTheDashboardNeedsOne() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        host.Http.RequiresCode = true;
+        var signedIn = false;
+        host.Flow.ShowSignIn(() => { signedIn = true; return Task.CompletedTask; }, () => { });
+        var view = Assert.IsType<SignInView>(host.Window.Screen);
+        var codeLine = (FrameworkElement)view.FindName("CodeLine");
+        var button = (Button)view.FindName("SignInButton");
+        var error = (TextBlock)view.FindName("ErrorText");
+        var code = (TextBox)view.FindName("CodeBox");
+        Assert.Equal(Visibility.Collapsed, codeLine.Visibility);
+        ((TextBox)view.FindName("EmailBox")).Text = "admin@example.com";
+        ((PasswordBox)view.FindName("PasswordBox")).Password = "a-password";
+
+        //the password is right but a code is needed: the box appears, nothing is signed in
+        Click(button);
+        await WaitFor(() => codeLine.Visibility == Visibility.Visible && button.IsEnabled);
+        Assert.Contains("two-factor code is required", error.Text);
+        Assert.False(signedIn);
+
+        //a wrong code is refused and the box stays
+        code.Text = "000000";
+        Click(button);
+        await WaitFor(() => error.Text.Contains("not right") && button.IsEnabled);
+        Assert.False(signedIn);
+
+        code.Text = "123456";
+        Click(button);
+        await WaitFor(() => signedIn);
+    });
+
+    [Fact]
+    public Task SignIn_WithoutTwoFactor_NeverShowsTheCodeBox() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var signedIn = false;
+        host.Flow.ShowSignIn(() => { signedIn = true; return Task.CompletedTask; }, () => { });
+        var view = Assert.IsType<SignInView>(host.Window.Screen);
+        ((TextBox)view.FindName("EmailBox")).Text = "developer@example.com";
+        ((PasswordBox)view.FindName("PasswordBox")).Password = "a-password";
+
+        Click((Button)view.FindName("SignInButton"));
+        await WaitFor(() => signedIn);
+
+        Assert.Equal(Visibility.Collapsed, ((FrameworkElement)view.FindName("CodeLine")).Visibility);
+    });
+
+    [Fact]
+    public Task EditThatCoversAnEntry_AsksBeforeRemovingIt() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var userId = host.Flow.Session.User.UserId;
+        var day = DateOnly.FromDateTime(host.Clock.LocalNow());
+        DateTime At(int hour, int minute) => day.ToDateTime(new TimeOnly(hour, minute));
+        string[] project = ["Client A", "Project A"];
+        var first = (await host.Flow.AddEntryAsync(new EntryEdit(At(8, 0), At(9, 0), project, ["Coding"], "first"))).EntryId!.Value;
+        await host.Flow.AddEntryAsync(new EntryEdit(At(9, 0), At(9, 30), project, ["Coding"], "second"));
+
+        var slot = (await host.Flow.GetTimesheetAsync(userId, day)).Single(s => s.EntryId == first);
+        await host.Flow.ShowEntryEditorAsync(day, slot, slot.Start, slot.End, () => { });
+        var editor = Assert.IsType<EntryEditView>(host.Window.Screen);
+        var banner = (Border)editor.FindName("ConfirmBanner");
+        ((TextBox)editor.FindName("EndBox")).Text = "09:45";
+
+        Click((Button)editor.FindName("SaveButton"));
+        await WaitFor(() => banner.Visibility == Visibility.Visible);
+
+        Assert.Equal("This removes Coding · Project A (9:00 AM–9:30 AM). Continue?", ((TextBlock)editor.FindName("BannerText")).Text);
+        Assert.Equal(2, (await host.Flow.GetTimesheetAsync(userId, day)).Count(s => s.EntryId != null));
+    });
+
+    [Fact]
+    public Task SendThatFails_WaitsShowsItInTheTimesheet_AndGoesThroughLater() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        var day = host.Flow.Reminder.Today;
+        var log = host.Services.GetRequiredService<TimeLogService>();
+        var userId = host.Flow.Session.User.UserId;
+
+        host.Http.Succeeds = false;
+        var failed = await host.Flow.SendDayAsync(day);
+        Assert.True(failed.Retryable);
+        Assert.Equal(day, Assert.Single(host.Pending.Days).Day);
+        Assert.Empty(host.History.Days);
+
+        await host.Flow.ShowTimesheetAsync(day, () => { });
+        var view = Assert.IsType<TimesheetReviewView>(host.Window.Screen);
+        Assert.Equal("Waiting to send · will retry", ((TextBlock)view.FindName("StatusText")).Text);
+
+        //the retry is not due yet, so a tick does not call the dashboard again
+        var requests = host.Http.Requests;
+        Assert.Empty(await log.RetryPendingSendsAsync(userId));
+        Assert.Equal(requests, host.Http.Requests);
+
+        host.Http.Succeeds = true;
+        host.Clock.UtcNow += TimeSpan.FromMinutes(2);
+        Assert.Equal(new[] { day }, await log.RetryPendingSendsAsync(userId, force: true));
+        Assert.Empty(host.Pending.Days);
+        Assert.Single(host.History.Days);
+    });
+
     [Fact]
     public Task PreviousDayScreenDoesNotShowTodaysNotice() => OnUi(async () =>
     {
@@ -471,6 +656,216 @@ public class ReminderFlowTests
         encoder.Save(file);
     }
 
+    [Fact]
+    public Task ManageListsRenameWarnsAboutSentDays_AndHidingKeepsLoggedTime() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        Assert.Equal(SendStatus.Sent, (await host.Flow.SendDayAsync(host.Flow.Reminder.Today)).Status);
+
+        var view = await host.Flow.ShowManageListsAsync();
+        Assert.Same(view, host.Window.Screen);
+        var rows = (Panel)view.FindName("Rows");
+        var lists = await host.Flow.GetManagedListsAsync();
+        var client = lists.Clients.Single(c => c.Name == "Test client");
+        var project = client.Projects.Single();
+
+        // Opening rename warns that the sent day keeps the old name on the dashboard
+        Click(Descendants<Button>(rows).Single(b => b.Tag is ValueTuple<ListKind, int> key && key == (ListKind.Client, client.Id)));
+        await WaitUntil(() => Descendants<TextBlock>(rows).Any(t => t.Text.StartsWith("Used on a day you already sent")));
+
+        Descendants<TextBox>(rows).Single().Text = "Renamed client";
+        Click(Descendants<Button>(rows).Single(b => Equals(b.Content, "Save")));
+        await WaitUntil(() => ((TextBlock)view.FindName("NoticeText")).Text.Length > 0);
+        Assert.Equal("Renamed to Renamed client. Send that day again.", ((TextBlock)view.FindName("NoticeText")).Text);
+        Assert.Contains(Descendants<TextBlock>(rows), t => t.Text == "Renamed client");
+
+        // Hiding takes the project out of the pickers but never deletes it or its time
+        Assert.True((await host.Flow.SetListItemHiddenAsync(ListKind.Project, project.Id, hidden: true)).Ok);
+        Assert.DoesNotContain(await host.Services.GetRequiredService<TimeLogService>().GetProjectsAsync(), p => p.ProjectID == project.Id);
+        var day = await host.Services.GetRequiredService<TimeLogService>().GetDayAsync(host.Flow.Session.User.UserId, host.Clock.LocalNow());
+        Assert.Equal("Test project", Assert.Single(day.Entries).Task!.Project!.Name);
+        Assert.True((await host.Flow.GetManagedListsAsync()).Clients.Single(c => c.Id == client.Id).Hidden);
+    });
+
+    [Fact]
+    public Task EndedDay_ThenTheDateChanges_OpensOnStartTodayWithYesterdaysSendNow() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        Assert.Equal(new CardStatus("Friday 23 Oct", false, "Friday 23 Oct, day ended"), host.Flow.Status);
+
+        // The PC date moves on, and the widget is opened again
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+        var (scheduler, flow) = Restart(host);
+        using (scheduler)
+        {
+            await flow.LoadAsync();
+            flow.ShowStart();
+            var setup = Assert.IsType<SetupView>(host.Window.Screen);
+            Assert.Equal("Start today", ((Button)setup.FindName("PrimaryButton")).Content);
+            Assert.Equal(new CardStatus("Saturday 24 Oct", false, "Saturday 24 Oct, not started"), flow.Status);
+            Assert.Equal(flow.Status, WidgetCard.GetStatus(setup));
+
+            var notice = (UnsentEarlierDayView)setup.FindName("EarlierNotice");
+            await WaitUntil(() => notice.Visibility == Visibility.Visible);
+            Assert.Equal("Yesterday isn't sent yet", ((TextBlock)notice.FindName("TitleText")).Text);
+            Render(setup, "start-today");
+
+            // Resume can't reopen yesterday: today starts as a day of its own
+            await flow.ResumeDayAsync();
+            Assert.Equal(new CardStatus("Saturday 24 Oct", true, "Saturday 24 Oct, tracking"), flow.Status);
+            flow.ShowTimer();
+            var timer = Assert.IsType<TimerView>(host.Window.Screen);
+            Assert.True(WidgetCard.GetStatus(timer)!.Live);
+            Render(timer, "timer-status");
+
+            // Only the time-tracking screens carry the status line
+            flow.ShowSettings();
+            Assert.Null(WidgetCard.GetStatus(host.Window.Screen!));
+            var days = await DaySessionsAsync(host);
+            Assert.Equal(2, days.Count);
+            Assert.NotNull(days[0].EndedAt);
+            Assert.Equal(DateTime.Parse("2026-10-24"), days[1].StartedAt.Date);
+            Assert.Null(days[1].EndedAt);
+        }
+    });
+
+    [Fact]
+    public Task DayLeftOpenOvernight_ClosesAtItsLastActivity_AndSaysSo() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        var lastActivity = host.Clock.LocalNow().AddMinutes(30);
+
+        // The widget is closed with the day still running, and opened the next morning
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+        var (scheduler, flow) = Restart(host);
+        using (scheduler)
+        {
+            await flow.LoadAsync();
+            flow.ShowStart();
+            var ended = Assert.IsType<DayEndedView>(host.Window.Screen);
+            Assert.Equal(Visibility.Visible, ((Border)ended.FindName("OvernightNote")).Visibility);
+            Assert.Equal($"It was left open overnight, so it ended at {Format.Clock(lastActivity)}, your last activity.",
+                ((TextBlock)ended.FindName("OvernightText")).Text);
+            Assert.Equal(Visibility.Visible, ((StackPanel)ended.FindName("EarlierActions")).Visibility);
+            Assert.Equal(Visibility.Collapsed, ((StackPanel)ended.FindName("ExportActions")).Visibility);
+            Assert.Equal(lastActivity, (await DaySessionsAsync(host)).Single().EndedAt);
+            await WaitUntil(() => ((UnsentEarlierDayView)ended.FindName("EarlierNotice")).Visibility == Visibility.Visible);
+            Render(ended, "day-ended-overnight");
+
+            await flow.StartTrackingAsync();
+            Assert.Null(flow.Scheduler.ClosedOvernight);
+            Assert.Equal(2, (await DaySessionsAsync(host)).Count);
+        }
+    });
+
+    [Fact]
+    public Task TrackingPastMidnight_ClosesTheDay_AndShowsDayEnded() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+        await host.Flow.Scheduler.RefreshAsync();
+
+        await WaitUntil(() => host.Window.Screen is DayEndedView);
+        var ended = (DayEndedView)host.Window.Screen!;
+        Assert.Equal(Visibility.Visible, ((Border)ended.FindName("OvernightNote")).Visibility);
+        Assert.False(host.Flow.Scheduler.IsRunning);
+        Assert.Equal("Saturday 24 Oct, not started", WidgetCard.GetStatus(ended)?.Spoken);
+    });
+
+    [Fact]
+    public Task DayEndedLeftOpenPastMidnight_SwapsResumeForStartToday() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        var ended = Assert.IsType<DayEndedView>(host.Window.Screen);
+        ended.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        Assert.Equal(Visibility.Visible, ((StackPanel)ended.FindName("ExportActions")).Visibility);
+
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+        await host.Flow.Scheduler.RefreshAsync();
+
+        Assert.Equal(Visibility.Collapsed, ((StackPanel)ended.FindName("ExportActions")).Visibility);
+        Assert.Equal(Visibility.Visible, ((StackPanel)ended.FindName("EarlierActions")).Visibility);
+    });
+
+    [Fact]
+    public Task PastDayTimesheet_SaysItCanStillBeEdited_AndSendsAgain() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        var friday = host.Flow.Reminder.Today;
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+
+        await host.Flow.ShowTimesheetAsync(friday, () => { });
+        var sheet = Assert.IsType<TimesheetReviewView>(host.Window.Screen);
+        Assert.Equal(Visibility.Visible, ((TextBlock)sheet.FindName("PastDayHelp")).Visibility);
+        Assert.Equal(Visibility.Visible, ((Button)sheet.FindName("TodayButton")).Visibility);
+        Assert.Equal("Send day", ((Button)sheet.FindName("SendButton")).Content);
+        Assert.Equal("Yesterday, Friday 23 Oct · 30m", ((TextBlock)sheet.FindName("Subtitle")).Text);
+        Render(sheet, "timesheet-yesterday");
+
+        host.History.Days.Add(new SentDay(friday, host.Clock.LocalNow(), 1, 0.5));
+        await host.Flow.ShowTimesheetAsync(friday, () => { });
+        Assert.Equal("Send again", ((Button)((TimesheetReviewView)host.Window.Screen!).FindName("SendButton")).Content);
+
+        await host.Flow.ShowTimesheetAsync(DateOnly.FromDateTime(host.Clock.LocalNow()), () => { });
+        Assert.Equal(Visibility.Collapsed, ((Button)((TimesheetReviewView)host.Window.Screen!).FindName("TodayButton")).Visibility);
+    });
+
+    // A new scheduler and flow over the same in-memory database, as when the widget is opened again
+    private static (CheckInScheduler Scheduler, WidgetFlow Flow) Restart(TestHost host)
+    {
+        host.Flow.Scheduler.Dispose();
+        var scheduler = ActivatorUtilities.CreateInstance<CheckInScheduler>(host.Services);
+        return (scheduler, ActivatorUtilities.CreateInstance<WidgetFlow>(host.Services, scheduler));
+    }
+
+    private static async Task<List<DaySession>> DaySessionsAsync(TestHost host)
+    {
+        using var scope = host.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<AppDbContext>().DaySessions.AsNoTracking().OrderBy(d => d.StartedAt).ToListAsync();
+    }
+
+    private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+    private static async Task WaitUntil(Func<bool> done)
+    {
+        for (var i = 0; i < 100 && !done(); i++)
+            await Task.Delay(20);
+        Assert.True(done());
+    }
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match)
+                yield return match;
+            foreach (var below in Descendants<T>(child))
+                yield return below;
+        }
+    }
+
     private sealed class RecordingHost : IWidgetHost
     {
         public bool Activated { get; private set; }
@@ -492,11 +887,27 @@ public class ReminderFlowTests
         public int Requests { get; private set; }
         public bool Succeeds { get; set; } = true;
         public bool StallVersionCheck { get; set; }
+        //an account with two-factor on: the login only works when the request carries the code 123456
+        public bool RequiresCode { get; set; }
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             if (request.RequestUri!.AbsolutePath == "/api/v1/widget/version")
                 return StallVersionCheck ? WaitForCancellation(cancellationToken) : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 { Content = JsonContent.Create(new WidgetRelease("2.0.0")) });
+            if (request.RequestUri.AbsolutePath == "/api/v1/auth/login" && RequiresCode)
+            {
+                using var body = System.Text.Json.JsonDocument.Parse(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+                var otp = body.RootElement.TryGetProperty("otp", out var sent) && sent.ValueKind == System.Text.Json.JsonValueKind.String ? sent.GetString() : null;
+                if (otp != "123456")
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                    {
+                        Content = JsonContent.Create(new Dictionary<string, object>
+                        {
+                            ["title"] = otp == null ? "A two-factor code is required." : "The two-factor code is not right.",
+                            ["twoFactorRequired"] = true
+                        })
+                    });
+            }
             if (request.RequestUri.AbsolutePath == "/api/v1/auth/login")
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 { Content = JsonContent.Create(new { accessToken = "test-only", tokenType = "Bearer", expiresAtUtc = DateTime.UtcNow.AddHours(1) }) });
@@ -522,6 +933,7 @@ public class ReminderFlowTests
         private readonly string _aiFolder = Path.Combine(Path.GetTempPath(), "TimePlannerTests", Guid.NewGuid().ToString("N"));
         public ReminderClock Clock { get; } = new();
         public ReminderHistory History { get; } = new();
+        public ReminderPending Pending { get; } = new();
         public RecordingHost Window { get; } = new();
         public FakeDashboard Http { get; } = new();
         // Windows startup kept in memory, so the tests never touch the real Run key
@@ -540,6 +952,7 @@ public class ReminderFlowTests
             services.AddSingleton<IClock>(new TimeProviderClock(host.Clock));
             services.AddSingleton<IWidgetHost>(host.Window);
             services.AddSingleton<ISendHistoryStore>(host.History);
+            services.AddSingleton<IPendingSendStore>(host.Pending);
             var tokens = new InMemoryTokenStore();
             await tokens.SaveAsync(new StoredToken("test-only", host.Clock.UtcNow.UtcDateTime.AddHours(8), "test@example.invalid"));
             services.AddSingleton<ITokenStore>(tokens);
