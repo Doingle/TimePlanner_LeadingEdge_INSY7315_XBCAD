@@ -15,6 +15,7 @@ using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Core.Services;
+using TimePlanner.Core.Services.Models;
 using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
@@ -403,6 +404,106 @@ public class ReminderFlowTests
         Assert.Equal(success ? Visibility.Visible : Visibility.Collapsed, ((Button)ended.FindName("OpenTimesheetButton")).Visibility);
         Assert.Equal(1, host.Http.Requests);
         Assert.Equal(success ? 1 : 0, host.History.Days.Count);
+    });
+
+    private static async Task WaitFor(Func<bool> condition) => await WaitFor(() => Task.FromResult(condition()));
+
+    //the save and the undo run after the click, so the test waits for their result rather than for the click to return
+    private static async Task WaitFor(Func<Task<bool>> condition)
+    {
+        for (var i = 0; i < 100 && !await condition(); i++)
+            await Task.Delay(30);
+        Assert.True(await condition(), "The screen did not update in time.");
+    }
+
+    private static Button? FindButton(DependencyObject root, string content)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            if (child is Button button && Equals(button.Content, content))
+                return button;
+            if (FindButton(child, content) is { } found)
+                return found;
+        }
+        return null;
+    }
+
+    [Fact]
+    public Task EditThatChangesAnotherEntry_AsksFirst_SavesBothOnYes_AndUndoPutsBothBack() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var userId = host.Flow.Session.User.UserId;
+        var day = DateOnly.FromDateTime(host.Clock.LocalNow());
+        DateTime At(int hour, int minute) => day.ToDateTime(new TimeOnly(hour, minute));
+        string[] project = ["Client A", "Project A"];
+        var first = (await host.Flow.AddEntryAsync(new EntryEdit(At(8, 0), At(9, 0), project, ["Coding"], "first"))).EntryId!.Value;
+        var second = (await host.Flow.AddEntryAsync(new EntryEdit(At(9, 0), At(9, 30), project, ["Coding"], "second"))).EntryId!.Value;
+
+        async Task<(DateTime Start, DateTime End)> TimesOf(int id)
+        {
+            var slot = (await host.Flow.GetTimesheetAsync(userId, day)).Single(s => s.EntryId == id);
+            return (slot.Start, slot.End);
+        }
+
+        var slot = (await host.Flow.GetTimesheetAsync(userId, day)).Single(s => s.EntryId == first);
+        await host.Flow.ShowEntryEditorAsync(day, slot, slot.Start, slot.End, () => { });
+        var editor = Assert.IsType<EntryEditView>(host.Window.Screen);
+        var banner = (Border)editor.FindName("ConfirmBanner");
+        ((TextBox)editor.FindName("EndBox")).Text = "08:45";
+
+        //saving asks first and stores nothing yet
+        Click((Button)editor.FindName("SaveButton"));
+        await WaitFor(() => banner.Visibility == Visibility.Visible);
+        Assert.Equal("This changes Coding · Project A to 8:45 AM–9:30 AM. Continue?", ((TextBlock)editor.FindName("BannerText")).Text);
+        Assert.Equal((At(8, 0), At(9, 0)), await TimesOf(first));
+
+        //No keeps the editor open with nothing saved
+        Click(FindButton(banner, "No")!);
+        Assert.Equal(Visibility.Collapsed, banner.Visibility);
+        Assert.Same(editor, host.Window.Screen);
+        Assert.Equal((At(9, 0), At(9, 30)), await TimesOf(second));
+
+        //Yes saves both together and goes back to the timesheet
+        Click((Button)editor.FindName("SaveButton"));
+        await WaitFor(() => banner.Visibility == Visibility.Visible);
+        Click(FindButton(banner, "Yes")!);
+        await WaitFor(async () => await TimesOf(first) == (At(8, 0), At(8, 45)));
+        Assert.Equal((At(8, 0), At(8, 45)), await TimesOf(first));
+        Assert.Equal((At(8, 45), At(9, 30)), await TimesOf(second));
+
+        //the timesheet offers an undo that reverses both
+        await host.Flow.ShowTimesheetAsync(day, () => { });
+        var timesheet = Assert.IsType<TimesheetReviewView>(host.Window.Screen);
+        var undoBar = (Grid)timesheet.FindName("UndoBar");
+        Assert.Equal(Visibility.Visible, undoBar.Visibility);
+        Assert.Equal("Entry updated · other entries changed", ((TextBlock)timesheet.FindName("UndoText")).Text);
+        Click(FindButton(undoBar, "Undo")!);
+        await WaitFor(async () => await TimesOf(first) == (At(8, 0), At(9, 0)));
+        Assert.Equal((At(9, 0), At(9, 30)), await TimesOf(second));
+    });
+
+    [Fact]
+    public Task EditThatCoversAnEntry_AsksBeforeRemovingIt() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var userId = host.Flow.Session.User.UserId;
+        var day = DateOnly.FromDateTime(host.Clock.LocalNow());
+        DateTime At(int hour, int minute) => day.ToDateTime(new TimeOnly(hour, minute));
+        string[] project = ["Client A", "Project A"];
+        var first = (await host.Flow.AddEntryAsync(new EntryEdit(At(8, 0), At(9, 0), project, ["Coding"], "first"))).EntryId!.Value;
+        await host.Flow.AddEntryAsync(new EntryEdit(At(9, 0), At(9, 30), project, ["Coding"], "second"));
+
+        var slot = (await host.Flow.GetTimesheetAsync(userId, day)).Single(s => s.EntryId == first);
+        await host.Flow.ShowEntryEditorAsync(day, slot, slot.Start, slot.End, () => { });
+        var editor = Assert.IsType<EntryEditView>(host.Window.Screen);
+        var banner = (Border)editor.FindName("ConfirmBanner");
+        ((TextBox)editor.FindName("EndBox")).Text = "09:45";
+
+        Click((Button)editor.FindName("SaveButton"));
+        await WaitFor(() => banner.Visibility == Visibility.Visible);
+
+        Assert.Equal("This removes Coding · Project A (9:00 AM–9:30 AM). Continue?", ((TextBlock)editor.FindName("BannerText")).Text);
+        Assert.Equal(2, (await host.Flow.GetTimesheetAsync(userId, day)).Count(s => s.EntryId != null));
     });
 
     [Fact]

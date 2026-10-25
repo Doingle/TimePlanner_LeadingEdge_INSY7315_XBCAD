@@ -473,16 +473,41 @@ namespace TimePlanner.Widget.Services
         }
 
         //-----------------------------
-        //changes an entry and flags the day as changed
-        public async Task<EditResult> UpdateEntryAsync(int userId, int entryId, EntryEdit edit)
+        //what saving an edit would do to the entries around it, without saving anything
+        public async Task<EditPreview> PreviewUpdateEntryAsync(int userId, int entryId, EntryEdit edit)
         {
             await using var scope = scopes.CreateAsyncScope();
-            var result = await scope.ServiceProvider.GetRequiredService<TimesheetEditService>().UpdateEntryAsync(userId, entryId, edit, clock.LocalNow());
+            return await scope.ServiceProvider.GetRequiredService<TimesheetEditService>().PreviewUpdateAsync(userId, entryId, edit, clock.LocalNow());
+        }
+
+        //-----------------------------
+        //changes an entry and flags the day as changed. Changes to other entries only happen once the user has agreed (confirmed)
+        public async Task<EditResult> UpdateEntryAsync(int userId, int entryId, EntryEdit edit, bool confirmed = false)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var result = await scope.ServiceProvider.GetRequiredService<TimesheetEditService>().UpdateEntryAsync(userId, entryId, edit, clock.LocalNow(), confirmed);
 
             //successful update marks day changed
             if (result.Ok)
             {
                 await scope.ServiceProvider.GetRequiredService<ISendHistoryStore>().MarkChangedAsync(DateOnly.FromDateTime(edit.Start), clock.LocalNow());
+            }
+
+            return result;
+        }
+
+        //-----------------------------
+        //puts an edited entry and the entries that edit changed back as they were, and flags the day as changed
+        public async Task<EditResult> RestoreEntriesAsync(int userId, EditResult saved)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var result = await scope.ServiceProvider.GetRequiredService<TimesheetEditService>()
+                .RestoreAsync(userId, saved.EntryId!.Value, saved.Previous!, saved.ChangedNeighbours ?? [], saved.RemovedNeighbours ?? []);
+
+            //a successful undo marks the day changed
+            if (result.Ok)
+            {
+                await scope.ServiceProvider.GetRequiredService<ISendHistoryStore>().MarkChangedAsync(DateOnly.FromDateTime(saved.Previous!.Start), clock.LocalNow());
             }
 
             return result;

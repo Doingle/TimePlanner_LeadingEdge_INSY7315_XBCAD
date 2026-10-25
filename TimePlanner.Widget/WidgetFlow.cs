@@ -419,8 +419,27 @@ namespace TimePlanner.Widget
         public Task<EditResult> AddEntryAsync(EntryEdit edit) => _log.AddEntryAsync(Session.User.UserId, edit);
 
         //-----------------------------
-        //updates an existing timesheet entry
-        public Task<EditResult> UpdateEntryAsync(int entryId, EntryEdit edit) => _log.UpdateEntryAsync(Session.User.UserId, entryId, edit);
+        //what saving an edit would do to the entries around it, without saving anything
+        public Task<EditPreview> PreviewUpdateEntryAsync(int entryId, EntryEdit edit) => _log.PreviewUpdateEntryAsync(Session.User.UserId, entryId, edit);
+
+        //-----------------------------
+        //updates an existing timesheet entry. Other entries it would change are only changed once the user has agreed (confirmed)
+        public Task<EditResult> UpdateEntryAsync(int entryId, EntryEdit edit, bool confirmed = false) => _log.UpdateEntryAsync(Session.User.UserId, entryId, edit, confirmed);
+
+        //-----------------------------
+        //the editor closes as soon as an edit is saved, so an undo for an edit that changed other entries waits here until the timesheet opens and shows it
+        private UndoOffer? _undoOffer;
+
+        public void OfferUndo(EditResult saved) =>
+            _undoOffer = new UndoOffer("Entry updated · other entries changed", () => _log.RestoreEntriesAsync(Session.User.UserId, saved));
+
+        //takes the waiting undo, so it is only ever shown once
+        public UndoOffer? TakeUndo()
+        {
+            var offer = _undoOffer;
+            _undoOffer = null;
+            return offer;
+        }
 
         //-----------------------------
         //deletes a timesheet entry
@@ -536,4 +555,8 @@ namespace TimePlanner.Widget
             _host.Present(view, activate);
         }
     }
+
+    //-----------------------------
+    //an undo the timesheet shows once, with the words for its bar
+    public sealed record UndoOffer(string Message, Func<Task<EditResult>> Undo);
 }

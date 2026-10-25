@@ -80,6 +80,23 @@ namespace TimePlanner.Widget.Views
             RenderSlots(slots);
             _ = LoadAccountStatusAsync();
 
+            //an edit that also changed other entries offers to undo all of it. The editor has already closed, so the offer waits in the flow
+            if (flow.TakeUndo() is { } offer)
+            {
+                ShowUndo(offer.Message, async () =>
+                {
+                    var undone = await offer.Undo();
+
+                    //an undo that can no longer be done safely says why
+                    if (!undone.Ok)
+                    {
+                        MessageBox.Show(undone.Error ?? "Could not undo.", "Undo");
+                    }
+
+                    ReopenTimesheet();
+                });
+            }
+
             //send now from a not-sent notice starts sending once the entries are in view
             if (sendNow && preview.CanSend)
             {
