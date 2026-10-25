@@ -105,6 +105,8 @@
                     <StackPanel x:Name="NoSpeechButtons" Visibility="Collapsed">
                         <Button Style="{StaticResource Button.Primary}" Content="Record again" Click="RecordAgain_Click" />
                         <Button Style="{StaticResource Button.Secondary}" Content="Keep it" Click="Done_Click" Margin="0,8,0,0" />
+                        <Button x:Name="SoundSettingsButton" Style="{StaticResource Button.Text}" Content="Open sound settings" Click="SoundSettings_Click" Margin="0,8,0,0" Visibility="Collapsed" />
+                        <Button Style="{StaticResource Button.Text}" Content="Microphone settings" Click="MicSettings_Click" Margin="0,4,0,0" />
                     </StackPanel>
                 </StackPanel>
             </StackPanel>

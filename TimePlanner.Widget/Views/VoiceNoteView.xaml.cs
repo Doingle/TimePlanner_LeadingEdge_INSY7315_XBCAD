@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -214,7 +215,16 @@ namespace TimePlanner.Widget.Views
                 if (!_recorder.HeardSpeech)
                 {
                     SavedTitleText.Text = "Nothing heard";
-                    SavedMessageText.Text = "We didn't hear anything. Try again?";
+                    if (_recorder.IsDigitalSilence)
+                    {
+                        SavedMessageText.Text = "Windows gave us silence. This can happen when the microphone is blocked, or with some recording formats.";
+                        SoundSettingsButton.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        SavedMessageText.Text = "We couldn't hear anything. Check the microphone isn't muted, or choose another one.";
+                        SoundSettingsButton.Visibility = Visibility.Collapsed;
+                    }
                     DoneButton.Visibility = Visibility.Collapsed;
                     NoSpeechButtons.Visibility = Visibility.Visible;
                 }
@@ -226,6 +236,26 @@ namespace TimePlanner.Widget.Views
                     NoSpeechButtons.Visibility = Visibility.Collapsed;
                 }
             }
+        }
+
+        //-----------------------------
+        //opens windows sound settings
+        private void SoundSettings_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo("ms-settings:sound") { UseShellExecute = true });
+            }
+            catch
+            {
+            }
+        }
+
+        //-----------------------------
+        //opens voice and ai settings advanced section
+        private void MicSettings_Click(object sender, RoutedEventArgs e)
+        {
+            _flow.ShowAiSettings(back: () => _flow.ShowIdle(), openAdvanced: true);
         }
 
         //-----------------------------
