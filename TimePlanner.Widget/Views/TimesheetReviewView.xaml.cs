@@ -74,11 +74,15 @@ namespace TimePlanner.Widget.Views
         //reloads notes when transcription state updates
         private void OnNoteChanged(Guid id) => _ = Dispatcher.InvokeAsync(LoadAiAndRenderAsync);
 
+        private IReadOnlyList<VoiceNote> _allNotes = Array.Empty<VoiceNote>();
+        private Action? _bannerAction;
+
         //-----------------------------
         //loads voice notes and ai markers for the day and renders slots
         private async Task LoadAiAndRenderAsync()
         {
             var notes = await _flow.Ai.GetNotesAsync(_day);
+            _allNotes = notes;
             _unbuiltNotes = notes.Where(n => n.Status != VoiceNoteStatus.Built).ToList();
 
             var aiIds = await _flow.Ai.GetAiEntryIdsAsync(_day);
@@ -89,43 +93,78 @@ namespace TimePlanner.Widget.Views
         }
 
         //-----------------------------
-        //updates banner with pending voice notes count and state
+        //updates banner offering the next step in priority order
         private void UpdateUnbuiltBanner()
         {
-            //hide banner when no unbuilt notes exist
-            if (_unbuiltNotes.Count == 0)
+            //priority 1: failed note
+            var failedNote = _allNotes.FirstOrDefault(n => n.Status == VoiceNoteStatus.Failed);
+            if (failedNote != null)
             {
-                UnbuiltBanner.Visibility = Visibility.Collapsed;
+                UnbuiltBanner.Visibility = Visibility.Visible;
+                var count = _allNotes.Count(n => n.Status == VoiceNoteStatus.Failed);
+                UnbuiltBannerText.Text = count == 1
+                    ? "1 voice note couldn't be turned into text"
+                    : $"{count} voice notes couldn't be turned into text";
+                BuildDayButton.Visibility = Visibility.Visible;
+                BuildDayButton.Content = "View";
+                BuildDayButton.ToolTip = "Open this voice note";
+                System.Windows.Automation.AutomationProperties.SetName(BuildDayButton, "Open this voice note");
+                BuildDayButton.IsEnabled = true;
+                _bannerAction = async () => await _flow.ShowVoiceNoteAsync(failedNote.Id, ReopenTimesheet);
                 return;
             }
 
-            UnbuiltBanner.Visibility = Visibility.Visible;
-            var readyCount = _unbuiltNotes.Count(n => n.Status == VoiceNoteStatus.Transcribed);
-            var pendingCount = _unbuiltNotes.Count(n => n.Status != VoiceNoteStatus.Transcribed);
-
-            //render appropriate summary caption
-            if (pendingCount == 0)
+            //priority 2: notes are transcribing
+            var transcribingCount = _allNotes.Count(n => n.Status == VoiceNoteStatus.Recorded);
+            if (transcribingCount > 0)
             {
-                var noteWord = readyCount == 1 ? "voice note" : "voice notes";
-                UnbuiltBannerText.Text = $"{readyCount} {noteWord} ready";
-            }
-            else if (readyCount > 0)
-            {
-                UnbuiltBannerText.Text = $"{readyCount} ready · {pendingCount} still transcribing";
-            }
-            else
-            {
-                UnbuiltBannerText.Text = $"{pendingCount} still transcribing";
+                UnbuiltBanner.Visibility = Visibility.Visible;
+                UnbuiltBannerText.Text = transcribingCount == 1
+                    ? "Turning 1 voice note into text…"
+                    : $"Turning {transcribingCount} voice notes into text…";
+                BuildDayButton.Visibility = Visibility.Collapsed;
+                _bannerAction = null;
+                return;
             }
 
-            BuildDayButton.IsEnabled = readyCount > 0;
+            //priority 3: notes haven't been built
+            var unbuiltCount = _allNotes.Count(n => n.Status == VoiceNoteStatus.Transcribed);
+            if (unbuiltCount > 0)
+            {
+                UnbuiltBanner.Visibility = Visibility.Visible;
+                UnbuiltBannerText.Text = unbuiltCount == 1
+                    ? "1 voice note isn't in your timesheet yet"
+                    : $"{unbuiltCount} voice notes aren't in your timesheet yet";
+                BuildDayButton.Visibility = Visibility.Visible;
+                BuildDayButton.Content = "Build my day";
+                var tip = "Turn today's voice notes into timesheet entries. You check them before anything is added.";
+                BuildDayButton.ToolTip = tip;
+                System.Windows.Automation.AutomationProperties.SetName(BuildDayButton, tip);
+                BuildDayButton.IsEnabled = true;
+                _bannerAction = async () => await _flow.ShowDayBuildAsync(_day, ReopenTimesheet);
+                return;
+            }
+
+            //priority 4: there are ai entries
+            if (_aiEntryIds.Count > 0)
+            {
+                UnbuiltBanner.Visibility = Visibility.Visible;
+                UnbuiltBannerText.Text = "Check the AI entries before sending";
+                BuildDayButton.Visibility = Visibility.Collapsed;
+                _bannerAction = null;
+                return;
+            }
+
+            //otherwise hide banner
+            UnbuiltBanner.Visibility = Visibility.Collapsed;
+            _bannerAction = null;
         }
 
         //-----------------------------
-        //opens day build view from banner
-        private async void BuildDay_Click(object sender, RoutedEventArgs e)
+        //executes action associated with timesheet banner
+        private void BuildDay_Click(object sender, RoutedEventArgs e)
         {
-            await _flow.ShowDayBuildAsync(_day, ReopenTimesheet);
+            _bannerAction?.Invoke();
         }
 
         //-----------------------------
@@ -217,8 +256,10 @@ namespace TimePlanner.Widget.Views
                 Style = (Style)FindResource("Stat"),
                 Padding = new Thickness(12),
                 Margin = new Thickness(0, 0, 0, 8),
-                Cursor = System.Windows.Input.Cursors.Hand
+                Cursor = System.Windows.Input.Cursors.Hand,
+                ToolTip = "Open this voice note"
             };
+            System.Windows.Automation.AutomationProperties.SetName(border, "Open this voice note");
 
             var dock = new DockPanel();
 

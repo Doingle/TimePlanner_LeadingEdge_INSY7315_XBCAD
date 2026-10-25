@@ -50,6 +50,7 @@ namespace TimePlanner.Widget
         private readonly VoiceTranscriptionQueue _voiceQueue;
         private readonly IVoiceNoteStore _voiceStore;
         private readonly StartupService _startup;
+        private readonly AiSetupService _aiSetup;
         private Screen _screen;
         private FrameworkElement? _view;
         private DaySummary? _endedDay;
@@ -58,7 +59,7 @@ namespace TimePlanner.Widget
         public WidgetFlow(IWidgetHost host, WidgetSession session, CheckInScheduler scheduler, SnoozeManager snooze,
             TimeLogService log, CsvExportService csv, PreferencesStore preferences, UnsentDayReminder reminder,
             StartupService startup, AiService aiService, WhisperModelManager modelManager,
-            VoiceTranscriptionQueue voiceQueue, IVoiceNoteStore voiceStore)
+            VoiceTranscriptionQueue voiceQueue, IVoiceNoteStore voiceStore, AiSetupService aiSetup)
         {
             _host = host;
             Session = session;
@@ -71,6 +72,7 @@ namespace TimePlanner.Widget
             _modelManager = modelManager;
             _voiceQueue = voiceQueue;
             _voiceStore = voiceStore;
+            _aiSetup = aiSetup;
             Reminder = reminder;
             _startup = startup;
 
@@ -120,6 +122,10 @@ namespace TimePlanner.Widget
         }
 
         public AiService Ai => _aiService;
+        public AiSetupService AiSetup => _aiSetup;
+        public TimeLogService Logs => _log;
+        public PreferencesStore Preferences => _preferences;
+        public WhisperModelManager ModelManager => _modelManager;
 
         public async Task SaveVoiceNoteAsync(string wavPath, DateTime windowStart, DateTime windowEnd, double seconds)
         {
