@@ -469,6 +469,62 @@ public class ReminderFlowTests
         encoder.Save(file);
     }
 
+    [Fact]
+    public Task ManageListsRenameWarnsAboutSentDays_AndHidingKeepsLoggedTime() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        Assert.Equal(SendStatus.Sent, (await host.Flow.SendDayAsync(host.Flow.Reminder.Today)).Status);
+
+        var view = await host.Flow.ShowManageListsAsync();
+        Assert.Same(view, host.Window.Screen);
+        var rows = (Panel)view.FindName("Rows");
+        var lists = await host.Flow.GetManagedListsAsync();
+        var client = lists.Clients.Single(c => c.Name == "Test client");
+        var project = client.Projects.Single();
+
+        // Opening rename warns that the sent day keeps the old name on the dashboard
+        Click(Descendants<Button>(rows).Single(b => b.Tag is ValueTuple<ListKind, int> key && key == (ListKind.Client, client.Id)));
+        await WaitUntil(() => Descendants<TextBlock>(rows).Any(t => t.Text.StartsWith("Used on a day you already sent")));
+
+        Descendants<TextBox>(rows).Single().Text = "Renamed client";
+        Click(Descendants<Button>(rows).Single(b => Equals(b.Content, "Save")));
+        await WaitUntil(() => ((TextBlock)view.FindName("NoticeText")).Text.Length > 0);
+        Assert.Equal("Renamed to Renamed client. Send that day again.", ((TextBlock)view.FindName("NoticeText")).Text);
+        Assert.Contains(Descendants<TextBlock>(rows), t => t.Text == "Renamed client");
+
+        // Hiding takes the project out of the pickers but never deletes it or its time
+        Assert.True((await host.Flow.SetListItemHiddenAsync(ListKind.Project, project.Id, hidden: true)).Ok);
+        Assert.DoesNotContain(await host.Services.GetRequiredService<TimeLogService>().GetProjectsAsync(), p => p.ProjectID == project.Id);
+        var day = await host.Services.GetRequiredService<TimeLogService>().GetDayAsync(host.Flow.Session.User.UserId, host.Clock.LocalNow());
+        Assert.Equal("Test project", Assert.Single(day.Entries).Task!.Project!.Name);
+        Assert.True((await host.Flow.GetManagedListsAsync()).Clients.Single(c => c.Id == client.Id).Hidden);
+    });
+
+    private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+    private static async Task WaitUntil(Func<bool> done)
+    {
+        for (var i = 0; i < 100 && !done(); i++)
+            await Task.Delay(20);
+        Assert.True(done());
+    }
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match)
+                yield return match;
+            foreach (var below in Descendants<T>(child))
+                yield return below;
+        }
+    }
+
     private sealed class RecordingHost : IWidgetHost
     {
         public bool Activated { get; private set; }
