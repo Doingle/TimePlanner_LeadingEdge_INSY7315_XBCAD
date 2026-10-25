@@ -159,6 +159,18 @@ namespace TimePlanner.Widget
 
         protected override void OnExit(ExitEventArgs e)
         {
+            try
+            {
+                //stop managed ollama server process
+                var host = _app?.Services.GetService<OllamaHost>();
+                host?.Stop();
+            }
+            catch (Exception ex)
+            {
+                //ignore cleanup failure on exit
+                Trace.TraceWarning($"Failed to stop OllamaHost on exit: {ex.Message}");
+            }
+
             _tray?.Dispose();
 #if DEBUG
             ClosePreview();

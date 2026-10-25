@@ -13,15 +13,21 @@ namespace TimePlanner.Widget.Services.Ai
     {
         private readonly HttpClient _http;
         private readonly OllamaSetup _setup;
+        private readonly OllamaHost? _host;
+        private readonly AiSettings? _settings;
+        private readonly PreferencesStore? _preferences;
 
         private static readonly Guid WinTrustActionGenericVerifyV2 = new("{00AAC56B-CD44-11d0-8CC2-00C04FC295EE}");
 
         //-----------------------------
         //initializes installer with http client and setup probe
-        public OllamaInstaller(HttpClient http, OllamaSetup setup)
+        public OllamaInstaller(HttpClient http, OllamaSetup setup, OllamaHost? host = null, AiSettings? settings = null, PreferencesStore? preferences = null)
         {
             _http = http;
             _setup = setup;
+            _host = host;
+            _settings = settings;
+            _preferences = preferences;
         }
 
         //-----------------------------
@@ -32,6 +38,12 @@ namespace TimePlanner.Widget.Services.Ai
             var status = await _setup.CheckAsync(ct);
             //already running so skip installation
             if (status.State != OllamaState.NotRunning)
+            {
+                return;
+            }
+
+            //try starting existing installation through host
+            if (_host != null && await _host.EnsureRunningAsync(ct))
             {
                 return;
             }
@@ -69,26 +81,76 @@ namespace TimePlanner.Widget.Services.Ai
             //run quiet install
             var quietSuccess = await RunQuietInstallAsync(setupExe, ct);
 
-            //poll for server startup after installation
-            var running = await PollVersionAsync(120, ct);
-
-            //if not running try launching installed app
-            if (!running)
+            var running = false;
+            //post install clean up for silent widget managed ollama
+            if (quietSuccess)
             {
-                var installed = FindInstalledOllama();
-                //start installed app when found
-                if (installed != null)
+                //close ollama app gui processes launched by installer
+                foreach (var p in Process.GetProcessesByName("ollama app"))
                 {
-                    //start ollama app after setup
                     try
                     {
-                        Process.Start(new ProcessStartInfo(installed) { UseShellExecute = true });
-                        running = await PollVersionAsync(30, ct);
+                        p.Kill(entireProcessTree: true);
+                        p.WaitForExit(2000);
                     }
-                    //ignore launch failure to proceed to fallback
-                    catch
+                    catch (Exception)
                     {
+                        //ignore process kill failure
                     }
+                }
+
+                //close ollama server processes launched by installer
+                foreach (var p in Process.GetProcessesByName("ollama"))
+                {
+                    try
+                    {
+                        p.Kill(entireProcessTree: true);
+                        p.WaitForExit(2000);
+                    }
+                    catch (Exception)
+                    {
+                        //ignore process kill failure
+                    }
+                }
+
+                var startupShortcut = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    @"Microsoft\Windows\Start Menu\Programs\Startup\Ollama.lnk");
+
+                //delete startup shortcut if present
+                if (File.Exists(startupShortcut))
+                {
+                    try
+                    {
+                        File.Delete(startupShortcut);
+                    }
+                    catch (Exception)
+                    {
+                        //ignore shortcut deletion failure
+                    }
+                }
+
+                //mark managed by widget
+                if (_settings != null)
+                {
+                    _settings.OllamaManagedByWidget = true;
+                    //save preferences update if available
+                    if (_preferences != null)
+                    {
+                        var prefs = _preferences.Load();
+                        prefs.Ai.OllamaManagedByWidget = true;
+                        _preferences.Save(prefs);
+                    }
+                }
+
+                //start through host
+                if (_host != null)
+                {
+                    running = await _host.EnsureRunningAsync(ct);
+                }
+                else
+                {
+                    running = await PollVersionAsync(30, ct);
                 }
             }
 

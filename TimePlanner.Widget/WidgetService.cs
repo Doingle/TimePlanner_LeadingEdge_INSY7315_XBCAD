@@ -103,8 +103,15 @@ namespace TimePlanner.Widget
             services.AddSingleton<VoiceTranscriptionQueue>();
             services.AddSingleton<AiService>();
             services.AddSingleton(DevMode.Current);
+            services.AddSingleton<MicrophoneCatalog>();
+            services.AddSingleton(sp => new OllamaHost(new HttpClient(), sp.GetRequiredService<WidgetSession>().Preferences.Ai));
             services.AddSingleton(sp => new OllamaSetup(new HttpClient(), sp.GetRequiredService<WidgetSession>().Preferences.Ai));
-            services.AddSingleton(sp => new OllamaInstaller(new HttpClient(), sp.GetRequiredService<OllamaSetup>()));
+            services.AddSingleton(sp => new OllamaInstaller(
+                new HttpClient(),
+                sp.GetRequiredService<OllamaSetup>(),
+                sp.GetRequiredService<OllamaHost>(),
+                sp.GetRequiredService<WidgetSession>().Preferences.Ai,
+                sp.GetRequiredService<PreferencesStore>()));
             services.AddSingleton<AiSetupService>();
         }
     }
