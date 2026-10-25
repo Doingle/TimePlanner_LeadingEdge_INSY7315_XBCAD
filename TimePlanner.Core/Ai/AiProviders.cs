@@ -14,6 +14,12 @@ namespace TimePlanner.Core.Ai
                 return new OllamaDayCompiler(http, s, prompt);
             }
 
+            //use organisation dashboard for remote compilation
+            if (s.Compiler == CompilerKind.Dashboard)
+            {
+                return new DashboardDayCompiler(http, apiKey, s.CompilerUrl);
+            }
+
             return new OpenAiCompatibleDayCompiler(http, s, apiKey, prompt);
         }
 
