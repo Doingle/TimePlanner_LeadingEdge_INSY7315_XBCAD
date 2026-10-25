@@ -132,6 +132,9 @@ namespace TimePlanner.Core.Ai
         public string? WhisperModelPath { get; set; }
         public string TranscriberUrl { get; set; } = "";
         public string TranscriberModel { get; set; } = "whisper-large-v3-turbo";
+        public string? MicrophoneDeviceId { get; set; }
+        public bool OllamaManagedByWidget { get; set; }
+        public bool SlowPcHintDismissed { get; set; }
     }
 
     //-----------------------------
