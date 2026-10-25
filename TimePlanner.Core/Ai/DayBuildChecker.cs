@@ -57,8 +57,8 @@ namespace TimePlanner.Core.Ai
 
                 var parsedStartOk = TryParseTime(entry.S, request.Day, out var startRaw);
                 var parsedEndOk = TryParseTime(entry.E, request.Day, out var endRaw);
-                var start = TimeRules.ToMinute(startRaw);
-                var end = TimeRules.ToMinute(endRaw);
+                var start = EntryService.ToMinute(startRaw);
+                var end = EntryService.ToMinute(endRaw);
                 var validTimeRange = parsedStartOk && parsedEndOk && end > start;
 
                 var timeLabel = validTimeRange
@@ -85,8 +85,8 @@ namespace TimePlanner.Core.Ai
                     continue;
                 }
 
-                var wStart = TimeRules.ToMinute(window.Start);
-                var wEnd = TimeRules.ToMinute(window.End);
+                var wStart = EntryService.ToMinute(window.Start);
+                var wEnd = EntryService.ToMinute(window.End);
 
                 //clip proposed range to window bounds
                 var clippedStart = start < wStart ? wStart : start;
@@ -111,8 +111,8 @@ namespace TimePlanner.Core.Ai
                     //add each non overlapping slice
                     foreach (var piece in availablePieces)
                     {
-                        var pStart = TimeRules.ToMinute(piece.Start);
-                        var pEnd = TimeRules.ToMinute(piece.End);
+                        var pStart = EntryService.ToMinute(piece.Start);
+                        var pEnd = EntryService.ToMinute(piece.End);
 
                         //drop pieces shorter than one minute
                         if (pEnd - pStart < TimeSpan.FromMinutes(1))

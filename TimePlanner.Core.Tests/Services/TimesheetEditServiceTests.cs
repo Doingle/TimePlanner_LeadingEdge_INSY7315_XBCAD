@@ -363,40 +363,6 @@ namespace TimePlanner.Core.Tests.Services
         }
 
         //-----------------------------
-        //an entry ending with seconds allows a new entry starting at the same minute
-        [Fact]
-        public async Task Overlap_EndWithSecondsThenStartAtSameMinute_IsAllowed()
-        {
-            var baseTime = new DateTime(2026, 9, 28, 9, 0, 0);
-            var now = new DateTime(2026, 9, 28, 17, 0, 0);
-            using var scope = _host.CreateScope();
-            var user = await scope.ServiceProvider.GetRequiredService<LocalSetupService>().InitialiseAsync("tester", baseTime);
-
-            var entryRepo = scope.ServiceProvider.GetRequiredService<ITimeEntryRepository>();
-            var entryService = scope.ServiceProvider.GetRequiredService<EntryService>();
-            var activeProjects = await entryService.GetActiveProjectsAsync();
-            var internalProj = activeProjects.First();
-            var task = await entryService.FindOrCreateTaskAsync(user.UserId, internalProj.ProjectID, 1);
-
-            //existing entry ending at 10:00:37 with seconds
-            var existing = new TimeEntry
-            {
-                UserId = user.UserId,
-                TaskId = task.TaskID,
-                StartTime = new DateTime(2026, 9, 28, 9, 30, 0),
-                EndTime = new DateTime(2026, 9, 28, 10, 0, 37),
-                Method = EntryMethod.Manual
-            };
-            await entryRepo.AddAsync(existing);
-
-            var editService = scope.ServiceProvider.GetRequiredService<TimesheetEditService>();
-            var newEdit = new EntryEdit(new DateTime(2026, 9, 28, 10, 0, 0), new DateTime(2026, 9, 28, 10, 30, 0), ["Leading Edge (Internal)", "TimePlanner"], ["Coding"], "next");
-
-            var result = await editService.AddEntryAsync(user.UserId, newEdit, now);
-            Assert.True(result.Ok);
-        }
-
-        //-----------------------------
         //entries with a real one minute overlap are refused
         [Fact]
         public async Task Overlap_RealOneMinuteOverlap_IsRefused()

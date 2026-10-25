@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using Microsoft.Extensions.DependencyInjection;
 using TimePlanner.Core.Ai;
@@ -492,7 +493,7 @@ namespace TimePlanner.Widget.Services
             if (result.Ok)
             {
                 var day = DateOnly.FromDateTime(edit.Start);
-                await voiceNotes.RemoveAiEntryIdAsync(day, entryId);
+                _ = RemoveAiTagAsync(day, entryId);
                 await scope.ServiceProvider.GetRequiredService<ISendHistoryStore>().MarkChangedAsync(day, clock.LocalNow());
             }
 
@@ -527,11 +528,26 @@ namespace TimePlanner.Widget.Services
             if (result.Ok && result.Previous != null)
             {
                 var day = DateOnly.FromDateTime(result.Previous.Start);
-                await voiceNotes.RemoveAiEntryIdAsync(day, entryId);
+                _ = RemoveAiTagAsync(day, entryId);
                 await scope.ServiceProvider.GetRequiredService<ISendHistoryStore>().MarkChangedAsync(day, clock.LocalNow());
             }
 
             return result;
+        }
+
+        //-----------------------------
+        //removes ai tag in background without blocking saves
+        private async Task RemoveAiTagAsync(DateOnly day, int entryId)
+        {
+            try
+            {
+                await Task.Run(async () => await voiceNotes.RemoveAiEntryIdAsync(day, entryId).ConfigureAwait(false)).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                //ignore tag clean up failure
+                Trace.TraceWarning($"Failed to remove AI tag for entry {entryId}: {ex.Message}");
+            }
         }
 
         //-----------------------------
