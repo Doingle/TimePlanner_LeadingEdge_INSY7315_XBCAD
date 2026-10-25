@@ -11,12 +11,8 @@ namespace TimePlanner.Widget.Services.Ai
     //catalog of supported local speech recognition models
     public static class WhisperModelCatalog
     {
-        public static readonly IReadOnlyList<WhisperModelOption> Models =
-        [
-            new("ggml-base.en.bin", "Fast (base)", "about 150 MB"),
-            new("ggml-small.en-q5_1.bin", "Balanced (small)", "about 190 MB"),
-            new("ggml-large-v3-turbo-q5_0.bin", "Most accurate (large turbo)", "about 570 MB")
-        ];
+        public static IReadOnlyList<WhisperModelOption> Models =>
+            AiModelCatalog.VoiceModels.Select(m => new WhisperModelOption(m.File, m.Label, m.About)).ToList();
     }
 
     //-----------------------------
