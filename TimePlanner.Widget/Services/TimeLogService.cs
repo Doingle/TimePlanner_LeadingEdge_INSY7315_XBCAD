@@ -188,6 +188,182 @@ namespace TimePlanner.Widget.Services
             return await services.GetRequiredService<CatalogService>().RemoveActivityAsync(categoryId.Value);
         }
 
+        /// <summary>Every client, project and activity, hidden ones included, for Settings → Manage lists.</summary>
+        public async Task<ManagedLists> GetManagedListsAsync()
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            var projects = await services.GetRequiredService<IProjectRepository>().GetAllAsync();
+
+            // A client with no projects never shows in the picker, so it has nothing to manage
+            var clients = projects
+                .Where(p => p.Company != null)
+                .GroupBy(p => p.CompanyId)
+                .Select(g => new ManagedClient(g.Key, g.First().Company!.Name, BillingRules.IsInternal(g.First().Company!.Name),
+                    g.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                        .Select(p => new ManagedProject(p.ProjectID, p.Name, p.Status == ProjectStatus.Closed, CatalogService.IsInternalProject(p)))
+                        .ToList()))
+                .OrderByDescending(c => c.Locked)
+                .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var categories = await services.GetRequiredService<ICategoryRepository>().GetAllAsync();
+            ManagedActivity Build(Category category, int depth) => new(category.CategoryId, category.Name, depth, category.IsArchived,
+                categories.Where(c => c.ParentCategoryId == category.CategoryId)
+                    .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(c => Build(c, depth + 1))
+                    .ToList());
+            var activities = categories
+                .Where(c => c.ParentCategoryId == null && !c.IsArchived)
+                .OrderBy(c => c.SortOrder).ThenBy(c => c.Name)
+                .Select(c => Build(c, 1))
+                .ToList();
+
+            return new ManagedLists(clients, activities);
+        }
+
+        /// <summary>
+        /// The saved item at a picker path: a client or project (client › project), or an activity.
+        /// Null when it was only typed in the form and is not saved yet.
+        /// </summary>
+        public async Task<(ListKind Kind, int Id)?> FindListItemAsync(bool activity, IReadOnlyList<string> path)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            if (activity)
+                return await services.GetRequiredService<ActivityService>().FindByPathAsync(path) is { } categoryId
+                    ? (ListKind.Activity, categoryId)
+                    : null;
+
+            var company = (await services.GetRequiredService<ICompanyRepository>().GetAllAsync())
+                .FirstOrDefault(c => string.Equals(c.Name, path[0].Trim(), StringComparison.OrdinalIgnoreCase));
+            if (company == null)
+                return null;
+            if (path.Count == 1)
+                return (ListKind.Client, company.CompanyId);
+
+            var project = (await services.GetRequiredService<IProjectRepository>().GetByCompanyAsync(company.CompanyId))
+                .FirstOrDefault(p => string.Equals(p.Name, path[1].Trim(), StringComparison.OrdinalIgnoreCase));
+            return project == null ? null : (ListKind.Project, project.ProjectID);
+        }
+
+        /// <summary>
+        /// The days already sent to the dashboard that have time logged to an item (or, for an
+        /// activity, to anything under it). The dashboard keeps the names it was sent, so these
+        /// days show the old name there until they are sent again.
+        /// </summary>
+        public async Task<IReadOnlyList<DateOnly>> GetSentDaysUsingAsync(int userId, ListKind kind, int id)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            var sent = (await services.GetRequiredService<ISendHistoryStore>().GetAsync()).Select(s => s.Day).ToHashSet();
+            if (sent.Count == 0)
+                return [];
+
+            var from = sent.Min().ToDateTime(TimeOnly.MinValue);
+            var to = sent.Max().AddDays(1).ToDateTime(TimeOnly.MinValue);
+            var entries = await services.GetRequiredService<ITimeEntryRepository>().GetForUserAsync(userId, from, to);
+
+            var activityIds = new HashSet<int>();
+            if (kind == ListKind.Activity)
+            {
+                var categories = await services.GetRequiredService<ICategoryRepository>().GetAllAsync();
+                var next = new Queue<int>([id]);
+                while (next.TryDequeue(out var current))
+                {
+                    activityIds.Add(current);
+                    foreach (var child in categories.Where(c => c.ParentCategoryId == current))
+                        next.Enqueue(child.CategoryId);
+                }
+            }
+
+            return entries
+                .Where(e => e.Task is { } task && kind switch
+                {
+                    ListKind.Client => task.Project?.CompanyId == id,
+                    ListKind.Project => task.ProjectID == id,
+                    _ => activityIds.Contains(task.CategoryId),
+                })
+                .Select(e => DateOnly.FromDateTime(e.StartTime))
+                .Where(sent.Contains)
+                .Distinct()
+                .Order()
+                .ToList();
+        }
+
+        /// <summary>
+        /// Renames an item. Days already sent that use it are marked as changed, so the timesheet
+        /// asks for them to be sent again and the dashboard picks up the new name.
+        /// </summary>
+        public async Task<ListChangeOutcome> RenameAsync(int userId, ListKind kind, int id, string name)
+        {
+            var sentDays = await GetSentDaysUsingAsync(userId, kind, id);
+
+            await using var scope = scopes.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            var catalog = services.GetRequiredService<CatalogService>();
+            var outcome = kind switch
+            {
+                ListKind.Client => await catalog.RenameCompanyAsync(id, name),
+                ListKind.Project => await catalog.RenameProjectAsync(id, name),
+                _ => await catalog.RenameActivityAsync(id, name),
+            };
+
+            if (outcome.Ok)
+            {
+                var history = services.GetRequiredService<ISendHistoryStore>();
+                foreach (var day in sentDays)
+                    await history.MarkChangedAsync(day, clock.LocalNow());
+            }
+            return outcome;
+        }
+
+        /// <summary>Hides an item from the pickers, or brings it back. Nothing is deleted, so logged time keeps its names.</summary>
+        public async Task<ListChangeOutcome> SetHiddenAsync(ListKind kind, int id, bool hidden)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var catalog = scope.ServiceProvider.GetRequiredService<CatalogService>();
+            return (kind, hidden) switch
+            {
+                (ListKind.Client, true) => await catalog.HideCompanyAsync(id),
+                (ListKind.Client, false) => await catalog.ShowCompanyAsync(id),
+                (ListKind.Project, true) => await catalog.HideProjectAsync(id),
+                (ListKind.Project, false) => await catalog.ShowProjectAsync(id),
+                (_, true) => await catalog.HideActivityAsync(id),
+                _ => await catalog.ShowActivityAsync(id),
+            };
+        }
+
+        /// <summary>Adds a project, and its client when it is new. A hidden project with the same name comes back instead.</summary>
+        public async Task<ListChangeOutcome> AddProjectAsync(string client, string project)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            try
+            {
+                var added = await scope.ServiceProvider.GetRequiredService<EntryService>().AddProjectAsync(client, project, null);
+                return ListChangeOutcome.Done($"Added {added.Name}.");
+            }
+            catch (ArgumentException ex)
+            {
+                return ListChangeOutcome.Refused(ex.Message);
+            }
+        }
+
+        /// <summary>Adds an activity under another. A hidden one with the same name comes back instead.</summary>
+        public async Task<ListChangeOutcome> AddActivityAsync(int parentId, string name)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            try
+            {
+                await scope.ServiceProvider.GetRequiredService<ActivityService>().AddActivityAsync(parentId, name);
+                return ListChangeOutcome.Done($"Added {name.Trim()}.");
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return ListChangeOutcome.Refused(ex.Message);
+            }
+        }
+
         /// <summary>The activity at a path, adding the levels the user typed that are not in the tree yet.</summary>
         private static async Task<int> FindOrAddActivityAsync(ActivityService activities, ICategoryRepository categories,
             IReadOnlyList<string> path)

@@ -23,6 +23,15 @@ namespace TimePlanner.Widget
                 (await s.StartDayAtAsync(8, 30)).Session.Settings.CheckInIntervalMinutes = 45;
                 s.At(9, 0).Flow.ShowSettings();
             }),
+            new("manage-lists", "Setup", "Manage lists: projects, one hidden", async s =>
+            {
+                await HideAtlasAsync(s);
+                (await s.Flow.ShowManageListsAsync()).Open(showHidden: true);
+            }),
+            new("manage-lists-add", "Setup", "Manage lists: adding a project", async s =>
+                (await s.Flow.ShowManageListsAsync()).Open(addingUnder: "Contoso")),
+            new("manage-lists-activities", "Setup", "Manage lists: activities", async s =>
+                (await s.Flow.ShowManageListsAsync()).Open(activities: true)),
             new("advanced-hidden", "Setup", "Advanced options, hidden when idle", Do(s =>
             {
                 var preferences = s.Flow.Session.Preferences;
@@ -53,7 +62,7 @@ namespace TimePlanner.Widget
                 await s.At(16, 57).Flow.LogTimeAsync(LogEntryMode.LogNow);
             }),
             new("menu-open", "Log entry", "Menu open", s => OpenMenu(s)),
-            new("menu-coding", "Log entry", "Hovering Coding opens the next level", s => OpenMenu(s, expand: ["Coding"])),
+            new("menu-coding", "Log entry", "Coding opened in place", s => OpenMenu(s, expand: ["Coding"])),
             new("menu-adding", "Log entry", "Adding an item to Coding", s => OpenMenu(s, addingAt: ["Coding"])),
             new("no-activity", "Log entry", "Saved without an activity", async s =>
             {
@@ -109,6 +118,12 @@ namespace TimePlanner.Widget
             flow.SaveEntryAsync(LogEntryMode.CheckIn, flow.GetLogPeriod(),
                 new[] { LocalSetupService.InternalCompanyName, LocalSetupService.InternalProjectName },
                 flow.Session.Activity, note: null);
+
+        private static async Task HideAtlasAsync(PreviewSession s)
+        {
+            var atlas = (await s.Flow.GetManagedListsAsync()).Clients.First(c => c.Name == "Atlas Group");
+            await s.Flow.SetListItemHiddenAsync(ListKind.Client, atlas.Id, hidden: true);
+        }
 
         private static async Task Idle(PreviewSession s, IdleShape shape)
         {

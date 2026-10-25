@@ -34,6 +34,7 @@ namespace TimePlanner.Widget
             EntryEditor,
             Exit,
             Help,
+            ManageLists,
         }
 
         private readonly IWidgetHost _host;
@@ -158,6 +159,29 @@ namespace TimePlanner.Widget
         }
 
         public void ShowSettings() => Present(Screen.Settings, new SettingsView(this));
+
+        //-----------------------------
+        //opens settings → manage lists, back returns to settings
+        public async Task<ManageListsView> ShowManageListsAsync()
+        {
+            var view = new ManageListsView(this, await _log.GetManagedListsAsync());
+            Present(Screen.ManageLists, view);
+            return view;
+        }
+
+        public Task<ManagedLists> GetManagedListsAsync() => _log.GetManagedListsAsync();
+
+        public Task<(ListKind Kind, int Id)?> FindListItemAsync(bool activity, IReadOnlyList<string> path) => _log.FindListItemAsync(activity, path);
+
+        public Task<IReadOnlyList<DateOnly>> GetSentDaysUsingAsync(ListKind kind, int id) => _log.GetSentDaysUsingAsync(Session.User.UserId, kind, id);
+
+        public Task<ListChangeOutcome> RenameListItemAsync(ListKind kind, int id, string name) => _log.RenameAsync(Session.User.UserId, kind, id, name);
+
+        public Task<ListChangeOutcome> SetListItemHiddenAsync(ListKind kind, int id, bool hidden) => _log.SetHiddenAsync(kind, id, hidden);
+
+        public Task<ListChangeOutcome> AddProjectAsync(string client, string project) => _log.AddProjectAsync(client, project);
+
+        public Task<ListChangeOutcome> AddActivityAsync(int parentId, string name) => _log.AddActivityAsync(parentId, name);
 
         public void ShowHelp()
         {
