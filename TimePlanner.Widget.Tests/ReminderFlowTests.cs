@@ -16,6 +16,7 @@ using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Core.Services;
 using TimePlanner.Core.Sync;
+using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
 using TimePlanner.Widget.Views;
@@ -501,6 +502,216 @@ public class ReminderFlowTests
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var file = File.Create(Path.Combine(folder, name + ".png"));
         encoder.Save(file);
+    }
+
+    [Fact]
+    public Task ManageListsRenameWarnsAboutSentDays_AndHidingKeepsLoggedTime() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        Assert.Equal(SendStatus.Sent, (await host.Flow.SendDayAsync(host.Flow.Reminder.Today)).Status);
+
+        var view = await host.Flow.ShowManageListsAsync();
+        Assert.Same(view, host.Window.Screen);
+        var rows = (Panel)view.FindName("Rows");
+        var lists = await host.Flow.GetManagedListsAsync();
+        var client = lists.Clients.Single(c => c.Name == "Test client");
+        var project = client.Projects.Single();
+
+        // Opening rename warns that the sent day keeps the old name on the dashboard
+        Click(Descendants<Button>(rows).Single(b => b.Tag is ValueTuple<ListKind, int> key && key == (ListKind.Client, client.Id)));
+        await WaitUntil(() => Descendants<TextBlock>(rows).Any(t => t.Text.StartsWith("Used on a day you already sent")));
+
+        Descendants<TextBox>(rows).Single().Text = "Renamed client";
+        Click(Descendants<Button>(rows).Single(b => Equals(b.Content, "Save")));
+        await WaitUntil(() => ((TextBlock)view.FindName("NoticeText")).Text.Length > 0);
+        Assert.Equal("Renamed to Renamed client. Send that day again.", ((TextBlock)view.FindName("NoticeText")).Text);
+        Assert.Contains(Descendants<TextBlock>(rows), t => t.Text == "Renamed client");
+
+        // Hiding takes the project out of the pickers but never deletes it or its time
+        Assert.True((await host.Flow.SetListItemHiddenAsync(ListKind.Project, project.Id, hidden: true)).Ok);
+        Assert.DoesNotContain(await host.Services.GetRequiredService<TimeLogService>().GetProjectsAsync(), p => p.ProjectID == project.Id);
+        var day = await host.Services.GetRequiredService<TimeLogService>().GetDayAsync(host.Flow.Session.User.UserId, host.Clock.LocalNow());
+        Assert.Equal("Test project", Assert.Single(day.Entries).Task!.Project!.Name);
+        Assert.True((await host.Flow.GetManagedListsAsync()).Clients.Single(c => c.Id == client.Id).Hidden);
+    });
+
+    [Fact]
+    public Task EndedDay_ThenTheDateChanges_OpensOnStartTodayWithYesterdaysSendNow() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        Assert.Equal(new CardStatus("Friday 23 Oct", false, "Friday 23 Oct, day ended"), host.Flow.Status);
+
+        // The PC date moves on, and the widget is opened again
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+        var (scheduler, flow) = Restart(host);
+        using (scheduler)
+        {
+            await flow.LoadAsync();
+            flow.ShowStart();
+            var setup = Assert.IsType<SetupView>(host.Window.Screen);
+            Assert.Equal("Start today", ((Button)setup.FindName("PrimaryButton")).Content);
+            Assert.Equal(new CardStatus("Saturday 24 Oct", false, "Saturday 24 Oct, not started"), flow.Status);
+            Assert.Equal(flow.Status, WidgetCard.GetStatus(setup));
+
+            var notice = (UnsentEarlierDayView)setup.FindName("EarlierNotice");
+            await WaitUntil(() => notice.Visibility == Visibility.Visible);
+            Assert.Equal("Yesterday isn't sent yet", ((TextBlock)notice.FindName("TitleText")).Text);
+            Render(setup, "start-today");
+
+            // Resume can't reopen yesterday: today starts as a day of its own
+            await flow.ResumeDayAsync();
+            Assert.Equal(new CardStatus("Saturday 24 Oct", true, "Saturday 24 Oct, tracking"), flow.Status);
+            flow.ShowTimer();
+            var timer = Assert.IsType<TimerView>(host.Window.Screen);
+            Assert.True(WidgetCard.GetStatus(timer)!.Live);
+            Render(timer, "timer-status");
+
+            // Only the time-tracking screens carry the status line
+            flow.ShowSettings();
+            Assert.Null(WidgetCard.GetStatus(host.Window.Screen!));
+            var days = await DaySessionsAsync(host);
+            Assert.Equal(2, days.Count);
+            Assert.NotNull(days[0].EndedAt);
+            Assert.Equal(DateTime.Parse("2026-10-24"), days[1].StartedAt.Date);
+            Assert.Null(days[1].EndedAt);
+        }
+    });
+
+    [Fact]
+    public Task DayLeftOpenOvernight_ClosesAtItsLastActivity_AndSaysSo() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        var lastActivity = host.Clock.LocalNow().AddMinutes(30);
+
+        // The widget is closed with the day still running, and opened the next morning
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+        var (scheduler, flow) = Restart(host);
+        using (scheduler)
+        {
+            await flow.LoadAsync();
+            flow.ShowStart();
+            var ended = Assert.IsType<DayEndedView>(host.Window.Screen);
+            Assert.Equal(Visibility.Visible, ((Border)ended.FindName("OvernightNote")).Visibility);
+            Assert.Equal($"It was left open overnight, so it ended at {Format.Clock(lastActivity)}, your last activity.",
+                ((TextBlock)ended.FindName("OvernightText")).Text);
+            Assert.Equal(Visibility.Visible, ((StackPanel)ended.FindName("EarlierActions")).Visibility);
+            Assert.Equal(Visibility.Collapsed, ((StackPanel)ended.FindName("ExportActions")).Visibility);
+            Assert.Equal(lastActivity, (await DaySessionsAsync(host)).Single().EndedAt);
+            await WaitUntil(() => ((UnsentEarlierDayView)ended.FindName("EarlierNotice")).Visibility == Visibility.Visible);
+            Render(ended, "day-ended-overnight");
+
+            await flow.StartTrackingAsync();
+            Assert.Null(flow.Scheduler.ClosedOvernight);
+            Assert.Equal(2, (await DaySessionsAsync(host)).Count);
+        }
+    });
+
+    [Fact]
+    public Task TrackingPastMidnight_ClosesTheDay_AndShowsDayEnded() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+        await host.Flow.Scheduler.RefreshAsync();
+
+        await WaitUntil(() => host.Window.Screen is DayEndedView);
+        var ended = (DayEndedView)host.Window.Screen!;
+        Assert.Equal(Visibility.Visible, ((Border)ended.FindName("OvernightNote")).Visibility);
+        Assert.False(host.Flow.Scheduler.IsRunning);
+        Assert.Equal("Saturday 24 Oct, not started", WidgetCard.GetStatus(ended)?.Spoken);
+    });
+
+    [Fact]
+    public Task DayEndedLeftOpenPastMidnight_SwapsResumeForStartToday() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        var ended = Assert.IsType<DayEndedView>(host.Window.Screen);
+        ended.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        Assert.Equal(Visibility.Visible, ((StackPanel)ended.FindName("ExportActions")).Visibility);
+
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+        await host.Flow.Scheduler.RefreshAsync();
+
+        Assert.Equal(Visibility.Collapsed, ((StackPanel)ended.FindName("ExportActions")).Visibility);
+        Assert.Equal(Visibility.Visible, ((StackPanel)ended.FindName("EarlierActions")).Visibility);
+    });
+
+    [Fact]
+    public Task PastDayTimesheet_SaysItCanStillBeEdited_AndSendsAgain() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        var friday = host.Flow.Reminder.Today;
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+
+        await host.Flow.ShowTimesheetAsync(friday, () => { });
+        var sheet = Assert.IsType<TimesheetReviewView>(host.Window.Screen);
+        Assert.Equal(Visibility.Visible, ((TextBlock)sheet.FindName("PastDayHelp")).Visibility);
+        Assert.Equal(Visibility.Visible, ((Button)sheet.FindName("TodayButton")).Visibility);
+        Assert.Equal("Send day", ((Button)sheet.FindName("SendButton")).Content);
+        Assert.Equal("Yesterday, Friday 23 Oct · 30m", ((TextBlock)sheet.FindName("Subtitle")).Text);
+        Render(sheet, "timesheet-yesterday");
+
+        host.History.Days.Add(new SentDay(friday, host.Clock.LocalNow(), 1, 0.5));
+        await host.Flow.ShowTimesheetAsync(friday, () => { });
+        Assert.Equal("Send again", ((Button)((TimesheetReviewView)host.Window.Screen!).FindName("SendButton")).Content);
+
+        await host.Flow.ShowTimesheetAsync(DateOnly.FromDateTime(host.Clock.LocalNow()), () => { });
+        Assert.Equal(Visibility.Collapsed, ((Button)((TimesheetReviewView)host.Window.Screen!).FindName("TodayButton")).Visibility);
+    });
+
+    // A new scheduler and flow over the same in-memory database, as when the widget is opened again
+    private static (CheckInScheduler Scheduler, WidgetFlow Flow) Restart(TestHost host)
+    {
+        host.Flow.Scheduler.Dispose();
+        var scheduler = ActivatorUtilities.CreateInstance<CheckInScheduler>(host.Services);
+        return (scheduler, ActivatorUtilities.CreateInstance<WidgetFlow>(host.Services, scheduler));
+    }
+
+    private static async Task<List<DaySession>> DaySessionsAsync(TestHost host)
+    {
+        using var scope = host.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<AppDbContext>().DaySessions.AsNoTracking().OrderBy(d => d.StartedAt).ToListAsync();
+    }
+
+    private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+    private static async Task WaitUntil(Func<bool> done)
+    {
+        for (var i = 0; i < 100 && !done(); i++)
+            await Task.Delay(20);
+        Assert.True(done());
+    }
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match)
+                yield return match;
+            foreach (var below in Descendants<T>(child))
+                yield return below;
+        }
     }
 
     private sealed class RecordingHost : IWidgetHost

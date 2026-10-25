@@ -53,8 +53,16 @@ namespace TimePlanner.Widget.Views
             {
                 SettingsHeader.Visibility = Visibility.Visible;
                 HelpButton.Visibility = Visibility.Collapsed;
+                ManageListsRow.Visibility = Visibility.Visible;
                 IntervalField.Margin = (Thickness)FindResource("GapSection");
                 PrimaryButton.Content = "Done";
+            }
+            else
+            {
+                // After an earlier day the button starts today; the very first run just starts tracking
+                if (flow.Scheduler.LastEnded != null)
+                    PrimaryButton.Content = "Start today";
+                _ = EarlierNotice.LoadAsync(flow, flow.ShowStart);
             }
             ShowWelcome(!isSettings);
 
@@ -122,6 +130,12 @@ namespace TimePlanner.Widget.Views
         {
             await _intervalSave;
             _flow.ShowTimer(activate: true);
+        }
+
+        private async void ManageLists_Click(object sender, RoutedEventArgs e)
+        {
+            await _intervalSave;
+            await _flow.ShowManageListsAsync();
         }
 
         private async void Help_Click(object sender, RoutedEventArgs e)

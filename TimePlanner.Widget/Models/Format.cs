@@ -42,5 +42,17 @@ namespace TimePlanner.Widget.Models
         }
 
         public static string Day(DateTime day) => day.ToString("dddd, MMM d", Culture);
+
+        /// <summary>"Friday 23 Oct": the date in the status line and the timesheet's day list.</summary>
+        public static string Date(DateOnly day) => day.ToString("dddd d MMM", Culture);
+
+        /// <summary>"Yesterday", a weekday in the last week, or "Fri 9 Oct" further back.</summary>
+        public static string RelativeDay(DateOnly day, DateOnly today) => (today.DayNumber - day.DayNumber) switch
+        {
+            0 => "Today",
+            1 => "Yesterday",
+            > 1 and < 7 => day.ToString("dddd", Culture),
+            _ => day.ToString("ddd d MMM", Culture),
+        };
     }
 }

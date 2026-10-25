@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Media;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
 using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Core.Services;
 using TimePlanner.Core.Services.Models;
 using TimePlanner.Core.Sync;
+using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
 using TimePlanner.Widget.Views;
@@ -34,6 +37,7 @@ namespace TimePlanner.Widget
             EntryEditor,
             Exit,
             Help,
+            ManageLists,
         }
 
         private readonly IWidgetHost _host;
@@ -67,10 +71,48 @@ namespace TimePlanner.Widget
                     _ = Reminder.RefreshAsync(Scheduler.EndedToday);
                     _ = RetryPendingSendsAsync();
                 }
+                // Keeps the status line's date and tracking dot current on the screens that show it
+                if (_view != null && ShowsStatus(_screen))
+                    WidgetCard.SetStatus(_view, Status);
                 if (_screen is Screen.Idle or Screen.Timer && Scheduler.IsDue)
                     CheckIn(announce: true);
             };
+
+            // Tracking ran past midnight: the day closed at its last activity, and Day ended says so
+            scheduler.DayClosedOvernight += async (_, _) =>
+            {
+                if (Scheduler.ClosedOvernight is not { } closed)
+                    return;
+                _endedDay = await _log.GetDayAsync(Session.User.UserId, closed.StartedAt);
+                ShowDayEnded(_endedDay, activate: false);
+            };
         }
+
+        /// <summary>The status line on the time-tracking cards: today's date, with a dot that is green only while tracking.</summary>
+        public CardStatus Status
+        {
+            get
+            {
+                var date = Format.Date(DateOnly.FromDateTime(Scheduler.Now));
+                var state = Scheduler.State switch
+                {
+                    DayState.Tracking => "tracking",
+                    DayState.Paused => "paused",
+                    DayState.Ended => "day ended",
+                    _ => "not started",
+                };
+                return new CardStatus(date, Scheduler.State == DayState.Tracking, $"{date}, {state}");
+            }
+        }
+
+        // Only the screens about tracking time carry the status line; Settings, Help, Timesheet and the rest don't
+        private static bool ShowsStatus(Screen screen) =>
+            screen is Screen.Setup or Screen.Timer or Screen.CheckIn or Screen.LogEntry or Screen.EntrySaved
+                or Screen.EndDay or Screen.DayEnded;
+
+        // The ended day shows first: one ended today, or one the widget closed because it was left open overnight
+        private bool ShowsEndedDay => _endedDay != null
+            && (_endedDay.Day.Date == Scheduler.Now.Date || Scheduler.ClosedOvernight != null);
 
         public WidgetSession Session { get; }
 
@@ -93,7 +135,9 @@ namespace TimePlanner.Widget
             StartupProblem = _startup.Apply(Session.Preferences.StartWithWindows);
             (Session.ProjectId, Session.Activity) = await _log.GetLastChoiceAsync(Session.User.UserId);
             await Scheduler.InitialiseAsync();
-            _endedDay = Scheduler.EndedToday ? await _log.GetDayAsync(Session.User.UserId, Scheduler.Now) : null;
+            _endedDay = Scheduler.ClosedOvernight is { } closed ? await _log.GetDayAsync(Session.User.UserId, closed.StartedAt)
+                : Scheduler.EndedToday ? await _log.GetDayAsync(Session.User.UserId, Scheduler.Now)
+                : null;
             _loaded = true;
             _ = Reminder.RefreshAsync(Scheduler.EndedToday);
             _ = RetryPendingSendsAsync(force: true);
@@ -107,16 +151,28 @@ namespace TimePlanner.Widget
                 Reminder.DaySent(day);
         }
 
-        /// <summary>The first screen: Setup, or the idle widget when today is still being tracked (the widget was restarted).</summary>
+        /// <summary>
+        /// The first screen: the idle widget when today is still being tracked (the widget was restarted), Day ended
+        /// for a day ended today or closed overnight, or Setup.
+        /// </summary>
         public void ShowStart()
         {
             if (Scheduler.IsRunning)
                 ShowIdle();
-            else if (_endedDay?.Day.Date == Scheduler.Now.Date)
-                ShowDayEnded(_endedDay);
+            else if (ShowsEndedDay)
+                ShowDayEnded(_endedDay!);
             else
                 ShowSetup();
         }
+
+        /// <summary>The latest earlier day with time that was never sent, for the "isn't sent yet" notice.</summary>
+        public Task<UnsentDay?> GetUnsentEarlierDayAsync() => _log.GetUnsentEarlierDayAsync(Session.User.UserId);
+
+        /// <summary>Today and the days before it, for the timesheet's day list.</summary>
+        public Task<IReadOnlyList<DayChoice>> GetRecentDaysAsync() => _log.GetRecentDaysAsync(Session.User.UserId);
+
+        /// <summary>Send now: opens that day's timesheet and starts sending it, so the entries are in view while it asks.</summary>
+        public Task SendNowAsync(DateOnly day, Action back) => ShowTimesheetAsync(day, back, sendNow: true);
 
         public SetupView ShowSetup()
         {
@@ -136,8 +192,8 @@ namespace TimePlanner.Widget
         {
             if (Scheduler.IsRunning)
                 ShowTimer(activate: true);
-            else if (_endedDay?.Day.Date == Scheduler.Now.Date)
-                ShowDayEnded(_endedDay);
+            else if (ShowsEndedDay)
+                ShowDayEnded(_endedDay!);
             else
                 ShowSetup();
         }
@@ -170,6 +226,29 @@ namespace TimePlanner.Widget
         }
 
         public void ShowSettings() => Present(Screen.Settings, new SettingsView(this));
+
+        //-----------------------------
+        //opens settings → manage lists, back returns to settings
+        public async Task<ManageListsView> ShowManageListsAsync()
+        {
+            var view = new ManageListsView(this, await _log.GetManagedListsAsync());
+            Present(Screen.ManageLists, view);
+            return view;
+        }
+
+        public Task<ManagedLists> GetManagedListsAsync() => _log.GetManagedListsAsync();
+
+        public Task<(ListKind Kind, int Id)?> FindListItemAsync(bool activity, IReadOnlyList<string> path) => _log.FindListItemAsync(activity, path);
+
+        public Task<IReadOnlyList<DateOnly>> GetSentDaysUsingAsync(ListKind kind, int id) => _log.GetSentDaysUsingAsync(Session.User.UserId, kind, id);
+
+        public Task<ListChangeOutcome> RenameListItemAsync(ListKind kind, int id, string name) => _log.RenameAsync(Session.User.UserId, kind, id, name);
+
+        public Task<ListChangeOutcome> SetListItemHiddenAsync(ListKind kind, int id, bool hidden) => _log.SetHiddenAsync(kind, id, hidden);
+
+        public Task<ListChangeOutcome> AddProjectAsync(string client, string project) => _log.AddProjectAsync(client, project);
+
+        public Task<ListChangeOutcome> AddActivityAsync(int parentId, string name) => _log.AddActivityAsync(parentId, name);
 
         public void ShowHelp()
         {
@@ -269,7 +348,7 @@ namespace TimePlanner.Widget
             Session.Activity = activity;
 
             if (mode == LogEntryMode.EndOfDay)
-                await EndDayAsync();   
+                await EndDayAsync();
             else
                 Present(Screen.EntrySaved, new EntrySavedView(this));
         }
@@ -288,7 +367,6 @@ namespace TimePlanner.Widget
 
         public void KeepTracking() => ShowIdle();
 
-
         public void AskEndDay() => Present(Screen.EndDay, new EndDayView(this));
 
         public async Task<DaySummary> EndDayAsync()
@@ -299,12 +377,13 @@ namespace TimePlanner.Widget
             return day;
         }
 
-        public void ShowDayEnded(DaySummary day)
+        public void ShowDayEnded(DaySummary day, bool activate = true)
         {
             _endedDay = day;
-            Present(Screen.DayEnded, new DayEndedView(this, day));
+            Present(Screen.DayEnded, new DayEndedView(this, day), activate);
         }
 
+        /// <summary>Resume day carries on a day from today; once the date has changed, the scheduler starts today instead.</summary>
         public async Task ResumeDayAsync()
         {
             _endedDay = null;
@@ -324,11 +403,11 @@ namespace TimePlanner.Widget
 
         //-----------------------------
         //loads and shows one day of the timesheet
-        public async Task ShowTimesheetAsync(DateOnly day, Action back)
+        public async Task ShowTimesheetAsync(DateOnly day, Action back, bool sendNow = false)
         {
             var slots = await _log.GetTimesheetAsync(Session.User.UserId, day);
             var (preview, sent, pending) = await _log.GetSendStateAsync(Session.User.UserId, day);
-            Present(Screen.Timesheet, new TimesheetReviewView(this, day, slots, preview, sent, back, pending));
+            Present(Screen.Timesheet, new TimesheetReviewView(this, day, slots, preview, sent, back, pending, sendNow));
         }
 
         //-----------------------------
@@ -453,6 +532,7 @@ namespace TimePlanner.Widget
         {
             _screen = screen;
             _view = view;
+            WidgetCard.SetStatus(view, ShowsStatus(screen) ? Status : null);
             _host.Present(view, activate);
         }
     }

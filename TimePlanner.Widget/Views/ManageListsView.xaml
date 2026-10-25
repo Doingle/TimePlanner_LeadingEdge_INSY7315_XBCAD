@@ -1,0 +1,165 @@
+<UserControl x:Class="TimePlanner.Widget.Views.ManageListsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
+             PreviewKeyDown="View_KeyDown">
+    <UserControl.Resources>
+        <!-- Underlined tab: the chosen one is primary, semibold and underlined in the action colour -->
+        <Style x:Key="Tab" TargetType="RadioButton">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Control}" />
+            <Setter Property="Height" Value="{StaticResource SizeControl}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontFamily" Value="{StaticResource FontFamily}" />
+            <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False" />
+                            <Border x:Name="Underline" Height="2" VerticalAlignment="Bottom" Visibility="Hidden"
+                                    Background="{StaticResource ActionBrush}" CornerRadius="{StaticResource RadiusGrip}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Underline" Property="Visibility" Value="Visible" />
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A whole row that acts as one button, like the Hidden header -->
+        <Style x:Key="RowButton" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+            <Setter Property="Height" Value="{StaticResource SizeControl}" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontWeight" Value="{StaticResource FontWeightRegular}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="False" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- The thin scrollbar the Help screen uses -->
+        <Style x:Key="ThinScrollBar" TargetType="ScrollBar">
+            <Setter Property="Width" Value="{StaticResource Space8}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True" Orientation="Vertical">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" Opacity="0" />
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb MinHeight="{StaticResource SizeControl}">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Grid Background="Transparent">
+                                                <Border Width="2" HorizontalAlignment="Center" Background="{StaticResource HandleBrush}" CornerRadius="{StaticResource RadiusGrip}" />
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" Opacity="0" />
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <controls:WidgetCard AutomationProperties.Name="Manage lists">
+        <!-- A fixed height, so switching tabs or opening an editor never resizes the card -->
+        <Grid x:Name="Layout">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0">
+                <DockPanel Margin="-8,0,0,0">
+                    <Button x:Name="BackButton" Style="{StaticResource Button.Icon}" ToolTip="Back"
+                            AutomationProperties.Name="Back to settings" Click="Back_Click">
+                        <controls:Icon Kind="ChevronLeft" />
+                    </Button>
+                    <TextBlock Style="{StaticResource Text.Title}" Text="Manage lists" Margin="4,0,0,0" VerticalAlignment="Center" />
+                </DockPanel>
+                <TextBlock Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"
+                           Text="What the pickers offer when you log time." />
+
+                <Grid x:Name="Tabs" Margin="{StaticResource GapFieldToField}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.ColumnSpan="2" Height="{StaticResource Hairline}" VerticalAlignment="Bottom"
+                            Background="{StaticResource BorderSubtleBrush}" />
+                    <RadioButton x:Name="ProjectsTab" Grid.Column="0" Style="{StaticResource Tab}" Content="Projects"
+                                 IsChecked="True" Checked="Tab_Checked" />
+                    <RadioButton x:Name="ActivitiesTab" Grid.Column="1" Style="{StaticResource Tab}" Content="Activities"
+                                 Checked="Tab_Checked" />
+                </Grid>
+            </StackPanel>
+
+            <!-- What just changed, with Undo after hiding or showing -->
+            <Border x:Name="NoticeBar" Grid.Row="1" Visibility="Collapsed" Margin="0,8,0,0" Background="{StaticResource ActionBrush}"
+                    CornerRadius="{StaticResource RadiusControl}" Padding="12,4,4,4">
+                <DockPanel MinHeight="{StaticResource Space32}">
+                    <Button x:Name="UndoButton" Style="{StaticResource Button.Text}" Content="Undo" DockPanel.Dock="Right"
+                            Height="{StaticResource Space32}" Foreground="{StaticResource TextOnActionBrush}" Click="Undo_Click" />
+                    <TextBlock x:Name="NoticeText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextOnActionBrush}"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                </DockPanel>
+            </Border>
+
+            <ScrollViewer x:Name="ListScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Margin="0,8,-16,0" Focusable="False">
+                <ScrollViewer.Template>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Content="{TemplateBinding Content}"
+                                                    ContentTemplate="{TemplateBinding ContentTemplate}" CanContentScroll="{TemplateBinding CanContentScroll}" />
+                            <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical"
+                                       Style="{StaticResource ThinScrollBar}" Maximum="{TemplateBinding ScrollableHeight}"
+                                       ViewportSize="{TemplateBinding ViewportHeight}" Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                                       Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                        </Grid>
+                    </ControlTemplate>
+                </ScrollViewer.Template>
+                <!-- Rows are built in code: a group per client or main activity, then Hidden -->
+                <StackPanel x:Name="Rows" Margin="0,0,8,8" />
+            </ScrollViewer>
+
+            <!-- Footer across the card, under a hairline -->
+            <Border x:Name="Footer" Grid.Row="3" Margin="-16,0,-16,0" Padding="16,16,16,0"
+                    BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0">
+                <Button x:Name="AddClientButton" Style="{StaticResource Button.Secondary}" Click="AddClient_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <controls:Icon Kind="Plus" Size="{StaticResource SizeIconSm}" VerticalAlignment="Center" />
+                        <TextBlock Text="Add client" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </Border>
+        </Grid>
+    </controls:WidgetCard>
+</UserControl>

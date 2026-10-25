@@ -11,6 +11,10 @@
                     <controls:Icon Kind="ChevronLeft" />
                 </Button>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <!-- Back to today from an earlier day -->
+                    <Button x:Name="TodayButton" Style="{StaticResource Button.Secondary}" Height="{StaticResource Space32}" Padding="12,0"
+                            Margin="0,0,4,0" Content="Today" Visibility="Collapsed" AutomationProperties.Name="Go to today"
+                            Click="Today_Click" />
                     <Button x:Name="PrevDayButton" Style="{StaticResource Button.Icon}" ToolTip="Previous day"
                             AutomationProperties.Name="Previous day" Click="PrevDay_Click">
                         <controls:Icon Kind="ChevronLeft" />
@@ -33,8 +37,13 @@
                 </Border>
             </Grid>
 
-            <TextBlock x:Name="Subtitle" Style="{StaticResource Text.Subtitle}" Text="Tuesday, Aug 1 · 6h 5m" />
-            <TextBlock x:Name="StatusText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0" />
+            <!-- The day shown, as a picker over the last two weeks with what was logged and sent on each -->
+            <Button x:Name="DayButton" Style="{StaticResource SelectButton}" Margin="0,12,0,0" Click="DayButton_Click">
+                <TextBlock x:Name="Subtitle" Text="Tuesday 1 Aug · 6h 5m" TextTrimming="CharacterEllipsis" />
+            </Button>
+            <TextBlock x:Name="StatusText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,8,0,0" />
+            <TextBlock x:Name="PastDayHelp" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}"
+                       Margin="0,2,0,0" Text="You can still edit this day." Visibility="Collapsed" />
             <StackPanel x:Name="AccountRow" Orientation="Horizontal" Visibility="Collapsed" Margin="0,2,0,0">
                 <TextBlock x:Name="AccountText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
                 <Button x:Name="SignOutButton" Style="{StaticResource Button.Text}" Content="Sign out" Margin="4,0,0,0" Click="SignOut_Click" />

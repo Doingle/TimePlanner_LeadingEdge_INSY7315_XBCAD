@@ -81,40 +81,21 @@ namespace TimePlanner.Core.Services
         }
 
         //-----------------------------
-        //closes a day left open from an earlier date
-        public async Task CloseStaleSessionsAsync(int userId, DateTime now)
+        //closes a day left open from an earlier date at its last activity and gives it back, or null when none was open
+        public async Task<DaySession?> CloseStaleSessionsAsync(int userId, DateTime now)
         {
             var open = await _sessions.GetOpenAsync(userId);
 
             //only days started before today are stale
-            if (open == null || open.StartedAt.Date >= now.Date)
+            if (open == null || !DayRules.IsLeftOpen(open, now))
             {
-                return;
+                return null;
             }
 
-            var lastActivity = open.StartedAt;
             var latest = await _entries.GetLatestForUserAsync(userId);
-
-            //a later entry moves the end forward
-            if (latest != null && latest.EndTime > lastActivity)
-            {
-                lastActivity = latest.EndTime;
-            }
-
-            //later break times also count as activity
-            foreach (var pause in open.Pauses)
-            {
-                var pauseTime = pause.EndedAt ?? pause.StartedAt;
-
-                //keep the latest time seen
-                if (pauseTime > lastActivity)
-                {
-                    lastActivity = pauseTime;
-                }
-            }
-
-            CloseAt(open, lastActivity);
+            CloseAt(open, DayRules.LastActivity(open, latest?.EndTime));
             await _sessions.UpdateAsync(open);
+            return open;
         }
 
         //-----------------------------

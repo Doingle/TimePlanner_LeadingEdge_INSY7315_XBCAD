@@ -48,6 +48,7 @@ namespace TimePlanner.Widget.Views
             ProjectPicker.MaxNameLength = InputLimits.CompanyOrProject;
             ProjectPicker.CleanName = InputLimits.CleanCompanyOrProjectName;
             ProjectPicker.AddLabelFor = path => path.Count == 0 ? "New company…" : $"New project in {path[^1]}…";
+            ProjectPicker.RootLabel = "All clients";
             ProjectPicker.CanRemove = null;
 
             var selectedProjectPath = entry != null && !string.IsNullOrEmpty(entry.Company) ? new[] { entry.Company, entry.Project } : Array.Empty<string>();

@@ -21,12 +21,12 @@
                         ToolTip="Pause the timer" AutomationProperties.Name="Pause the timer" Click="PauseButton_Click">
                     <controls:Icon x:Name="PauseIcon" Kind="Pause" />
                 </Button>
-                <StackPanel>
-                    <TextBlock x:Name="TimerText" Style="{StaticResource Text.Timer}" Text="01:12"
-                               AutomationProperties.Name="1 hour 12 minutes" />
-                    <TextBlock x:Name="StatusText" Style="{StaticResource Text.Status}" Text="Until your next check-in"
-                               AutomationProperties.LiveSetting="Polite" />
-                </StackPanel>
+                <TextBlock x:Name="TimerText" DockPanel.Dock="Left" Style="{StaticResource Text.Timer}" Text="01:12"
+                           AutomationProperties.Name="1 hour 12 minutes" />
+                <!-- What the countdown is for: small, right beside it and down on its baseline -->
+                <TextBlock x:Name="StatusText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}"
+                           Text="until next check-in" Margin="8,0,0,6" VerticalAlignment="Bottom"
+                           AutomationProperties.LiveSetting="Polite" />
             </DockPanel>
 
             <StackPanel Margin="{StaticResource GapSection}">

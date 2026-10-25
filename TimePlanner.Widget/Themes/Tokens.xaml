@@ -42,6 +42,8 @@
     <!-- Color — data, focus, overlays -->
     <Color x:Key="DataColor">#52525B</Color>
     <Color x:Key="DataTrackColor">#E4E4E7</Color>
+    <!-- Status dot: green while the day is tracking -->
+    <Color x:Key="LiveColor">#2E8B57</Color>
     <Color x:Key="FocusColor">#6247AA</Color>
     <Color x:Key="ScrimColor">#7A18181B</Color>
     <Color x:Key="ShadowColor">#18181B</Color>
@@ -76,6 +78,7 @@
 
     <SolidColorBrush x:Key="DataBrush" Color="{StaticResource DataColor}" />
     <SolidColorBrush x:Key="DataTrackBrush" Color="{StaticResource DataTrackColor}" />
+    <SolidColorBrush x:Key="LiveBrush" Color="{StaticResource LiveColor}" />
     <SolidColorBrush x:Key="FocusBrush" Color="{StaticResource FocusColor}" />
     <SolidColorBrush x:Key="ScrimBrush" Color="{StaticResource ScrimColor}" />
     

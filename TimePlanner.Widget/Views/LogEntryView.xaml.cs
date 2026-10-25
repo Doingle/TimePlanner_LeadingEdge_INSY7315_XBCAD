@@ -45,13 +45,22 @@ namespace TimePlanner.Widget.Views
             ProjectPicker.MaxNameLength = InputLimits.CompanyOrProject;
             ProjectPicker.CleanName = InputLimits.CleanCompanyOrProjectName;
             ProjectPicker.AddLabelFor = path => path.Count == 0 ? "New company…" : $"New project in {path[^1]}…";
+            ProjectPicker.RootLabel = "All clients";
             ProjectPicker.CanRemove = path => !BillingRules.IsInternal(path[0]);
             ProjectPicker.RemoveRequested += ProjectPicker_RemoveRequested;
+            ProjectPicker.CanRename = path => path.Count == 1
+                ? !BillingRules.IsInternal(path[0])
+                : !(BillingRules.IsInternal(path[0]) && string.Equals(path[1], LocalSetupService.InternalProjectName, StringComparison.OrdinalIgnoreCase));
+            ProjectPicker.RenameAsync = (path, name) => RenameAsync(activity: false, path, name);
+            ProjectPicker.RenameWarningAsync = path => RenameWarningAsync(activity: false, path);
             ProjectPicker.Load(BuildProjectTree(_projects), ProjectRecent(project), ProjectPath(project));
 
-            //activity picker removal handler
+            //activity picker removal and rename handlers, main activities stay as they are
             ActivityPicker.CanRemove = path => path.Count > 1;
             ActivityPicker.RemoveRequested += ActivityPicker_RemoveRequested;
+            ActivityPicker.CanRename = path => path.Count > 1;
+            ActivityPicker.RenameAsync = (path, name) => RenameAsync(activity: true, path, name);
+            ActivityPicker.RenameWarningAsync = path => RenameWarningAsync(activity: true, path);
 
             LoadActivities(activities);
 
@@ -227,6 +236,59 @@ namespace TimePlanner.Widget.Views
             {
                 MessageBox.Show(outcome.Message, "Remove");
             }
+        }
+
+        //-----------------------------
+        //renames a saved client project or activity from the picker, giving back why it was refused
+        private async Task<string?> RenameAsync(bool activity, IReadOnlyList<string> path, string name)
+        {
+            //an item typed in this form but not saved yet only changes in the picker
+            if (await _flow.FindListItemAsync(activity, path) is not { } item)
+            {
+                return null;
+            }
+
+            var outcome = await _flow.RenameListItemAsync(item.Kind, item.Id, name);
+
+            //refusals show under the field
+            if (!outcome.Ok)
+            {
+                return outcome.Message;
+            }
+
+            //the project cache follows so the activities still load for the chosen project
+            if (item.Kind == ListKind.Client)
+            {
+                foreach (var p in _projects.Where(p => p.Company != null && string.Equals(p.Company.Name, path[0], StringComparison.OrdinalIgnoreCase)))
+                {
+                    p.Company!.Name = name;
+                }
+            }
+            else if (item.Kind == ListKind.Project && FindProject(path) is { } renamed)
+            {
+                renamed.Name = name;
+            }
+
+            return null;
+        }
+
+        //-----------------------------
+        //warns when days already sent use the name, since the dashboard keeps the old one until they are sent again
+        private async Task<string?> RenameWarningAsync(bool activity, IReadOnlyList<string> path)
+        {
+            //unsaved items were never sent
+            if (await _flow.FindListItemAsync(activity, path) is not { } item)
+            {
+                return null;
+            }
+
+            var days = (await _flow.GetSentDaysUsingAsync(item.Kind, item.Id)).Count;
+            return days switch
+            {
+                0 => null,
+                1 => "Used on a day you already sent. The dashboard keeps the old name until you send it again.",
+                _ => $"Used on {days} days you already sent. The dashboard keeps the old name until you send them again.",
+            };
         }
 
         //-----------------------------
