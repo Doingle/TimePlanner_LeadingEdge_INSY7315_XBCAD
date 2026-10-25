@@ -165,20 +165,23 @@ namespace TimePlanner.Widget.Views
         //updates visual level meter from incoming audio peak
         private void OnLevelChanged(double peak)
         {
-            LevelBar.Width = Math.Max(0, peak * LevelTrack.ActualWidth);
+            LevelMeter.Value = Math.Clamp(peak, 0.0, 1.0);
         }
 
         //-----------------------------
         //updates duration timer and warns when near cap
         private void OnElapsed(TimeSpan elapsed)
         {
-            TimerText.Text = $"{(int)elapsed.TotalMinutes}:{elapsed.Seconds:D2}";
+            TimerText.Text = $"{(int)elapsed.TotalMinutes}:{elapsed.Seconds:D2} / 3:00";
 
             //warn user when approaching recording limit
             if (elapsed.TotalSeconds >= AiLimits.RecordingWarnSeconds)
             {
-                CaptionText.Text = "30 seconds left";
-                CaptionText.Foreground = (Brush)FindResource("TextAccentBrush");
+                TimeWarningText.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                TimeWarningText.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -229,6 +232,13 @@ namespace TimePlanner.Widget.Views
         //saves recorded note and returns to idle screen
         private async void Done_Click(object sender, RoutedEventArgs e)
         {
+            //stop recorder when actively recording
+            if (_recorder.IsRecording)
+            {
+                _recorder.Stop();
+                return;
+            }
+
             var btn = sender as Button ?? DoneButton;
             btn.IsEnabled = false;
             SavedErrorText.Text = string.Empty;
@@ -259,6 +269,11 @@ namespace TimePlanner.Widget.Views
         //resets view to record audio again
         private void RecordAgain_Click(object sender, RoutedEventArgs e)
         {
+            _recorder.Cancel();
+            _savedWavPath = null;
+            TimeWarningText.Visibility = Visibility.Collapsed;
+            TimerText.Text = "0:00 / 3:00";
+            LevelMeter.Value = 0.0;
             UpdateState();
         }
 

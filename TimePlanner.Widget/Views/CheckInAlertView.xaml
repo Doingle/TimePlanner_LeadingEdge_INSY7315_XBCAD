@@ -18,7 +18,7 @@
 
             <StackPanel Margin="{StaticResource GapSection}">
                 <Button Style="{StaticResource Button.Primary}" Content="Log time" Click="LogTime_Click" />
-                <Button Style="{StaticResource Button.Secondary}" Click="SpeakUpdate_Click" Margin="0,8,0,0">
+                <Button x:Name="SpeakUpdateButton" Style="{StaticResource Button.Secondary}" Click="SpeakUpdate_Click" Margin="0,8,0,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                         <controls:Icon Kind="Mic" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
                         <TextBlock Text="Speak your update" VerticalAlignment="Center" />
@@ -32,8 +32,20 @@
                         <TextBlock Text="No snoozes left" VerticalAlignment="Center" />
                     </StackPanel>
                 </Grid>
+
+                <!-- first-use tip -->
+                <DockPanel x:Name="FirstUseTipPanel" Margin="0,4,0,0" Visibility="Collapsed">
+                    <Button x:Name="DismissTipButton" DockPanel.Dock="Right" Style="{StaticResource Button.Icon}"
+                            ToolTip="Don't show again" AutomationProperties.Name="Don't show again"
+                            Click="DismissTip_Click" VerticalAlignment="Center">
+                        <controls:Icon Kind="Close" Size="{StaticResource SizeIconSm}" />
+                    </Button>
+                    <Button x:Name="TipLinkButton" Style="{StaticResource Button.Text}"
+                            Content="New: speak your update instead. Set it up ›"
+                            HorizontalAlignment="Left" VerticalAlignment="Center"
+                            Click="TipLink_Click" />
+                </DockPanel>
             </StackPanel>
         </StackPanel>
     </controls:WidgetCard>
 </UserControl>
-

@@ -61,12 +61,12 @@
                 <!-- Active Recording Status -->
                 <StackPanel x:Name="ActiveRecordingIndicator" Visibility="Collapsed" Margin="0,4,0,8">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4">
-                        <Ellipse x:Name="PulsingDot" Width="8" Height="8" Fill="{StaticResource ActionBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                        <TextBlock x:Name="TimerText" Style="{StaticResource Text.Timer}" Text="0:00" VerticalAlignment="Center" />
+                        <Ellipse x:Name="PulsingDot" Width="8" Height="8" Fill="{DynamicResource TextAccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="TimerText" Style="{StaticResource Text.Timer}" Text="0:00 / 3:00" VerticalAlignment="Center" />
                     </StackPanel>
-                    <Border x:Name="LevelTrack" Background="{StaticResource DataTrackBrush}" Height="6" CornerRadius="3" ClipToBounds="True" Margin="0,4,0,4">
-                        <Border x:Name="LevelBar" Background="{StaticResource DataBrush}" Height="6" CornerRadius="3" HorizontalAlignment="Left" Width="0" />
-                    </Border>
+                    <TextBlock x:Name="TimeWarningText" Style="{StaticResource Text.Caption}" Text="30 seconds left"
+                               Foreground="{DynamicResource TextAccentBrush}" HorizontalAlignment="Center" Margin="0,0,0,4" Visibility="Collapsed" />
+                    <controls:BarProgress x:Name="LevelMeter" Height="{StaticResource SizeProgress}" Margin="0,4,0,4" />
                 </StackPanel>
 
                 <!-- Caption / Remaining time -->
@@ -79,8 +79,12 @@
                     <Button Style="{StaticResource Button.Secondary}" Content="Type instead" Click="TypeInstead_Click" />
                 </StackPanel>
 
-                <!-- Bottom Cancel Row -->
-                <Button Style="{StaticResource Button.Text}" Content="Cancel" Click="Cancel_Click" HorizontalAlignment="Center" />
+                <!-- Action buttons row: Done, Record again, Cancel -->
+                <StackPanel Margin="{StaticResource GapSection}">
+                    <Button x:Name="DoneButton" Style="{StaticResource Button.Primary}" Content="Done" Click="Done_Click" />
+                    <Button Style="{StaticResource Button.Text}" Content="Record again" Margin="0,8,0,0" Click="RecordAgain_Click" />
+                    <Button Style="{StaticResource Button.Text}" Content="Cancel" Margin="0,4,0,0" Click="Cancel_Click" />
+                </StackPanel>
             </StackPanel>
 
             <!-- Saved State -->
@@ -97,7 +101,7 @@
                            Text="Saved. Transcribing in the background." />
                 <TextBlock x:Name="SavedErrorText" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed" />
                 <StackPanel Margin="{StaticResource GapSection}">
-                    <Button x:Name="DoneButton" Style="{StaticResource Button.Primary}" Content="Done" Click="Done_Click" />
+                    <Button x:Name="SavedDoneButton" Style="{StaticResource Button.Primary}" Content="Done" Click="Done_Click" />
                     <StackPanel x:Name="NoSpeechButtons" Visibility="Collapsed">
                         <Button Style="{StaticResource Button.Primary}" Content="Record again" Click="RecordAgain_Click" />
                         <Button Style="{StaticResource Button.Secondary}" Content="Keep it" Click="Done_Click" Margin="0,8,0,0" />
