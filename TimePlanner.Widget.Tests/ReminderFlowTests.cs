@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -15,6 +16,7 @@ using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Core.Services;
+using TimePlanner.Core.Services.Models;
 using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
@@ -620,6 +622,8 @@ public class ReminderFlowTests
     public Task TrackingPastMidnight_ClosesTheDay_AndShowsDayEnded() => OnUi(async () =>
     {
         using var host = await TestHost.CreateAsync();
+        // Saturday is a working day here, so Day ended shows straight away
+        host.Flow.Session.Preferences.WorkingDays.Add(DayOfWeek.Saturday);
         await host.Flow.StartTrackingAsync();
         await host.SeedEntryAsync();
 
@@ -679,6 +683,127 @@ public class ReminderFlowTests
         Assert.Equal(Visibility.Collapsed, ((Button)((TimesheetReviewView)host.Window.Screen!).FindName("TodayButton")).Visibility);
     });
 
+    [Fact]
+    public Task TrackingPastMidnightIntoADayOff_GoesQuietlyToTheTray() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        var screen = host.Window.Screen;
+
+        // Friday's day runs on into Saturday, a day off by default
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+        await host.Flow.Scheduler.RefreshAsync();
+        await WaitUntil(() => host.Window.Hides > 0);
+
+        Assert.Same(screen, host.Window.Screen);
+        Assert.False(host.Flow.Scheduler.IsRunning);
+
+        // Opened from the tray, Day ended is waiting
+        host.Flow.ShowFromTray();
+        var ended = Assert.IsType<DayEndedView>(host.Window.Screen);
+        Assert.Equal(Visibility.Visible, ((Border)ended.FindName("OvernightNote")).Visibility);
+    });
+
+    [Fact]
+    public Task SignInOnADayOff_WaitsInTheTray_AndADayCanStillBeStartedByHand() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        host.Clock.UtcNow += TimeSpan.FromDays(1);
+        var (scheduler, flow) = Restart(host);
+        using (scheduler)
+        {
+            await flow.LoadAsync();
+            flow.ShowStartAtSignIn();
+            Assert.Null(host.Window.Screen);
+            Assert.Equal(1, host.Window.Hides);
+
+            // From the tray the day starts as usual, but check-ins only happen on ticked days
+            flow.ShowFromTray();
+            Assert.IsType<SetupView>(host.Window.Screen);
+            await flow.StartTrackingAsync();
+            Assert.True(flow.Scheduler.IsRunning);
+            Assert.True(flow.Scheduler.IsDayOff);
+            host.Clock.UtcNow += TimeSpan.FromMinutes(flow.Session.Settings.CheckInIntervalMinutes * 2);
+            await flow.Scheduler.RefreshAsync();
+            Assert.IsNotType<CheckInAlertView>(host.Window.Screen);
+            Assert.Null(flow.Scheduler.TimeLeft);
+
+            // The timer counts up what isn't logged yet instead
+            flow.ShowTimer();
+            var timer = Assert.IsType<TimerView>(host.Window.Screen);
+            Assert.Equal("03:00", ((TextBlock)timer.FindName("TimerText")).Text);
+            Assert.Equal("not logged yet\nno check-ins today", ((TextBlock)timer.FindName("StatusText")).Text);
+            Render(timer, "timer-day-off");
+        }
+    });
+
+    [Fact]
+    public Task SignInOnAWorkingDay_ShowsSetup() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        host.Flow.ShowStartAtSignIn();
+        Assert.IsType<SetupView>(host.Window.Screen);
+        Assert.Equal(0, host.Window.Hides);
+    });
+
+    [Fact]
+    public Task Settings_SaveWorkingDaysAndCheckInTiming() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        host.Flow.ShowSettings();
+        var settings = Assert.IsType<SettingsView>(host.Window.Screen);
+        Assert.Equal(Visibility.Visible, ((Border)settings.FindName("LargerTextRow")).Visibility);
+        Render(settings, "settings");
+
+        // More options: the hour and half hour switch, and the working days summary
+        settings.ShowAdvanced();
+        Assert.Equal("Mon – Fri", ((TextBlock)settings.FindName("WorkingDaysSummary")).Text);
+        ((ToggleButton)settings.FindName("HalfHourSwitch")).IsChecked = true;
+        await WaitUntil(() => host.Flow.Session.Preferences.CheckInTiming == CheckInTiming.OnTheHalfHour);
+        Render(settings, "more-options");
+
+        // Working days opens its own list, Monday first
+        Click((Button)settings.FindName("WorkingDaysRow"));
+        var days = Assert.IsType<WorkingDaysView>(host.Window.Screen);
+        var boxes = ((Panel)days.FindName("DaysList")).Children.OfType<CheckBox>().ToList();
+        Assert.Equal(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], boxes.Select(b => (string)b.Content));
+        Assert.Equal([true, true, true, true, true, false, false], boxes.Select(b => b.IsChecked == true));
+        Assert.Null(WidgetCard.GetStatus(days));
+        Render(days, "working-days");
+
+        boxes[5].IsChecked = true;
+        boxes[0].IsChecked = false;
+        Assert.Equal([DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday],
+            host.Flow.Session.Preferences.WorkingDays);
+
+        // Back on More options, the summary follows
+        Click((Button)days.FindName("BackButton"));
+        var back = Assert.IsType<SettingsView>(host.Window.Screen);
+        Assert.Equal(Visibility.Visible, ((StackPanel)back.FindName("AdvancedView")).Visibility);
+        Assert.Equal("Tue – Sat", ((TextBlock)back.FindName("WorkingDaysSummary")).Text);
+        Assert.Equal("Mon, Wed, Fri", Format.Days([DayOfWeek.Friday, DayOfWeek.Monday, DayOfWeek.Wednesday]));
+        Assert.Equal("Every day", Format.Days(Format.Week));
+        Assert.Equal("None", Format.Days([]));
+    });
+
+    [Fact]
+    public Task OnTheHalfHour_TimerCountsDownToTheMark() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.ChangeIntervalAsync(60);
+        host.Clock.UtcNow += TimeSpan.FromMinutes(10);
+        await host.Flow.StartTrackingAsync();
+        var started = host.Clock.LocalNow();
+        Assert.Equal(started.AddMinutes(60), host.Flow.Scheduler.PromptAt);
+
+        // Started at 10:10, an hour of work is 11:10, nearest the hour
+        await host.Flow.ChangeTimingAsync(CheckInTiming.OnTheHalfHour);
+        Assert.Equal(started.Date.AddHours(11), host.Flow.Scheduler.PromptAt);
+        Assert.Equal(TimeSpan.FromMinutes(50), host.Flow.Scheduler.TimeLeft);
+        Assert.Equal(started.Date.AddHours(11), host.Flow.Scheduler.NextCheckIn(TimeSpan.FromMinutes(60)));
+    });
+
     // A new scheduler and flow over the same in-memory database, as when the widget is opened again
     private static (CheckInScheduler Scheduler, WidgetFlow Flow) Restart(TestHost host)
     {
@@ -727,7 +852,8 @@ public class ReminderFlowTests
             if (screen.FindName("ReminderNotice") is UnsentDayReminderView current)
                 current.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
         }
-        public void HideWidget() { }
+        public int Hides { get; private set; }
+        public void HideWidget() => Hides++;
     }
 
     private sealed class FakeDashboard : HttpMessageHandler
