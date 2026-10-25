@@ -11,6 +11,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using System.Windows.Automation;
+using TimePlanner.Core.Services.Models;
 using TimePlanner.Widget.Models;
 
 namespace TimePlanner.Widget.Views
@@ -34,6 +36,7 @@ namespace TimePlanner.Widget.Views
 
         private const string ShapeOff = "Nothing shows while the widget is hidden.";
 
+
         private readonly WidgetFlow _flow;
         private readonly bool _isSettings;
         private readonly List<int> _intervals;
@@ -54,6 +57,8 @@ namespace TimePlanner.Widget.Views
                 SettingsHeader.Visibility = Visibility.Visible;
                 HelpButton.Visibility = Visibility.Collapsed;
                 ManageListsRow.Visibility = Visibility.Visible;
+                LargerTextRow.Visibility = Visibility.Visible;
+                AdvancedRow.Margin = (Thickness)FindResource("GapStacked");
                 IntervalField.Margin = (Thickness)FindResource("GapSection");
                 PrimaryButton.Content = "Done";
             }
@@ -69,6 +74,9 @@ namespace TimePlanner.Widget.Views
             _intervals = CheckInPolicy.ChoicesIncluding(settings.CheckInIntervalMinutes);
             IntervalSelect.ItemsSource = _intervals.Select(Format.Interval).ToList();
             IntervalSelect.SelectedIndex = _intervals.IndexOf(settings.CheckInIntervalMinutes);
+            HalfHourSwitch.IsChecked = preferences.CheckInTiming == CheckInTiming.OnTheHalfHour;
+            WorkingDaysSummary.Text = Format.Days(preferences.WorkingDays);
+            LargerTextSwitch.IsChecked = preferences.LargerText;
 
             (preferences.IdleVisibility switch
             {
@@ -157,6 +165,28 @@ namespace TimePlanner.Widget.Views
                 ShowNextCheckIn();
             }
             finally { IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = true; }
+        }
+
+        // On: check-ins on the hour and half hour. Off: every interval from the last check-in
+        private async void HalfHour_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!_ready)
+                return;
+            await _flow.ChangeTimingAsync(HalfHourSwitch.IsChecked == true ? CheckInTiming.OnTheHalfHour : CheckInTiming.FromLastCheckIn);
+            ShowNextCheckIn();
+        }
+
+        // The working days list is a screen of its own, which comes back to More options
+        private void WorkingDays_Click(object sender, RoutedEventArgs e)
+        {
+            var settings = _isSettings;
+            _flow.ShowWorkingDays(() => _flow.ShowMoreOptions(settings));
+        }
+
+        private void LargerText_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_ready)
+                _flow.ChangeLargerText(LargerTextSwitch.IsChecked == true);
         }
 
         private void ShowNextCheckIn()

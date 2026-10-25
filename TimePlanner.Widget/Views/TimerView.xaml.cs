@@ -64,11 +64,21 @@ namespace TimePlanner.Widget.Views
             PauseButton.ToolTip = action;
             AutomationProperties.SetName(PauseButton, action);
 
+            TimerText.Foreground = (Brush)FindResource(paused != null ? "TextTertiaryBrush" : "TextPrimaryBrush");
+
+            // A day off has no check-ins to count down to, so it counts up the time not logged yet
+            if (scheduler.IsDayOff)
+            {
+                TimerText.Text = Format.Countdown(scheduler.Unlogged);
+                AutomationProperties.SetName(TimerText, $"{Format.Spoken(scheduler.Unlogged)} not logged yet");
+                StatusText.Text = paused is { } breakAt ? $"Paused at {Format.Clock(breakAt)}" : "not logged yet\nno check-ins today";
+                return;
+            }
+
             var left = scheduler.TimeLeft;
             TimerText.Text = left is { } time ? Format.Countdown(time) : "--:--";
             AutomationProperties.SetName(TimerText, left is { } spoken ? Format.Spoken(spoken) : "No more check-ins today");
 
-            TimerText.Foreground = (Brush)FindResource(paused != null ? "TextTertiaryBrush" : "TextPrimaryBrush");
             StatusText.Text = paused is { } pausedAt ? $"Paused at {Format.Clock(pausedAt)}"
                 : left == null ? "No more check-ins today"
                 : scheduler.IsSnoozed && _flow.Snooze.SnoozedUntil is { } until ? $"Check-in snoozed until {Format.Clock(until)}"
