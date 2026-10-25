@@ -12,6 +12,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using TimePlanner.Widget.Models;
+using TimePlanner.Core.Ai;
 
 namespace TimePlanner.Widget.Views
 {
@@ -56,6 +57,7 @@ namespace TimePlanner.Widget.Views
                 IntervalField.Margin = (Thickness)FindResource("GapSection");
                 PrimaryButton.Content = "Done";
                 AiSettingsRow.Visibility = Visibility.Visible;
+                UpdateAiSummary();
             }
             ShowWelcome(!isSettings);
 
@@ -232,5 +234,30 @@ namespace TimePlanner.Widget.Views
         {
             _flow.ShowAiSettings(() => _flow.ShowSettings());
         }
+
+        //-----------------------------
+        //updates summary displayed on voice and ai settings row
+        private void UpdateAiSummary()
+        {
+            var ai = _flow.Session.Preferences.Ai;
+            //not setup state
+            if (!ai.SetupCompleted)
+            {
+                AiSummary.Text = "Not set up";
+                return;
+            }
+
+            //organisation ai or local model readiness
+            if (ai.Compiler == CompilerKind.Dashboard || _flow.Ai.VoiceReady)
+            {
+                AiSummary.Text = "Ready";
+            }
+            //otherwise needs attention
+            else
+            {
+                AiSummary.Text = "Needs attention";
+            }
+        }
     }
 }
+//------------------------------EOF-----------------------------\\

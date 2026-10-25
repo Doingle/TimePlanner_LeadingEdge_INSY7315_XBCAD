@@ -64,7 +64,11 @@
                 <Button x:Name="AiSettingsRow" Style="{StaticResource NavRow}" Margin="{StaticResource GapFieldToField}"
                         Visibility="Collapsed" Click="AiSettings_Click">
                     <DockPanel>
-                        <controls:Icon Kind="ChevronRight" DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <TextBlock x:Name="AiSummary" Text="Not set up" Margin="0,0,4,0" VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" />
+                            <controls:Icon Kind="ChevronRight" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
+                        </StackPanel>
                         <TextBlock Text="Voice and AI" VerticalAlignment="Center" />
                     </DockPanel>
                 </Button>
