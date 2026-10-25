@@ -34,7 +34,9 @@ namespace TimePlanner.Widget.Services
 
         /// <summary>Every choice is one the widget offers ("Pill, Ring" would otherwise read as a mix of two).</summary>
         private static bool IsValid(WidgetPreferences preferences) =>
-            Enum.IsDefined(preferences.IdleVisibility) && Enum.IsDefined(preferences.IdleShape);
+            Enum.IsDefined(preferences.IdleVisibility) && Enum.IsDefined(preferences.IdleShape)
+            && Enum.IsDefined(preferences.CheckInTiming)
+            && preferences.WorkingDays != null && preferences.WorkingDays.All(day => Enum.IsDefined(day));
 
         public void Save(WidgetPreferences preferences)
         {
