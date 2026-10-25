@@ -22,7 +22,7 @@ namespace TimePlanner.Widget.Views
             Subtitle.Text = $"Log what you did since {timeStr}.";
 
             var ai = flow.Session.Preferences.Ai;
-            var voiceAvailable = ai.SetupCompleted && ai.VoiceEnabled;
+            var voiceAvailable = ai.VoiceEnabled && flow.AiSetup.IsVoiceReady;
             SpeakUpdateButton.Visibility = voiceAvailable ? Visibility.Visible : Visibility.Collapsed;
 
             //configure tooltip and automation properties when voice enabled

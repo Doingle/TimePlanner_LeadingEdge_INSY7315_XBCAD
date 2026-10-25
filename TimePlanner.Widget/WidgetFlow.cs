@@ -159,6 +159,17 @@ namespace TimePlanner.Widget
             _ = RetryPendingSendsAsync(force: true);
             await _voiceStore.PurgeAsync(Scheduler.Now);
             _voiceQueue.Start();
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _aiSetup.GetReadinessAsync(CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceWarning($"Background readiness check failed: {ex.Message}");
+                }
+            });
         }
 
         public void StartVoiceNote()
@@ -170,6 +181,7 @@ namespace TimePlanner.Widget
         }
 
         public AiService Ai => _aiService;
+        public OllamaHost? AiHost => _aiService.OllamaHost;
         public AiSetupService AiSetup => _aiSetup;
         public TimeLogService Logs => _log;
         public PreferencesStore Preferences => _preferences;
@@ -301,9 +313,9 @@ namespace TimePlanner.Widget
 
         //-----------------------------
         //shows voice and ai settings screen
-        public void ShowAiSettings(Action back)
+        public void ShowAiSettings(Action back, bool openAdvanced = false)
         {
-            var view = new AiSettingsView(this, back);
+            var view = new AiSettingsView(this, back, openAdvanced);
             Present(Screen.Settings, view);
         }
 

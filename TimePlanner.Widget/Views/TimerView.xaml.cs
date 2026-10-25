@@ -75,7 +75,7 @@ namespace TimePlanner.Widget.Views
                 : "until next check-in";
 
             var ai = _flow.Session.Preferences.Ai;
-            var voiceAvailable = ai.SetupCompleted && ai.VoiceEnabled;
+            var voiceAvailable = ai.VoiceEnabled && _flow.AiSetup.IsVoiceReady;
             VoiceLogButton.Visibility = voiceAvailable ? Visibility.Visible : Visibility.Collapsed;
             //configure voice button tooltip when enabled
             if (voiceAvailable)

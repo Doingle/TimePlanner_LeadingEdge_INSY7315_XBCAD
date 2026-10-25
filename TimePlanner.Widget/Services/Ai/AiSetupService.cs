@@ -36,6 +36,26 @@ namespace TimePlanner.Widget.Services.Ai
         private readonly WhisperModelManager _modelManager;
         private readonly WidgetSession _session;
         private readonly PreferencesStore _preferencesStore;
+        private readonly OllamaHost _host;
+
+        public AiReadiness? LastReadiness { get; private set; }
+
+        public bool IsVoiceReady
+        {
+            get
+            {
+                if (LastReadiness != null)
+                {
+                    return LastReadiness.VoiceReady;
+                }
+
+                var settings = _session.Preferences.Ai;
+                var voiceModel = string.IsNullOrWhiteSpace(settings.WhisperModel) ? "ggml-small.en-q5_1.bin" : settings.WhisperModel;
+                return _modelManager.IsDownloaded(voiceModel)
+                    || (!string.IsNullOrWhiteSpace(settings.WhisperModelPath) && File.Exists(settings.WhisperModelPath))
+                    || settings.Transcriber == TranscriberKind.OpenAiCompatible;
+            }
+        }
 
         //-----------------------------
         //initializes setup service with needed components
@@ -44,13 +64,69 @@ namespace TimePlanner.Widget.Services.Ai
             OllamaSetup setup,
             WhisperModelManager modelManager,
             WidgetSession session,
-            PreferencesStore preferencesStore)
+            PreferencesStore preferencesStore,
+            OllamaHost host)
         {
             _installer = installer;
             _setup = setup;
             _modelManager = modelManager;
             _session = session;
             _preferencesStore = preferencesStore;
+            _host = host;
+        }
+
+        //-----------------------------
+        //checks component readiness and self-heals setup state
+        public async Task<AiReadiness> GetReadinessAsync(CancellationToken ct = default)
+        {
+            var settings = _session.Preferences.Ai;
+
+            //voice model check
+            var voiceModel = string.IsNullOrWhiteSpace(settings.WhisperModel) ? "ggml-small.en-q5_1.bin" : settings.WhisperModel;
+            var voiceModelPresent = _modelManager.IsDownloaded(voiceModel)
+                || (!string.IsNullOrWhiteSpace(settings.WhisperModelPath) && File.Exists(settings.WhisperModelPath));
+
+            var remoteTranscriber = settings.Transcriber == TranscriberKind.OpenAiCompatible;
+
+            //ollama check
+            OllamaState? ollamaState = null;
+            if (settings.Compiler == CompilerKind.Ollama)
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(TimeSpan.FromSeconds(3));
+                try
+                {
+                    await _host.EnsureRunningAsync(cts.Token);
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    var status = await _setup.CheckAsync(ct);
+                    ollamaState = status.State;
+                }
+                catch
+                {
+                    ollamaState = OllamaState.NotRunning;
+                }
+            }
+
+            //dashboard check
+            var dashboardAvailable = false;
+
+            var readiness = AiReadiness.Decide(voiceModelPresent, remoteTranscriber, ollamaState, dashboardAvailable, settings.Compiler);
+
+            //self-heal when both checks are ready and setup is not marked complete
+            if (readiness.VoiceReady && readiness.DayReady && !settings.SetupCompleted)
+            {
+                settings.SetupCompleted = true;
+                _preferencesStore.Save(_session.Preferences);
+            }
+
+            LastReadiness = readiness;
+            return readiness;
         }
 
         //-----------------------------
