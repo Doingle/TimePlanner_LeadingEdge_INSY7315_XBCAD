@@ -8,7 +8,10 @@ namespace TimePlanner.Core.Services.Models
         Paused,
         Waiting,
         Due,
-        Snoozed
+        Snoozed,
+
+        //a day started by hand on a day that isn't a working day: tracked, but no check ins
+        DayOff
     }
 }
 //------------------------------EOF-----------------------------\\

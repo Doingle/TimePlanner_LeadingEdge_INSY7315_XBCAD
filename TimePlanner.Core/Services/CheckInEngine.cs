@@ -30,7 +30,18 @@ namespace TimePlanner.Core.Services
             _clock = clock;
         }
 
+        //the hour and half hour marks clock timing lands on
+        private static readonly TimeSpan HalfHour = TimeSpan.FromMinutes(30);
+
         private TimeSpan Interval => TimeSpan.FromMinutes(_settings.CheckInIntervalMinutes);
+
+        //-----------------------------
+        //when check ins fall, set before initialising and changed with SetTimingAsync
+        public CheckInTiming Timing { get; set; } = CheckInTiming.FromLastCheckIn;
+
+        //-----------------------------
+        //whether a date gets check ins, every day unless the widget's working days say otherwise
+        public Func<DateTime, bool> IsCheckInDay { get; set; } = _ => true;
 
         private int SnoozesLeft => Math.Max(0, _settings.MaxSnoozes - _snoozesUsed);
 
@@ -66,6 +77,38 @@ namespace TimePlanner.Core.Services
                 _snoozedUntil = null;
             }
             return await TickAsync();
+        }
+
+        //-----------------------------
+        //switches between counting from the last check in and the hour and half hour
+        public Task<CheckInStatus> SetTimingAsync(CheckInTiming timing)
+        {
+            //an old due or snoozed prompt must not pin the new timing, the work since the anchor stays
+            if (timing != Timing)
+            {
+                Timing = timing;
+                _dueSince = null;
+                _snoozedUntil = null;
+            }
+
+            return TickAsync();
+        }
+
+        //-----------------------------
+        //the hour or half hour nearest a due time, never too soon after the last check in
+        //a check in lands at least half an interval after the anchor so answering late can't bring the next one straight after
+        public static DateTime OnTheHalfHour(DateTime due, DateTime anchor, TimeSpan interval)
+        {
+            //nearest mark with a tie going later
+            var mark = new DateTime((due.Ticks + HalfHour.Ticks / 2) / HalfHour.Ticks * HalfHour.Ticks, due.Kind);
+
+            //a mark too close to the anchor moves on to the next one
+            while (mark - anchor < interval / 2)
+            {
+                mark += HalfHour;
+            }
+
+            return mark;
         }
 
         //-----------------------------
@@ -109,6 +152,13 @@ namespace TimePlanner.Core.Services
                 return Status(CheckInPhase.Paused, now);
             }
 
+            //no prompts on a day off, so nothing can come due, be snoozed or be skipped for being ignored
+            if (!IsCheckInDay(now))
+            {
+                ResolvePrompt();
+                return Status(CheckInPhase.DayOff, now);
+            }
+
             //a snooze holds the prompt back
             if (_snoozedUntil != null)
             {
@@ -123,7 +173,7 @@ namespace TimePlanner.Core.Services
             }
 
             //Only explicit day-session pauses suspend check-ins.
-            if (_dueSince == null && ActiveTimeSince(_anchor, now) >= Interval)
+            if (_dueSince == null && now >= DueAt(now))
             {
                 _dueSince = now;
             }
@@ -270,13 +320,20 @@ namespace TimePlanner.Core.Services
         }
 
         //-----------------------------
-        //next prompt time from the chosen interval and explicit pauses
+        //when the prompt falls: a full interval of work after the anchor with breaks left out,
+        //then on the clock timing the nearest hour or half hour to that
+        private DateTime DueAt(DateTime now)
+        {
+            var due = now + (Interval - ActiveTimeSince(_anchor, now));
+            return Timing == CheckInTiming.OnTheHalfHour ? OnTheHalfHour(due, _anchor, Interval) : due;
+        }
+
+        //-----------------------------
+        //next prompt time from the chosen interval, timing and explicit pauses
         private DateTime NextDueAt(DateTime now)
         {
-            var remaining = Interval - ActiveTimeSince(_anchor, now);
-            var due = remaining > TimeSpan.Zero ? now + remaining : now;
-
-            return due;
+            var due = DueAt(now);
+            return due > now ? due : now;
         }
 
         //-----------------------------
