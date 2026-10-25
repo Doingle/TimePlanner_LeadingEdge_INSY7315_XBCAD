@@ -32,6 +32,7 @@ namespace TimePlanner.Widget.Controls
         Mic,
         Stop,
         Edit, List,
+        Copy,
         Help,
         Info,
     }
@@ -187,6 +188,11 @@ namespace TimePlanner.Widget.Controls
             [IconKind.ClockHands] = [new(Freeze(Geometry.Parse("M12,7 V12 L15,14")), StrokeWidth: 2.75)],
             [IconKind.Mic] = [P("M12,3 A3,3 0 0 0 9,6 V12 A3,3 0 0 0 15,12 V6 A3,3 0 0 0 12,3 Z"), P("M19,11 A7,7 0 0 1 5,11"), P("M12,18 V21")],
             [IconKind.Stop] = [P("M7,7 H17 V17 H7 Z")],
+            [IconKind.Copy] =
+            [
+                new(Freeze(new RectangleGeometry(new Rect(8, 8, 12, 12), 2, 2))),
+                P("M16,8 V4 A2,2 0 0 0 14,2 H4 A2,2 0 0 0 2,4 V14 A2,2 0 0 0 4,16 H8"),
+            ],
         };
     }
 }
