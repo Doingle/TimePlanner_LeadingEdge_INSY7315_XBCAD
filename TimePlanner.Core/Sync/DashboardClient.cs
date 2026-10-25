@@ -145,7 +145,7 @@ namespace TimePlanner.Core.Sync
             //no connection or a timeout means offline
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
-                return SendOutcome.Of(SendStatus.Offline, "The dashboard could not be reached. The day is still saved here.");
+                return SendOutcome.Of(SendStatus.Offline, "The dashboard could not be reached. The day is still saved here.", retryable: true);
             }
 
             using (response)
@@ -174,7 +174,7 @@ namespace TimePlanner.Core.Sync
                 //too many sends in a short time
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
-                    return SendOutcome.Of(SendStatus.Failed, "Too many sends. Try again in a minute.");
+                    return SendOutcome.Of(SendStatus.Failed, "Too many sends. Try again in a minute.", retryable: true);
                 }
 
                 //the account is not allowed to import
@@ -183,7 +183,8 @@ namespace TimePlanner.Core.Sync
                     return SendOutcome.Of(SendStatus.Failed, await TitleAsync(response));
                 }
 
-                return SendOutcome.Of(SendStatus.Failed, $"The dashboard answered {(int)response.StatusCode}.");
+                //a server error can pass, anything else the server refused will not
+                return SendOutcome.Of(SendStatus.Failed, $"The dashboard answered {(int)response.StatusCode}.", retryable: (int)response.StatusCode >= 500);
             }
         }
 

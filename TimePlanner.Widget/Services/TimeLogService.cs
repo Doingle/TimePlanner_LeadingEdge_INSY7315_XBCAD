@@ -286,15 +286,41 @@ namespace TimePlanner.Widget.Services
         }
 
         //-----------------------------
-        //whether the day can be sent and its last send
-        public async Task<(DayPreview Preview, SentDay? Sent)> GetSendStateAsync(int userId, DateOnly day)
+        //whether the day can be sent, its last send, and whether a send is still waiting to get through
+        public async Task<(DayPreview Preview, SentDay? Sent, PendingDay? Pending)> GetSendStateAsync(int userId, DateOnly day)
         {
             await using var scope = scopes.CreateAsyncScope();
             var services = scope.ServiceProvider;
-            var preview = await services.GetRequiredService<DaySendService>().PreviewDayAsync(userId, day, clock.LocalNow());
+            var send = services.GetRequiredService<DaySendService>();
+            var preview = await send.PreviewDayAsync(userId, day, clock.LocalNow());
             var sent = (await services.GetRequiredService<ISendHistoryStore>().GetAsync()).FirstOrDefault(s => s.Day == day);
+            var pending = (await send.GetPendingAsync()).FirstOrDefault(p => p.Day == day);
 
-            return (preview, sent);
+            return (preview, sent, pending);
+        }
+
+        private int _retrying;
+        private DateTimeOffset _nextRetry;
+
+        //-----------------------------
+        //retries the days the user already sent that did not get through. Cheap to call on every tick: one run at a time and, unless forced, at most every 30 seconds.
+        //returns the days that got through
+        public async Task<IReadOnlyList<DateOnly>> RetryPendingSendsAsync(int userId, bool force = false)
+        {
+            var nowUtc = clock.GetUtcNow();
+            if ((!force && nowUtc < _nextRetry) || Interlocked.Exchange(ref _retrying, 1) == 1)
+                return [];
+
+            try
+            {
+                _nextRetry = nowUtc.AddSeconds(30);
+                await using var scope = scopes.CreateAsyncScope();
+                return await scope.ServiceProvider.GetRequiredService<DaySendService>().RetryPendingAsync(userId, clock.LocalNow(), nowUtc.UtcDateTime);
+            }
+            finally
+            {
+                Volatile.Write(ref _retrying, 0);
+            }
         }
 
         //-----------------------------

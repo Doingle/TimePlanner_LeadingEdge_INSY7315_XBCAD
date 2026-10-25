@@ -405,6 +405,40 @@ public class ReminderFlowTests
     });
 
     [Fact]
+    public Task SendThatFails_WaitsShowsItInTheTimesheet_AndGoesThroughLater() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.EndDayAsync();
+        var day = host.Flow.Reminder.Today;
+        var log = host.Services.GetRequiredService<TimeLogService>();
+        var userId = host.Flow.Session.User.UserId;
+
+        host.Http.Succeeds = false;
+        var failed = await host.Flow.SendDayAsync(day);
+        Assert.True(failed.Retryable);
+        Assert.Equal(day, Assert.Single(host.Pending.Days).Day);
+        Assert.Empty(host.History.Days);
+
+        await host.Flow.ShowTimesheetAsync(day, () => { });
+        var view = Assert.IsType<TimesheetReviewView>(host.Window.Screen);
+        Assert.Equal("Waiting to send · will retry", ((TextBlock)view.FindName("StatusText")).Text);
+
+        //the retry is not due yet, so a tick does not call the dashboard again
+        var requests = host.Http.Requests;
+        Assert.Empty(await log.RetryPendingSendsAsync(userId));
+        Assert.Equal(requests, host.Http.Requests);
+
+        host.Http.Succeeds = true;
+        host.Clock.UtcNow += TimeSpan.FromMinutes(2);
+        Assert.Equal(new[] { day }, await log.RetryPendingSendsAsync(userId, force: true));
+        Assert.Empty(host.Pending.Days);
+        Assert.Single(host.History.Days);
+    });
+
+    [Fact]
     public Task PreviousDayScreenDoesNotShowTodaysNotice() => OnUi(async () =>
     {
         using var host = await TestHost.CreateAsync();
@@ -518,6 +552,7 @@ public class ReminderFlowTests
         private readonly SqliteConnection _connection = new("Data Source=:memory:");
         public ReminderClock Clock { get; } = new();
         public ReminderHistory History { get; } = new();
+        public ReminderPending Pending { get; } = new();
         public RecordingHost Window { get; } = new();
         public FakeDashboard Http { get; } = new();
         // Windows startup kept in memory, so the tests never touch the real Run key
@@ -536,6 +571,7 @@ public class ReminderFlowTests
             services.AddSingleton<IClock>(new TimeProviderClock(host.Clock));
             services.AddSingleton<IWidgetHost>(host.Window);
             services.AddSingleton<ISendHistoryStore>(host.History);
+            services.AddSingleton<IPendingSendStore>(host.Pending);
             var tokens = new InMemoryTokenStore();
             await tokens.SaveAsync(new StoredToken("test-only", host.Clock.UtcNow.UtcDateTime.AddHours(8), "test@example.invalid"));
             services.AddSingleton<ITokenStore>(tokens);

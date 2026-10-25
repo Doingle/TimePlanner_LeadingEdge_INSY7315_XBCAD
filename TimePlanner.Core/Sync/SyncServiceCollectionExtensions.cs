@@ -42,6 +42,7 @@ namespace TimePlanner.Core.Sync
             //waking hosts can be slow so the timeout is generous
             services.AddSingleton(new DashboardClient(new HttpClient { BaseAddress = baseUri, Timeout = TimeSpan.FromSeconds(90) }));
             services.AddSingleton<ISendHistoryStore>(new FileSendHistoryStore(Path.Combine(folder, "sent-days.json")));
+            services.AddSingleton<IPendingSendStore>(new FilePendingSendStore(Path.Combine(folder, "pending-sends.json")));
 
             //dpapi exists only on windows
             if (OperatingSystem.IsWindows())
