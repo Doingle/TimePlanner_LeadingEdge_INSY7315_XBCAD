@@ -148,7 +148,46 @@ namespace TimePlanner.Widget.Services.Ai
                 prompt = DayPromptBuilder.Default;
             }
 
-            var apiKey = _keyStore.Get("compiler");
+            string? apiKey;
+            //retrieve organisation token or compiler api key
+            if (Settings.Compiler == CompilerKind.Dashboard)
+            {
+                var token = await _timeLogs.GetDashboardAccessTokenAsync();
+
+                //require active signed in account for organisation ai
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    throw new AiUnavailableException("Sign in to your organisation account to use organisation AI.");
+                }
+
+                apiKey = token;
+            }
+            //otherwise read local key store
+            else
+            {
+                apiKey = _keyStore.Get("compiler");
+            }
+
+            //apply day hardware choice to gpu layers when using ollama
+            if (Settings.Compiler == CompilerKind.Ollama)
+            {
+                //use graphics acceleration
+                if (Settings.DayHardware == HardwareChoice.Graphics)
+                {
+                    Settings.GpuLayers = null;
+                }
+                //force processor execution
+                else if (Settings.DayHardware == HardwareChoice.Processor)
+                {
+                    Settings.GpuLayers = 0;
+                }
+                //use measured hardware speed check result
+                else if (Settings.DayHardware == HardwareChoice.Automatic)
+                {
+                    Settings.GpuLayers = Settings.LastSpeedCheck?.GpuLayers;
+                }
+            }
+
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(Settings.TimeoutSeconds) };
             var compiler = AiProviders.CreateCompiler(Settings, http, apiKey, prompt);
 
@@ -166,6 +205,12 @@ namespace TimePlanner.Widget.Services.Ai
             //attempt to add each accepted entry
             foreach (var entry in entries)
             {
+                //skip suggestions without matched project
+                if (entry.ProjectPath == null || entry.ProjectPath.Count == 0)
+                {
+                    continue;
+                }
+
                 var edit = new EntryEdit(entry.Start, entry.End, entry.ProjectPath, entry.ActivityPath, entry.Note);
                 var result = await _timeLogs.AddEntryAsync(_session.User.UserId, edit);
 
@@ -321,7 +366,26 @@ namespace TimePlanner.Widget.Services.Ai
         //tests compiler connectivity and model readiness
         public async Task<string?> TestCompilerAsync(CancellationToken ct)
         {
-            var apiKey = _keyStore.Get("compiler");
+            string? apiKey;
+            //retrieve organisation token or compiler api key
+            if (Settings.Compiler == CompilerKind.Dashboard)
+            {
+                var token = await _timeLogs.GetDashboardAccessTokenAsync();
+
+                //require active signed in account for organisation ai
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    return "Sign in to your organisation account to use organisation AI.";
+                }
+
+                apiKey = token;
+            }
+            //otherwise read local key store
+            else
+            {
+                apiKey = _keyStore.Get("compiler");
+            }
+
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(Settings.TimeoutSeconds) };
             var compiler = AiProviders.CreateCompiler(Settings, http, apiKey, DayPromptBuilder.Default);
             return await compiler.TestAsync(ct);
