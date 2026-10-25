@@ -1,654 +1,841 @@
-using System.Diagnostics;
+using System.IO;
+using System.Net.Http;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using Microsoft.Win32;
 using TimePlanner.Core.Ai;
+using TimePlanner.Widget.Services;
 using TimePlanner.Widget.Services.Ai;
 
 namespace TimePlanner.Widget.Views
 {
     //-----------------------------
-    //configuration view for voice notes and day builder models
+    //two page settings view for voice notes and day compilation
     public partial class AiSettingsView : UserControl
     {
         private readonly WidgetFlow _flow;
         private readonly Action _back;
         private readonly bool _ready;
+        private readonly VoiceHardwareChoice _initialVoiceHardware;
 
-        private CancellationTokenSource? _downloadCts;
-        private bool _isDownloading;
+        private CancellationTokenSource? _setupCts;
+        private CancellationTokenSource? _dayModelDownloadCts;
+        private CancellationTokenSource? _voiceModelDownloadCts;
+        private CancellationTokenSource? _speedCheckCts;
 
-        private CancellationTokenSource? _dayModelCts;
-        private bool _isDownloadingDayModel;
+        private AiSettings Settings => _flow.Session.Preferences.Ai;
 
+        //-----------------------------
+        //initializes settings view and populates controls from preferences
         public AiSettingsView(WidgetFlow flow, Action back)
         {
             InitializeComponent();
             _flow = flow;
             _back = back;
+            _initialVoiceHardware = Settings.VoiceHardware;
 
-            var settings = Settings;
+            //wire setup card actions
+            SetupCard.InstallRequested += async () => await RunSetupAsync(1);
+            SetupCard.CancelRequested += () => _setupCts?.Cancel();
+            SetupCard.RetryRequested += async () => await RunSetupAsync(1);
 
-            VoiceEnabledSwitch.IsChecked = settings.VoiceEnabled;
+            //configure dev mode badge
+            DevBadge.Visibility = DevMode.Enabled ? Visibility.Visible : Visibility.Collapsed;
 
-            TranscriberSelect.ItemsSource = new[] { "This PC (Whisper)", "Other service" };
-            TranscriberSelect.SelectedIndex = settings.Transcriber == TranscriberKind.LocalWhisper ? 0 : 1;
+            //populate build my day models
+            DayModelSelect.ItemsSource = AiModelCatalog.DayModels.Select(m => $"{m.Label} ({m.SizeEstimate})").ToList();
+            var dayModelIdx = AiModelCatalog.DayModels.ToList().FindIndex(m => m.Id == Settings.CompilerModel);
+            DayModelSelect.SelectedIndex = dayModelIdx >= 0 ? dayModelIdx : 0;
 
-            var models = WhisperModelCatalog.Models;
-            VoiceModelSelect.ItemsSource = models.Select(m => $"{m.Label} ({m.About})").ToList();
-            var modelIdx = models.ToList().FindIndex(m => m.File == settings.WhisperModel);
-            VoiceModelSelect.SelectedIndex = modelIdx >= 0 ? modelIdx : 1;
+            //populate voice accuracy models
+            VoiceModelSelect.ItemsSource = AiModelCatalog.VoiceModels.Select(m => $"{m.Label} ({m.SizeEstimate})").ToList();
+            var voiceModelIdx = AiModelCatalog.VoiceModels.ToList().FindIndex(m => m.File == Settings.WhisperModel);
+            VoiceModelSelect.SelectedIndex = voiceModelIdx >= 0 ? voiceModelIdx : 0;
 
-            TranscriberAddressBox.Text = settings.TranscriberUrl;
-            TranscriberModelBox.Text = settings.TranscriberModel;
+            //populate hardware choices
+            DayHardwareSelect.ItemsSource = new[] { "Automatic (recommended)", "Graphics card", "Processor" };
+            DayHardwareSelect.SelectedIndex = Math.Clamp((int)Settings.DayHardware, 0, 2);
 
-            var savedTranscriberKey = _flow.Ai.KeyStore.Get("transcriber");
-            TranscriberKeySavedHint.Visibility = string.IsNullOrEmpty(savedTranscriberKey) ? Visibility.Collapsed : Visibility.Visible;
+            VoiceHardwareSelect.ItemsSource = new[] { "Automatic (recommended)", "Processor only" };
+            VoiceHardwareSelect.SelectedIndex = Settings.VoiceHardware == VoiceHardwareChoice.Processor ? 1 : 0;
 
-            CompilerEngineSelect.ItemsSource = new[] { "Ollama on this PC", "Other service (OpenAI-compatible)" };
-            CompilerEngineSelect.SelectedIndex = settings.Compiler == CompilerKind.Ollama ? 0 : 1;
+            //populate your own models section
+            OllamaAddressBox.Text = string.IsNullOrWhiteSpace(Settings.CompilerUrl) ? "http://localhost:11434" : Settings.CompilerUrl;
+            VoiceModelPathBox.Text = Settings.WhisperModelPath ?? "(built-in model)";
 
-            CompilerAddressBox.Text = settings.CompilerUrl;
-            OtherCompilerModelBox.Text = settings.CompilerModel;
-
-            var savedCompilerKey = _flow.Ai.KeyStore.Get("compiler");
-            CompilerKeySavedHint.Visibility = string.IsNullOrEmpty(savedCompilerKey) ? Visibility.Collapsed : Visibility.Visible;
-
-            UpdateVisibility();
-            UpdateDownloadButton();
-
-            _ready = true;
-
-            Loaded += async (s, e) =>
+            //populate engine radio buttons
+            if (Settings.Compiler == CompilerKind.Dashboard)
             {
-                await RefreshStatusLineAsync();
-                await LoadOllamaModelsAsync();
-            };
-        }
-
-        private AiSettings Settings => _flow.Session.Preferences.Ai;
-
-        //-----------------------------
-        //saves current preferences to disk
-        private void Save()
-        {
-            //guard against changes during setup
-            if (!_ready)
+                EngineOrgAiRadio.IsChecked = true;
+                OrgAiNotice.Visibility = Visibility.Visible;
+            }
+            else
             {
-                return;
+                EngineThisPcRadio.IsChecked = true;
+                OrgAiNotice.Visibility = Visibility.Collapsed;
             }
 
+            //configure developer mode visibility
+            if (DevMode.Enabled)
+            {
+                //dev feature not available to users
+                DevDirectApiPanel.Visibility = Visibility.Visible;
+                DevTranscriberSelect.ItemsSource = new[] { "Local Whisper", "OpenAI-compatible" };
+                DevTranscriberSelect.SelectedIndex = Settings.Transcriber == TranscriberKind.LocalWhisper ? 0 : 1;
+                DevTranscriberAddressBox.Text = Settings.TranscriberUrl;
+                DevTranscriberModelBox.Text = Settings.TranscriberModel;
+
+                DevCompilerSelect.ItemsSource = new[] { "Ollama", "Organisation AI", "OpenAI-compatible" };
+                DevCompilerSelect.SelectedIndex = Settings.Compiler switch
+                {
+                    CompilerKind.Ollama => 0,
+                    CompilerKind.Dashboard => 1,
+                    _ => 2
+                };
+                DevCompilerAddressBox.Text = Settings.CompilerUrl;
+                DevCompilerModelBox.Text = Settings.CompilerModel;
+            }
+            else
+            {
+                DevDirectApiPanel.Visibility = Visibility.Collapsed;
+                //check whether developer settings are inactive in user mode
+                if (Settings.Compiler == CompilerKind.OpenAiCompatible || Settings.Transcriber == TranscriberKind.OpenAiCompatible)
+                {
+                    DevSettingInactiveCaption.Visibility = Visibility.Visible;
+                }
+            }
+
+            UpdateVoiceSwitch();
+            UpdateDownloadButtons();
+            UpdateAdvancedSummary();
+            UpdateHardwareCaption();
+
+            _ = RefreshCardAndOrgStatusAsync();
+            _ready = true;
+        }
+
+        //-----------------------------
+        //saves preferences to persistent store
+        private void Save()
+        {
             _flow.SavePreferences();
         }
 
         //-----------------------------
-        //refreshes top status banner text from current state
-        private async Task RefreshStatusLineAsync()
+        //updates voice notes switch state and tooltip
+        private void UpdateVoiceSwitch()
         {
-            string voiceStatus;
-            if (!Settings.VoiceEnabled)
+            var isSetUp = Settings.SetupCompleted;
+            VoiceEnabledSwitch.IsEnabled = isSetUp;
+            VoiceEnabledSwitch.IsChecked = isSetUp && Settings.VoiceEnabled;
+            VoiceEnabledSwitch.ToolTip = isSetUp ? "Enable or disable voice notes" : "Install first";
+        }
+
+        //-----------------------------
+        //updates inline download button visibilities and labels
+        private void UpdateDownloadButtons()
+        {
+            var dayModel = AiModelCatalog.DayModels.ElementAtOrDefault(DayModelSelect.SelectedIndex) ?? AiModelCatalog.DayModels[0];
+            var dayPresent = dayModel.Id == Settings.CompilerModel && Settings.SetupCompleted;
+            DayModelDownloadButton.Visibility = dayPresent ? Visibility.Collapsed : Visibility.Visible;
+            DayModelDownloadButton.Content = $"Download ({dayModel.SizeEstimate})";
+
+            var voiceModel = AiModelCatalog.VoiceModels.ElementAtOrDefault(VoiceModelSelect.SelectedIndex) ?? AiModelCatalog.VoiceModels[0];
+            var voicePresent = _flow.ModelManager.IsDownloaded(voiceModel.File);
+            VoiceModelDownloadButton.Visibility = voicePresent ? Visibility.Collapsed : Visibility.Visible;
+            VoiceModelDownloadButton.Content = $"Download ({voiceModel.SizeEstimate})";
+        }
+
+        //-----------------------------
+        //updates summary text displayed on advanced nav row
+        private void UpdateAdvancedSummary()
+        {
+            var hw = Settings.DayHardware switch
             {
-                voiceStatus = "off";
-            }
-            else if (Settings.Transcriber == TranscriberKind.LocalWhisper &&
-                     !_flow.Ai.ModelManager.IsDownloaded(Settings.WhisperModel))
+                HardwareChoice.Graphics => "Graphics",
+                HardwareChoice.Processor => "Processor",
+                _ => "Automatic"
+            };
+
+            var engine = Settings.Compiler == CompilerKind.Dashboard ? "Organisation AI" : "This PC";
+            AdvancedSummary.Text = $"{hw} · {engine}";
+        }
+
+        //-----------------------------
+        //updates speed check caption under day hardware select
+        private void UpdateHardwareCaption()
+        {
+            var check = Settings.LastSpeedCheck;
+            //format measured tokens per second when available
+            if (check?.GraphicsTokensPerSec != null && check.ProcessorTokensPerSec != null)
             {
-                voiceStatus = "needs a voice model";
+                DayHardwareCaption.Text = $"Last check: graphics {check.GraphicsTokensPerSec:F0} tokens/s · processor {check.ProcessorTokensPerSec:F0} tokens/s";
             }
+            //otherwise state no speed check run yet
             else
             {
-                voiceStatus = "ready";
+                DayHardwareCaption.Text = "Not speed-checked yet";
             }
+        }
 
-            string compilerStatus = "ready";
-            if (Settings.Compiler == CompilerKind.Ollama)
+        //-----------------------------
+        //probes local ollama and dashboard status to update card state
+        private async Task RefreshCardAndOrgStatusAsync()
+        {
+            //organisation ai mode displays dedicated summary
+            if (Settings.Compiler == CompilerKind.Dashboard)
+            {
+                SetupCard.SetOrganisationAi();
+            }
+            //not setup displays initial install prompt
+            else if (!Settings.SetupCompleted)
+            {
+                SetupCard.SetNotSetUp();
+            }
+            //otherwise verify local engine health
+            else
             {
                 try
                 {
-                    var status = await _flow.Ai.CheckOllamaAsync(CancellationToken.None);
-                    compilerStatus = status.State switch
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                    var status = await _flow.Ai.CheckOllamaAsync(cts.Token);
+                    //ready when server running and model exists
+                    if (status.State == OllamaState.Ready)
                     {
-                        OllamaState.NotRunning => "needs Ollama",
-                        OllamaState.ModelMissing => "needs the model",
-                        _ => "ready"
-                    };
-                    UpdateOllamaSetupPanel(status.State);
+                        var hwName = Settings.DayHardware switch
+                        {
+                            HardwareChoice.Graphics => "the graphics card",
+                            HardwareChoice.Processor => "the processor",
+                            _ => (Settings.LastSpeedCheck?.GpuLayers != 0 ? "the graphics card" : "the processor")
+                        };
+                        SetupCard.SetReady($"Build my day uses {hwName}");
+                    }
+                    //prompt engine start when not running
+                    else if (status.State == OllamaState.NotRunning)
+                    {
+                        SetupCard.SetNeedsAttention("The AI engine isn't running.", "Check again");
+                    }
+                    //prompt model download when model missing
+                    else
+                    {
+                        SetupCard.SetNeedsAttention("The day model isn't downloaded yet.", "Download model");
+                    }
                 }
+                //handle probe timeout or network failure
                 catch
                 {
-                    compilerStatus = "needs Ollama";
-                    UpdateOllamaSetupPanel(OllamaState.NotRunning);
+                    SetupCard.SetNeedsAttention("Can't reach the AI engine.", "Check again");
                 }
             }
-            else
-            {
-                OllamaSetupPanel.Visibility = Visibility.Collapsed;
-            }
 
-            StatusBannerText.Text = $"Voice notes: {voiceStatus} · Build my day: {compilerStatus}";
-        }
-
-        //-----------------------------
-        //updates ollama helper panel according to server and model readiness
-        private void UpdateOllamaSetupPanel(OllamaState state)
-        {
-            if (Settings.Compiler != CompilerKind.Ollama)
-            {
-                OllamaSetupPanel.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            switch (state)
-            {
-                case OllamaState.NotRunning:
-                    OllamaSetupPanel.Visibility = Visibility.Visible;
-                    OllamaNotRunningPanel.Visibility = Visibility.Visible;
-                    OllamaModelMissingPanel.Visibility = Visibility.Collapsed;
-                    break;
-                case OllamaState.ModelMissing:
-                    OllamaSetupPanel.Visibility = Visibility.Visible;
-                    OllamaNotRunningPanel.Visibility = Visibility.Collapsed;
-                    OllamaModelMissingPanel.Visibility = Visibility.Visible;
-                    break;
-                case OllamaState.Ready:
-                    OllamaSetupPanel.Visibility = Visibility.Collapsed;
-                    break;
-            }
-        }
-
-        //-----------------------------
-        //updates visibility of conditional provider sections
-        private void UpdateVisibility()
-        {
-            var isLocalWhisper = Settings.Transcriber == TranscriberKind.LocalWhisper;
-            VoiceModelPanel.Visibility = isLocalWhisper ? Visibility.Visible : Visibility.Collapsed;
-            OtherTranscriberPanel.Visibility = isLocalWhisper ? Visibility.Collapsed : Visibility.Visible;
-
-            var isOllama = Settings.Compiler == CompilerKind.Ollama;
-            OllamaModelPanel.Visibility = isOllama ? Visibility.Visible : Visibility.Collapsed;
-            OtherCompilerPanel.Visibility = isOllama ? Visibility.Collapsed : Visibility.Visible;
-
-            if (!isOllama)
-            {
-                OllamaSetupPanel.Visibility = Visibility.Collapsed;
-            }
-        }
-
-        //-----------------------------
-        //updates download button text and availability
-        private void UpdateDownloadButton()
-        {
-            //keep button in cancel mode during active download
-            if (_isDownloading)
-            {
-                DownloadModelButton.Content = "Cancel";
-                DownloadModelButton.IsEnabled = true;
-                return;
-            }
-
-            var idx = VoiceModelSelect.SelectedIndex;
-            //guard against invalid model index
-            if (idx < 0 || idx >= WhisperModelCatalog.Models.Count)
-            {
-                return;
-            }
-
-            var option = WhisperModelCatalog.Models[idx];
-            var downloaded = _flow.Ai.ModelManager.IsDownloaded(option.File);
-
-            DownloadModelButton.Content = downloaded ? "Downloaded ✓" : "Download";
-            DownloadModelButton.IsEnabled = !downloaded;
-        }
-
-        //-----------------------------
-        //handles voice enabled toggle state
-        private void VoiceEnabled_Changed(object sender, RoutedEventArgs e)
-        {
-            Settings.VoiceEnabled = VoiceEnabledSwitch.IsChecked == true;
-            Save();
-            _ = RefreshStatusLineAsync();
-        }
-
-        //-----------------------------
-        //handles whisper model selection change
-        private void VoiceModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var idx = VoiceModelSelect.SelectedIndex;
-            //apply selected model file name
-            if (idx >= 0 && idx < WhisperModelCatalog.Models.Count)
-            {
-                Settings.WhisperModel = WhisperModelCatalog.Models[idx].File;
-                Save();
-                UpdateDownloadButton();
-                _ = RefreshStatusLineAsync();
-            }
-        }
-
-        //-----------------------------
-        //downloads selected whisper model or cancels active download
-        private async void DownloadModel_Click(object sender, RoutedEventArgs e)
-        {
-            //cancel download when running
-            if (_isDownloading)
-            {
-                _downloadCts?.Cancel();
-                return;
-            }
-
-            var idx = VoiceModelSelect.SelectedIndex;
-            //validate model index
-            if (idx < 0 || idx >= WhisperModelCatalog.Models.Count)
-            {
-                return;
-            }
-
-            var option = WhisperModelCatalog.Models[idx];
-            _isDownloading = true;
-            _downloadCts?.Dispose();
-            _downloadCts = new CancellationTokenSource();
-
-            DownloadProgressText.Visibility = Visibility.Visible;
-            DownloadProgressText.Text = "Downloading 0%";
-            UpdateDownloadButton();
-
-            var progress = new Progress<double>(p =>
-            {
-                DownloadProgressText.Text = $"Downloading {(int)(p * 100)}%";
-            });
-
+            //check dashboard organisation ai availability
             try
             {
-                await _flow.Ai.ModelManager.DownloadAsync(option.File, progress, _downloadCts.Token);
-                DownloadProgressText.Visibility = Visibility.Collapsed;
-                await RefreshStatusLineAsync();
+                var email = await _flow.Logs.GetDashboardEmailAsync();
+                //require dashboard sign in
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    EngineOrgAiRadio.IsEnabled = false;
+                    OrgAiDisabledReason.Text = "Sign in to the dashboard first";
+                    OrgAiDisabledReason.Visibility = Visibility.Visible;
+                }
+                //verify remote organisation ai status
+                else
+                {
+                    var token = await _flow.Logs.GetDashboardAccessTokenAsync();
+                    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                    var compiler = new DashboardDayCompiler(http, token, Settings.CompilerUrl);
+                    using var testCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    var test = await compiler.TestAsync(testCts.Token);
+
+                    //enable option when organisation ai configured
+                    if (test == null)
+                    {
+                        EngineOrgAiRadio.IsEnabled = true;
+                        OrgAiDisabledReason.Visibility = Visibility.Collapsed;
+                    }
+                    //otherwise show disabled reason
+                    else
+                    {
+                        EngineOrgAiRadio.IsEnabled = false;
+                        OrgAiDisabledReason.Text = "Not set up by your organisation";
+                        OrgAiDisabledReason.Visibility = Visibility.Visible;
+                    }
+                }
             }
+            //treat dashboard status error as unavailable
+            catch
+            {
+                EngineOrgAiRadio.IsEnabled = false;
+                OrgAiDisabledReason.Text = "Not set up by your organisation";
+                OrgAiDisabledReason.Visibility = Visibility.Visible;
+            }
+        }
+
+        //-----------------------------
+        //executes 4 step setup pipeline with cancellation support
+        private async Task RunSetupAsync(int startStep)
+        {
+            _setupCts = new CancellationTokenSource();
+            var progress = new Progress<AiSetupProgress>(p =>
+            {
+                SetupCard.SetInstalling(p.Step, p.TotalSteps, p.Description, p.Fraction, p.Step <= 3);
+            });
+
+            //execute setup steps
+            try
+            {
+                await _flow.AiSetup.RunSetupAsync(startStep, progress, _setupCts.Token);
+                Settings.SetupCompleted = true;
+                Settings.VoiceEnabled = true;
+                Save();
+
+                UpdateVoiceSwitch();
+                UpdateDownloadButtons();
+                UpdateAdvancedSummary();
+                UpdateHardwareCaption();
+                await RefreshCardAndOrgStatusAsync();
+            }
+            //handle cancellation
             catch (OperationCanceledException)
             {
-                DownloadProgressText.Text = "Cancelled";
+                SetupCard.SetNotSetUp();
             }
+            //handle setup failure
             catch (Exception ex)
             {
-                DownloadProgressText.Text = string.IsNullOrWhiteSpace(ex.Message) ? "Download failed." : ex.Message;
+                SetupCard.SetNeedsAttention(ex.Message, "Try again");
             }
             finally
             {
-                _isDownloading = false;
-                UpdateDownloadButton();
+                _setupCts.Dispose();
+                _setupCts = null;
             }
         }
 
         //-----------------------------
-        //imports model binary from user selected file path
-        private async void ImportModel_Click(object sender, RoutedEventArgs e)
+        //saves preferences and navigates back to caller
+        private void Back_Click(object sender, RoutedEventArgs e)
         {
-            var idx = VoiceModelSelect.SelectedIndex;
-            if (idx < 0 || idx >= WhisperModelCatalog.Models.Count)
+            Save();
+            _back();
+        }
+
+        //-----------------------------
+        //switches view from main page to advanced page
+        private void OpenAdvanced_Click(object sender, RoutedEventArgs e)
+        {
+            MainView.Visibility = Visibility.Collapsed;
+            AdvancedView.Visibility = Visibility.Visible;
+        }
+
+        //-----------------------------
+        //switches view from advanced page back to main page
+        private void CloseAdvanced_Click(object sender, RoutedEventArgs e)
+        {
+            AdvancedView.Visibility = Visibility.Collapsed;
+            MainView.Visibility = Visibility.Visible;
+            UpdateAdvancedSummary();
+        }
+
+        //-----------------------------
+        //handles voice enabled toggle state change
+        private void VoiceEnabled_Changed(object sender, RoutedEventArgs e)
+        {
+            //guard during initialization
+            if (!_ready)
             {
                 return;
             }
 
-            var option = WhisperModelCatalog.Models[idx];
+            Settings.VoiceEnabled = VoiceEnabledSwitch.IsChecked == true;
+            Save();
+        }
+
+        //-----------------------------
+        //handles day model selection change
+        private void DayModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            //guard during initialization
+            if (!_ready || DayModelSelect.SelectedIndex < 0)
+            {
+                return;
+            }
+
+            var choice = AiModelCatalog.DayModels[DayModelSelect.SelectedIndex];
+            Settings.CompilerModel = choice.Id;
+            Save();
+            UpdateDownloadButtons();
+        }
+
+        //-----------------------------
+        //downloads selected day model with progress reporting
+        private async void DayModelDownload_Click(object sender, RoutedEventArgs e)
+        {
+            var choice = AiModelCatalog.DayModels.ElementAtOrDefault(DayModelSelect.SelectedIndex) ?? AiModelCatalog.DayModels[0];
+            DayModelDownloadButton.IsEnabled = false;
+            DayModelProgressBar.Visibility = Visibility.Visible;
+            _dayModelDownloadCts = new CancellationTokenSource();
+
+            var progress = new Progress<double>(f => DayModelProgressBar.Value = Math.Clamp(f, 0.0, 1.0));
+            //pull model from ollama
+            try
+            {
+                await _flow.Ai.PullOllamaAsync(progress, _dayModelDownloadCts.Token);
+                DayModelProgressBar.Visibility = Visibility.Collapsed;
+                DayModelDownloadButton.Visibility = Visibility.Collapsed;
+                Save();
+                await RefreshCardAndOrgStatusAsync();
+            }
+            //handle cancellation or failure
+            catch
+            {
+                DayModelProgressBar.Visibility = Visibility.Collapsed;
+                DayModelDownloadButton.IsEnabled = true;
+            }
+            finally
+            {
+                _dayModelDownloadCts.Dispose();
+                _dayModelDownloadCts = null;
+            }
+        }
+
+        //-----------------------------
+        //handles voice model selection change
+        private void VoiceModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            //guard during initialization
+            if (!_ready || VoiceModelSelect.SelectedIndex < 0)
+            {
+                return;
+            }
+
+            var choice = AiModelCatalog.VoiceModels[VoiceModelSelect.SelectedIndex];
+            Settings.WhisperModel = choice.File;
+            Save();
+            UpdateDownloadButtons();
+        }
+
+        //-----------------------------
+        //downloads selected voice model with progress reporting
+        private async void VoiceModelDownload_Click(object sender, RoutedEventArgs e)
+        {
+            var choice = AiModelCatalog.VoiceModels.ElementAtOrDefault(VoiceModelSelect.SelectedIndex) ?? AiModelCatalog.VoiceModels[0];
+            VoiceModelDownloadButton.IsEnabled = false;
+            VoiceModelProgressBar.Visibility = Visibility.Visible;
+            _voiceModelDownloadCts = new CancellationTokenSource();
+
+            var progress = new Progress<double>(f => VoiceModelProgressBar.Value = Math.Clamp(f, 0.0, 1.0));
+            //download model to models folder
+            try
+            {
+                await _flow.ModelManager.DownloadAsync(choice.File, progress, _voiceModelDownloadCts.Token);
+                VoiceModelProgressBar.Visibility = Visibility.Collapsed;
+                VoiceModelDownloadButton.Visibility = Visibility.Collapsed;
+                Save();
+            }
+            //handle cancellation or failure
+            catch
+            {
+                VoiceModelProgressBar.Visibility = Visibility.Collapsed;
+                VoiceModelDownloadButton.IsEnabled = true;
+            }
+            finally
+            {
+                _voiceModelDownloadCts.Dispose();
+                _voiceModelDownloadCts = null;
+            }
+        }
+
+        //-----------------------------
+        //handles day hardware selection change
+        private void DayHardware_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            //guard during initialization
+            if (!_ready || DayHardwareSelect.SelectedIndex < 0)
+            {
+                return;
+            }
+
+            Settings.DayHardware = (HardwareChoice)DayHardwareSelect.SelectedIndex;
+            Save();
+            UpdateAdvancedSummary();
+        }
+
+        //-----------------------------
+        //handles voice hardware selection change
+        private void VoiceHardware_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            //guard during initialization
+            if (!_ready || VoiceHardwareSelect.SelectedIndex < 0)
+            {
+                return;
+            }
+
+            var choice = VoiceHardwareSelect.SelectedIndex == 1 ? VoiceHardwareChoice.Processor : VoiceHardwareChoice.Automatic;
+            Settings.VoiceHardware = choice;
+            VoiceRestartCaption.Visibility = choice != _initialVoiceHardware ? Visibility.Visible : Visibility.Collapsed;
+            Save();
+        }
+
+        //-----------------------------
+        //runs speed benchmark for day model
+        private async void SpeedCheck_Click(object sender, RoutedEventArgs e)
+        {
+            SpeedCheckButton.IsEnabled = false;
+            SpeedCheckButton.Content = "Checking speed…";
+            _speedCheckCts = new CancellationTokenSource();
+
+            //run speed check
+            try
+            {
+                using var http = new HttpClient { BaseAddress = new Uri(Settings.CompilerUrl.TrimEnd('/') + "/") };
+                var model = string.IsNullOrWhiteSpace(Settings.CompilerModel) ? "qwen2.5:3b" : Settings.CompilerModel;
+                var res = await SpeedCheck.RunAsync(http, model, _speedCheckCts.Token);
+
+                Settings.LastSpeedCheck = new SpeedResult(res.GraphicsTokensPerSec, res.ProcessorTokensPerSec, null, null, DateTime.UtcNow);
+                Save();
+                UpdateHardwareCaption();
+            }
+            //ignore speed check failure
+            catch
+            {
+            }
+            finally
+            {
+                SpeedCheckButton.IsEnabled = true;
+                SpeedCheckButton.Content = "Run speed check";
+                _speedCheckCts.Dispose();
+                _speedCheckCts = null;
+            }
+        }
+
+        //-----------------------------
+        //handles ollama address text change
+        private void OllamaAddress_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            //guard during initialization
+            if (!_ready)
+            {
+                return;
+            }
+
+            Settings.CompilerUrl = OllamaAddressBox.Text.Trim();
+            Save();
+        }
+
+        //-----------------------------
+        //refreshes installed models list from ollama
+        private async void RefreshOllamaModels_Click(object sender, RoutedEventArgs e)
+        {
+            RefreshOllamaModelsButton.IsEnabled = false;
+            //query installed models
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                var models = await _flow.Ai.ListOllamaModelsAsync(cts.Token);
+                OllamaModelSelect.ItemsSource = models;
+                var idx = models.ToList().IndexOf(Settings.CompilerModel);
+                //select current model when present
+                if (idx >= 0)
+                {
+                    OllamaModelSelect.SelectedIndex = idx;
+                }
+            }
+            //ignore communication failure
+            catch
+            {
+            }
+            finally
+            {
+                RefreshOllamaModelsButton.IsEnabled = true;
+            }
+        }
+
+        //-----------------------------
+        //handles ollama model selection change
+        private void OllamaModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            //guard during initialization
+            if (!_ready || OllamaModelSelect.SelectedItem is not string selected)
+            {
+                return;
+            }
+
+            Settings.CompilerModel = selected;
+            Save();
+        }
+
+        //-----------------------------
+        //tests ollama server connectivity and model readiness
+        private async void TestOllama_Click(object sender, RoutedEventArgs e)
+        {
+            TestOllamaButton.IsEnabled = false;
+            OllamaTestResult.Text = "Testing…";
+
+            //execute test probe
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                var err = await _flow.Ai.TestCompilerAsync(cts.Token);
+                OllamaTestResult.Text = err ?? "Working";
+            }
+            //record test failure
+            catch (Exception ex)
+            {
+                OllamaTestResult.Text = ex.Message;
+            }
+            finally
+            {
+                TestOllamaButton.IsEnabled = true;
+            }
+        }
+
+        //-----------------------------
+        //prompts user for custom ggml voice model file
+        private void ChooseVoiceFile_Click(object sender, RoutedEventArgs e)
+        {
             var dialog = new OpenFileDialog
             {
                 Title = "Choose voice model file",
-                Filter = "Whisper Model (*.bin)|*.bin|All files (*.*)|*.*",
-                FileName = option.File
+                Filter = "GGML model files (*.bin)|*.bin|All files (*.*)|*.*"
             };
 
-            if (dialog.ShowDialog() != true)
+            //process chosen file
+            if (dialog.ShowDialog() == true)
             {
-                return;
-            }
-
-            ImportModelButton.IsEnabled = false;
-            DownloadProgressText.Visibility = Visibility.Visible;
-            DownloadProgressText.Text = "Importing…";
-
-            try
-            {
-                await _flow.Ai.ModelManager.ImportAsync(dialog.FileName, option.File, CancellationToken.None);
-                DownloadProgressText.Text = "Imported ✓";
-                UpdateDownloadButton();
-                await RefreshStatusLineAsync();
-            }
-            catch (Exception ex)
-            {
-                DownloadProgressText.Text = string.IsNullOrWhiteSpace(ex.Message) ? "Couldn't import model." : ex.Message;
-            }
-            finally
-            {
-                ImportModelButton.IsEnabled = true;
-            }
-        }
-
-        //-----------------------------
-        //handles transcriber backend change
-        private void Transcriber_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            Settings.Transcriber = TranscriberSelect.SelectedIndex == 0
-                ? TranscriberKind.LocalWhisper
-                : TranscriberKind.OpenAiCompatible;
-
-            Save();
-            UpdateVisibility();
-            _ = RefreshStatusLineAsync();
-        }
-
-        //-----------------------------
-        //saves remote transcriber address
-        private void TranscriberAddress_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            Settings.TranscriberUrl = TranscriberAddressBox.Text.Trim();
-            Save();
-        }
-
-        //-----------------------------
-        //saves remote transcriber model
-        private void TranscriberModel_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            Settings.TranscriberModel = TranscriberModelBox.Text.Trim();
-            Save();
-        }
-
-        //-----------------------------
-        //encrypts and saves transcriber api key
-        private void TranscriberApiKey_PasswordChanged(object sender, RoutedEventArgs e)
-        {
-            //avoid saving before initialization complete
-            if (!_ready)
-            {
-                return;
-            }
-
-            var pwd = TranscriberApiKeyBox.Password;
-            if (!string.IsNullOrEmpty(pwd))
-            {
-                _flow.Ai.KeyStore.Set("transcriber", pwd);
-                TranscriberKeySavedHint.Visibility = Visibility.Visible;
-            }
-        }
-
-        //-----------------------------
-        //tests configured transcriber connection
-        private async void TestTranscriber_Click(object sender, RoutedEventArgs e)
-        {
-            TestTranscriberButton.IsEnabled = false;
-            TestTranscriberButton.Content = "Testing…";
-            TranscriberTestResult.Text = "Testing…";
-
-            try
-            {
-                var problem = await _flow.Ai.TestTranscriberAsync(CancellationToken.None);
-                TranscriberTestResult.Text = problem ?? "Working";
-            }
-            catch (Exception ex)
-            {
-                TranscriberTestResult.Text = string.IsNullOrWhiteSpace(ex.Message) ? "Connection test failed." : ex.Message;
-            }
-            finally
-            {
-                TestTranscriberButton.IsEnabled = true;
-                TestTranscriberButton.Content = "Test";
-            }
-        }
-
-        //-----------------------------
-        //handles day compiler backend change
-        private void CompilerEngine_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            Settings.Compiler = CompilerEngineSelect.SelectedIndex == 0
-                ? CompilerKind.Ollama
-                : CompilerKind.OpenAiCompatible;
-
-            Save();
-            UpdateVisibility();
-
-            //populate models when switching to ollama
-            if (Settings.Compiler == CompilerKind.Ollama)
-            {
-                _ = RefreshStatusLineAsync();
-                _ = LoadOllamaModelsAsync();
-            }
-            else
-            {
-                _ = RefreshStatusLineAsync();
-            }
-        }
-
-        //-----------------------------
-        //saves compiler server address
-        private void CompilerAddress_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            Settings.CompilerUrl = CompilerAddressBox.Text.Trim();
-            Save();
-        }
-
-        //-----------------------------
-        //opens external browser to download ollama
-        private void GetOllama_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
+                //validate file size and magic
+                if (IsValidGgmlFile(dialog.FileName))
                 {
-                    FileName = "https://ollama.com/download",
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                CompilerTestResult.Text = string.IsNullOrWhiteSpace(ex.Message) ? "Couldn't open browser." : ex.Message;
-            }
-        }
-
-        //-----------------------------
-        //rechecks ollama server and missing model presence
-        private async void CheckAgain_Click(object sender, RoutedEventArgs e)
-        {
-            CheckAgainButton.IsEnabled = false;
-
-            try
-            {
-                await RefreshStatusLineAsync();
-                await LoadOllamaModelsAsync();
-            }
-            catch (Exception ex)
-            {
-                CompilerTestResult.Text = string.IsNullOrWhiteSpace(ex.Message) ? "Couldn't verify Ollama." : ex.Message;
-            }
-            finally
-            {
-                CheckAgainButton.IsEnabled = true;
-            }
-        }
-
-        //-----------------------------
-        //pulls missing ollama model or cancels active pull
-        private async void DownloadDayModel_Click(object sender, RoutedEventArgs e)
-        {
-            if (_isDownloadingDayModel)
-            {
-                _dayModelCts?.Cancel();
-                return;
-            }
-
-            _isDownloadingDayModel = true;
-            _dayModelCts?.Dispose();
-            _dayModelCts = new CancellationTokenSource();
-
-            DownloadDayModelButton.Content = "Cancel";
-            DownloadDayModelButton.IsEnabled = true;
-            DayModelDownloadText.Visibility = Visibility.Visible;
-            DayModelDownloadText.Text = "Downloading 0%";
-
-            var progress = new Progress<double>(p =>
-            {
-                DayModelDownloadText.Text = $"Downloading {(int)(p * 100)}%";
-            });
-
-            try
-            {
-                await _flow.Ai.PullOllamaAsync(progress, _dayModelCts.Token);
-                DayModelDownloadText.Visibility = Visibility.Collapsed;
-                await RefreshStatusLineAsync();
-                await LoadOllamaModelsAsync();
-            }
-            catch (OperationCanceledException)
-            {
-                DayModelDownloadText.Text = "Cancelled";
-            }
-            catch (Exception ex)
-            {
-                DayModelDownloadText.Text = string.IsNullOrWhiteSpace(ex.Message) ? "Model download failed." : ex.Message;
-            }
-            finally
-            {
-                _isDownloadingDayModel = false;
-                DownloadDayModelButton.Content = "Download model";
-                DownloadDayModelButton.IsEnabled = true;
-            }
-        }
-
-        //-----------------------------
-        //fetches models from local ollama instance
-        private async Task LoadOllamaModelsAsync()
-        {
-            RefreshModelsButton.IsEnabled = false;
-
-            try
-            {
-                var models = await _flow.Ai.ListOllamaModelsAsync(CancellationToken.None);
-
-                //show help text if no models returned
-                if (models.Count == 0)
-                {
-                    OllamaHelpText.Text = "No models found. Use Download model above.";
-                    OllamaHelpText.Visibility = Visibility.Visible;
-                    OllamaModelSelect.ItemsSource = new List<string>();
+                    Settings.WhisperModelPath = dialog.FileName;
+                    VoiceModelPathBox.Text = dialog.FileName;
+                    VoiceTestResult.Text = string.Empty;
+                    Save();
                 }
+                //warn on invalid file format
                 else
                 {
-                    OllamaHelpText.Visibility = Visibility.Collapsed;
-                    OllamaModelSelect.ItemsSource = models;
-
-                    //select configured model when found
-                    if (models.Contains(Settings.CompilerModel))
-                    {
-                        OllamaModelSelect.SelectedItem = Settings.CompilerModel;
-                    }
-                    else if (models.Count > 0)
-                    {
-                        OllamaModelSelect.SelectedIndex = 0;
-                    }
+                    VoiceTestResult.Text = "Must be a valid ggml model file at least 10 MB";
                 }
             }
-            catch (Exception)
-            {
-                OllamaHelpText.Text = "No models found. Use Download model above.";
-                OllamaHelpText.Visibility = Visibility.Visible;
-            }
-            finally
-            {
-                RefreshModelsButton.IsEnabled = true;
-            }
         }
 
         //-----------------------------
-        //refreshes installed ollama models list
-        private async void RefreshModels_Click(object sender, RoutedEventArgs e)
+        //clears custom voice model file reverting to built in model
+        private void ClearVoiceFile_Click(object sender, RoutedEventArgs e)
         {
-            RefreshModelsButton.IsEnabled = false;
-
-            try
-            {
-                await LoadOllamaModelsAsync();
-                await RefreshStatusLineAsync();
-            }
-            catch (Exception ex)
-            {
-                CompilerTestResult.Text = string.IsNullOrWhiteSpace(ex.Message) ? "Refresh failed." : ex.Message;
-            }
-            finally
-            {
-                RefreshModelsButton.IsEnabled = true;
-            }
-        }
-
-        //-----------------------------
-        //handles ollama model dropdown selection change
-        private void OllamaModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            //update settings if valid item selected
-            if (OllamaModelSelect.SelectedItem is string model && !string.IsNullOrWhiteSpace(model))
-            {
-                Settings.CompilerModel = model;
-                Save();
-                _ = RefreshStatusLineAsync();
-            }
-        }
-
-        //-----------------------------
-        //saves remote compiler model
-        private void OtherCompilerModel_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            Settings.CompilerModel = OtherCompilerModelBox.Text.Trim();
+            Settings.WhisperModelPath = null;
+            VoiceModelPathBox.Text = "(built-in model)";
+            VoiceTestResult.Text = string.Empty;
             Save();
         }
 
         //-----------------------------
-        //encrypts and saves compiler api key
-        private void CompilerApiKey_PasswordChanged(object sender, RoutedEventArgs e)
+        //tests voice model transcription readiness
+        private async void TestVoice_Click(object sender, RoutedEventArgs e)
         {
-            //avoid saving before initialization complete
+            TestVoiceButton.IsEnabled = false;
+            VoiceTestResult.Text = "Testing…";
+
+            //execute test probe
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                var err = await _flow.Ai.TestTranscriberAsync(cts.Token);
+                VoiceTestResult.Text = err ?? "Working";
+            }
+            //record test failure
+            catch (Exception ex)
+            {
+                VoiceTestResult.Text = ex.Message;
+            }
+            finally
+            {
+                TestVoiceButton.IsEnabled = true;
+            }
+        }
+
+        //-----------------------------
+        //handles engine radio button selection
+        private void Engine_Checked(object sender, RoutedEventArgs e)
+        {
+            //guard during initialization
             if (!_ready)
             {
                 return;
             }
 
-            var pwd = CompilerApiKeyBox.Password;
-            if (!string.IsNullOrEmpty(pwd))
+            var isOrg = EngineOrgAiRadio.IsChecked == true;
+            Settings.Compiler = isOrg ? CompilerKind.Dashboard : CompilerKind.Ollama;
+            OrgAiNotice.Visibility = isOrg ? Visibility.Visible : Visibility.Collapsed;
+            Save();
+            UpdateAdvancedSummary();
+            _ = RefreshCardAndOrgStatusAsync();
+        }
+
+        //-----------------------------
+        //checks whether file exists exceeds 10mb and starts with ggml magic
+        private static bool IsValidGgmlFile(string path)
+        {
+            //inspect file size and binary header
+            try
             {
-                _flow.Ai.KeyStore.Set("compiler", pwd);
-                CompilerKeySavedHint.Visibility = Visibility.Visible;
+                var fi = new FileInfo(path);
+                //file must exist and exceed minimum model threshold
+                if (!fi.Exists || fi.Length < 10 * 1024 * 1024)
+                {
+                    return false;
+                }
+
+                using var stream = File.OpenRead(path);
+                var header = new byte[4];
+                var read = stream.Read(header, 0, 4);
+                //require full 4 byte header read
+                if (read < 4)
+                {
+                    return false;
+                }
+
+                var magic = System.Text.Encoding.ASCII.GetString(header);
+                return magic == "ggml" || magic == "ggmf" || magic == "ggmv" || magic == "ggjt";
+            }
+            //treat any inspection error as invalid file
+            catch
+            {
+                return false;
             }
         }
 
         //-----------------------------
-        //tests configured compiler connection
-        private async void TestCompiler_Click(object sender, RoutedEventArgs e)
+        //handles dev transcriber service change
+        //dev feature not available to users
+        private void DevTranscriber_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            TestCompilerButton.IsEnabled = false;
-            TestCompilerButton.Content = "Testing…";
-            CompilerTestResult.Text = "Testing…";
+            if (!_ready || DevTranscriberSelect.SelectedIndex < 0) return;
+            Settings.Transcriber = DevTranscriberSelect.SelectedIndex == 0 ? TranscriberKind.LocalWhisper : TranscriberKind.OpenAiCompatible;
+            DevTranscriberDetailsPanel.Visibility = Settings.Transcriber == TranscriberKind.OpenAiCompatible ? Visibility.Visible : Visibility.Collapsed;
+            Save();
+        }
 
+        //-----------------------------
+        //handles dev transcriber address change
+        //dev feature not available to users
+        private void DevTranscriberAddress_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!_ready) return;
+            Settings.TranscriberUrl = DevTranscriberAddressBox.Text.Trim();
+            Save();
+        }
+
+        //-----------------------------
+        //handles dev transcriber model change
+        //dev feature not available to users
+        private void DevTranscriberModel_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!_ready) return;
+            Settings.TranscriberModel = DevTranscriberModelBox.Text.Trim();
+            Save();
+        }
+
+        //-----------------------------
+        //handles dev transcriber api key change
+        //dev feature not available to users
+        private void DevTranscriberApiKey_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            if (!_ready) return;
+            _flow.Ai.KeyStore.Set("transcriber", DevTranscriberApiKeyBox.Password);
+        }
+
+        //-----------------------------
+        //tests dev transcriber connection
+        //dev feature not available to users
+        private async void DevTestTranscriber_Click(object sender, RoutedEventArgs e)
+        {
+            DevTestTranscriberButton.IsEnabled = false;
+            DevTranscriberTestResult.Text = "Testing…";
             try
             {
-                var problem = await _flow.Ai.TestCompilerAsync(CancellationToken.None);
-                CompilerTestResult.Text = problem ?? "Working";
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var err = await _flow.Ai.TestTranscriberAsync(cts.Token);
+                DevTranscriberTestResult.Text = err ?? "Working";
             }
             catch (Exception ex)
             {
-                CompilerTestResult.Text = string.IsNullOrWhiteSpace(ex.Message) ? "Connection test failed." : ex.Message;
+                DevTranscriberTestResult.Text = ex.Message;
             }
             finally
             {
-                TestCompilerButton.IsEnabled = true;
-                TestCompilerButton.Content = "Test";
+                DevTestTranscriberButton.IsEnabled = true;
             }
         }
 
         //-----------------------------
-        //navigates back to previous screen
-        private void Back_Click(object sender, RoutedEventArgs e)
+        //handles dev compiler service change
+        //dev feature not available to users
+        private void DevCompiler_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            _back();
+            if (!_ready || DevCompilerSelect.SelectedIndex < 0) return;
+            Settings.Compiler = DevCompilerSelect.SelectedIndex switch
+            {
+                0 => CompilerKind.Ollama,
+                1 => CompilerKind.Dashboard,
+                _ => CompilerKind.OpenAiCompatible
+            };
+            DevCompilerDetailsPanel.Visibility = Settings.Compiler == CompilerKind.OpenAiCompatible ? Visibility.Visible : Visibility.Collapsed;
+            Save();
         }
 
         //-----------------------------
-        //finishes editing settings
-        private void Done_Click(object sender, RoutedEventArgs e)
+        //handles dev compiler address change
+        //dev feature not available to users
+        private void DevCompilerAddress_TextChanged(object sender, TextChangedEventArgs e)
         {
-            _back();
+            if (!_ready) return;
+            Settings.CompilerUrl = DevCompilerAddressBox.Text.Trim();
+            Save();
+        }
+
+        //-----------------------------
+        //handles dev compiler model change
+        //dev feature not available to users
+        private void DevCompilerModel_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!_ready) return;
+            Settings.CompilerModel = DevCompilerModelBox.Text.Trim();
+            Save();
+        }
+
+        //-----------------------------
+        //handles dev compiler api key change
+        //dev feature not available to users
+        private void DevCompilerApiKey_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            if (!_ready) return;
+            _flow.Ai.KeyStore.Set("compiler", DevCompilerApiKeyBox.Password);
+        }
+
+        //-----------------------------
+        //tests dev compiler connection
+        //dev feature not available to users
+        private async void DevTestCompiler_Click(object sender, RoutedEventArgs e)
+        {
+            DevTestCompilerButton.IsEnabled = false;
+            DevCompilerTestResult.Text = "Testing…";
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var err = await _flow.Ai.TestCompilerAsync(cts.Token);
+                DevCompilerTestResult.Text = err ?? "Working";
+            }
+            catch (Exception ex)
+            {
+                DevCompilerTestResult.Text = ex.Message;
+            }
+            finally
+            {
+                DevTestCompilerButton.IsEnabled = true;
+            }
         }
     }
 }
