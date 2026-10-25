@@ -63,7 +63,10 @@ namespace TimePlanner.Widget
             scheduler.Ticked += (_, _) =>
             {
                 if (_loaded)
+                {
                     _ = Reminder.RefreshAsync(Scheduler.EndedToday);
+                    _ = RetryPendingSendsAsync();
+                }
                 if (_screen is Screen.Idle or Screen.Timer && Scheduler.IsDue)
                     CheckIn(announce: true);
             };
@@ -93,6 +96,15 @@ namespace TimePlanner.Widget
             _endedDay = Scheduler.EndedToday ? await _log.GetDayAsync(Session.User.UserId, Scheduler.Now) : null;
             _loaded = true;
             _ = Reminder.RefreshAsync(Scheduler.EndedToday);
+            _ = RetryPendingSendsAsync(force: true);
+        }
+
+        //-----------------------------
+        //sends again the days the user already sent that did not get through. Started without waiting, a day that cannot be sent stays waiting for the next try
+        private async Task RetryPendingSendsAsync(bool force = false)
+        {
+            foreach (var day in await _log.RetryPendingSendsAsync(Session.User.UserId, force))
+                Reminder.DaySent(day);
         }
 
         /// <summary>The first screen: Setup, or the idle widget when today is still being tracked (the widget was restarted).</summary>
@@ -315,8 +327,8 @@ namespace TimePlanner.Widget
         public async Task ShowTimesheetAsync(DateOnly day, Action back)
         {
             var slots = await _log.GetTimesheetAsync(Session.User.UserId, day);
-            var (preview, sent) = await _log.GetSendStateAsync(Session.User.UserId, day);
-            Present(Screen.Timesheet, new TimesheetReviewView(this, day, slots, preview, sent, back));
+            var (preview, sent, pending) = await _log.GetSendStateAsync(Session.User.UserId, day);
+            Present(Screen.Timesheet, new TimesheetReviewView(this, day, slots, preview, sent, back, pending));
         }
 
         //-----------------------------
@@ -359,7 +371,10 @@ namespace TimePlanner.Widget
         {
             var outcome = await _log.SignInToDashboardAsync(email, password);
             if (outcome.Status == SignInStatus.SignedIn)
+            {
                 DashboardSignedIn?.Invoke(this, EventArgs.Empty);
+                _ = RetryPendingSendsAsync(force: true);
+            }
             return outcome;
         }
 

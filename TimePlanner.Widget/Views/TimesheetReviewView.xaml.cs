@@ -24,7 +24,7 @@ namespace TimePlanner.Widget.Views
         private DispatcherTimer? _undoTimer;
         private Action? _undoAction;
 
-        public TimesheetReviewView(WidgetFlow flow, DateOnly day, IReadOnlyList<TimesheetSlot> slots, DayPreview preview, SentDay? sent, Action back)
+        public TimesheetReviewView(WidgetFlow flow, DateOnly day, IReadOnlyList<TimesheetSlot> slots, DayPreview preview, SentDay? sent, Action back, PendingDay? pending = null)
         {
             InitializeComponent();
             _flow = flow;
@@ -36,8 +36,16 @@ namespace TimePlanner.Widget.Views
             var totalLogged = slots.Where(s => s.Kind == SlotKind.Entry).Sum(s => (s.End - s.Start).TotalMinutes);
             Subtitle.Text = $"{Format.Day(dayDate)} · {Format.Duration(TimeSpan.FromMinutes(totalLogged))}";
 
-            //sets send status caption
-            if (sent == null)
+            //sets send status caption. A send that is still on its way comes first, whatever was sent before
+            if (pending is { Rejected: false })
+            {
+                StatusText.Text = "Waiting to send · will retry";
+            }
+            else if (pending is { Rejected: true })
+            {
+                StatusText.Text = $"Not sent · {pending.Message ?? "the dashboard refused it"}";
+            }
+            else if (sent == null)
             {
                 StatusText.Text = "Not sent";
             }
@@ -448,6 +456,12 @@ namespace TimePlanner.Widget.Views
             }
 
             MessageBox.Show(outcome.Message, "Send day");
+
+            //a day that is now waiting to be sent shows that in its status
+            if (outcome.Retryable)
+            {
+                ReopenTimesheet();
+            }
         }
 
         //-----------------------------

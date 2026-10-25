@@ -26,6 +26,14 @@ public sealed class ReminderHistory : ISendHistoryStore
     public Task MarkChangedAsync(DateOnly day, DateTime at) => Task.CompletedTask;
 }
 
+public sealed class ReminderPending : IPendingSendStore
+{
+    public List<PendingDay> Days { get; } = [];
+    public Task<IReadOnlyList<PendingDay>> GetAsync() => Task.FromResult<IReadOnlyList<PendingDay>>(Days.ToArray());
+    public Task SaveAsync(PendingDay pending) { Days.RemoveAll(d => d.Day == pending.Day); Days.Add(pending); return Task.CompletedTask; }
+    public Task RemoveAsync(DateOnly day) { Days.RemoveAll(d => d.Day == day); return Task.CompletedTask; }
+}
+
 public class UnsentDayReminderTests
 {
     private readonly ReminderClock _clock = new();
