@@ -33,6 +33,8 @@ namespace TimePlanner.Widget.Services.Ai
                 throw new AiUnavailableException("The voice model isn't downloaded yet. Open Settings › Voice and AI.");
             }
 
+            EnsureRuntimeConfigured();
+
             WhisperFactory factory;
             lock (_lock)
             {
@@ -89,6 +91,33 @@ namespace TimePlanner.Widget.Services.Ai
             }
 
             return Task.FromResult<string?>("The voice model isn't downloaded yet. Open Settings › Voice and AI.");
+        }
+
+        private static bool _runtimeConfigured;
+        private static readonly object _configLock = new();
+
+        //-----------------------------
+        //configures native whisper runtime library order once
+        private void EnsureRuntimeConfigured()
+        {
+            lock (_configLock)
+            {
+                //configure runtime order once
+                if (!_runtimeConfigured)
+                {
+                    _runtimeConfigured = true;
+                    //force cpu when processor selected
+                    if (_settings.VoiceHardware == VoiceHardwareChoice.Processor)
+                    {
+                        Whisper.net.LibraryLoader.RuntimeOptions.RuntimeLibraryOrder = [Whisper.net.LibraryLoader.RuntimeLibrary.Cpu];
+                    }
+                    //otherwise allow vulkan with cpu fallback
+                    else
+                    {
+                        Whisper.net.LibraryLoader.RuntimeOptions.RuntimeLibraryOrder = [Whisper.net.LibraryLoader.RuntimeLibrary.Vulkan, Whisper.net.LibraryLoader.RuntimeLibrary.Cpu];
+                    }
+                }
+            }
         }
 
         //-----------------------------
