@@ -1,0 +1,25 @@
+<UserControl x:Class="TimePlanner.Widget.Views.UnsentEarlierDayView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
+             Visibility="Collapsed">
+    <!-- "Yesterday isn't sent yet": send icon, the day and what was logged, and Send now under them -->
+    <Border Style="{StaticResource Stat}" Padding="12" Margin="{StaticResource GapSection}">
+        <DockPanel>
+            <controls:Icon Kind="Send" DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Top" />
+            <StackPanel>
+                <TextBlock x:Name="TitleText" Style="{StaticResource Text.Body}" FontWeight="{StaticResource FontWeightSemibold}"
+                           Text="Yesterday isn't sent yet" />
+                <TextBlock x:Name="DetailText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}"
+                           Text="Thursday 22 Oct · 7h 30m logged" />
+                <Button x:Name="SendButton" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Left"
+                        Height="{StaticResource Space32}" Padding="12,0" Margin="0,8,0,0" Click="Send_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <controls:Icon Kind="Send" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Send now" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</UserControl>
