@@ -12,6 +12,10 @@ namespace TimePlanner.Core.Services
         //shortest piece of work saved as an entry
         public static readonly TimeSpan MinimumPiece = TimeSpan.FromMinutes(1);
 
+        //-----------------------------
+        //the same time with the seconds dropped (10:00:37 becomes 10:00:00)
+        public static DateTime ToMinute(DateTime time) => new(time.Ticks - time.Ticks % TimeSpan.TicksPerMinute, time.Kind);
+
         private readonly IDaySessionRepository _sessions;
         private readonly ITimeEntryRepository _entries;
         private readonly IWorkTaskRepository _tasks;
@@ -181,7 +185,10 @@ namespace TimePlanner.Core.Services
 
             var session = await RequireActiveSessionAsync(request.UserId);
             var span = await GetUnloggedSpanAsync(request.UserId, request.Now);
+            //logged times drop their seconds, so they match what the timesheet editor shows and back to back entries stay exactly joined.
+            //rounding down means an entry never ends later than the clock. Whatever is dropped is still unlogged and counts at the next check in
             var pieces = SplitAroundPauses(session.Pauses, span.Start, span.End)
+                .Select(p => (Start: ToMinute(p.Start), End: ToMinute(p.End)))
                 .Where(p => p.End - p.Start >= MinimumPiece)
                 .ToList();
 
