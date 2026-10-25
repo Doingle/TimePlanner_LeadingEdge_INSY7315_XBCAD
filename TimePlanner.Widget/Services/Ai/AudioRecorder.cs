@@ -1,113 +1,185 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using TimePlanner.Core.Ai;
 
 namespace TimePlanner.Widget.Services.Ai
 {
     //-----------------------------
-    //manages 16khz mono microphone audio capture
+    //captures microphone audio via wasapi shared mode and resamples to 16khz mono
     public sealed class AudioRecorder : IDisposable
     {
-        private WaveInEvent? _waveIn;
+        private readonly AiSettings? _settings;
+        private readonly MicrophoneCatalog _catalog;
+
+        private WasapiCapture? _capture;
+        private BufferedWaveProvider? _bufferedProvider;
+        private WdlResamplingSampleProvider? _resampler;
         private WaveFileWriter? _writer;
         private DispatcherTimer? _timer;
         private Stopwatch? _stopwatch;
         private string? _tempPath;
         private bool _cancelled;
         private bool _isDisposed;
+        private bool _saveToFile;
+        private readonly List<float> _recordedSamples = new();
 
         public event Action<double>? LevelChanged;
         public event Action<TimeSpan>? Elapsed;
         public event Action<string?, TimeSpan, string?>? Stopped;
 
         public bool HeardSpeech { get; private set; }
-        public bool IsRecording => _waveIn != null;
+        public bool IsDigitalSilence { get; private set; }
+        public bool IsRecording => _capture != null;
 
         //-----------------------------
-        //begins recording from default audio input device
-        public void Start()
+        //initializes recorder with optional custom settings and catalog
+        public AudioRecorder(AiSettings? settings = null, MicrophoneCatalog? catalog = null)
         {
-            //verify audio input device availability
-            if (WaveInEvent.DeviceCount == 0)
+            _settings = settings;
+            _catalog = catalog ?? new MicrophoneCatalog();
+        }
+
+        //-----------------------------
+        //begins audio recording with option to save wav file to disk
+        public void Start(bool saveToFile = true)
+        {
+            _saveToFile = saveToFile;
+            _recordedSamples.Clear();
+            HeardSpeech = false;
+            IsDigitalSilence = false;
+            _cancelled = false;
+
+            var device = _catalog.Resolve(_settings?.MicrophoneDeviceId);
+            //verify audio capture device availability
+            if (device == null)
             {
                 Dispatch(() => Stopped?.Invoke(null, TimeSpan.Zero, "No microphone found. Plug one in, or type your update instead."));
                 return;
             }
 
-            var dir = Path.Combine(Path.GetTempPath(), "TimePlanner");
-            Directory.CreateDirectory(dir);
-
-            _tempPath = Path.Combine(dir, $"rec-{Guid.NewGuid():N}.wav");
-            HeardSpeech = false;
-            _cancelled = false;
+            //prepare storage file when recording to disk
+            if (_saveToFile)
+            {
+                var dir = Path.Combine(Path.GetTempPath(), "TimePlanner");
+                Directory.CreateDirectory(dir);
+                _tempPath = Path.Combine(dir, $"rec-{Guid.NewGuid():N}.wav");
+            }
+            else
+            {
+                _tempPath = null;
+            }
 
             try
             {
-                _waveIn = new WaveInEvent
+                _capture = new WasapiCapture(device)
                 {
-                    WaveFormat = new WaveFormat(16000, 16, 1),
-                    BufferMilliseconds = 50
+                    ShareMode = AudioClientShareMode.Shared
                 };
 
-                _writer = new WaveFileWriter(_tempPath, _waveIn.WaveFormat);
-                _waveIn.DataAvailable += OnDataAvailable;
-                _waveIn.RecordingStopped += OnRecordingStopped;
+                var nativeFormat = _capture.WaveFormat;
+                _bufferedProvider = new BufferedWaveProvider(nativeFormat)
+                {
+                    DiscardOnBufferOverflow = true,
+                    ReadFully = false,
+                    BufferLength = nativeFormat.AverageBytesPerSecond * 5
+                };
+
+                ISampleProvider sampleProvider = _bufferedProvider.ToSampleProvider();
+                //downmix multi channel input to mono
+                if (sampleProvider.WaveFormat.Channels > 1)
+                {
+                    sampleProvider = sampleProvider.ToMono();
+                }
+
+                _resampler = new WdlResamplingSampleProvider(sampleProvider, 16000);
+
+                //initialize wav writer when saving to disk
+                if (_saveToFile && _tempPath != null)
+                {
+                    _writer = new WaveFileWriter(_tempPath, new WaveFormat(16000, 16, 1));
+                }
+
+                _capture.DataAvailable += OnDataAvailable;
+                _capture.RecordingStopped += OnRecordingStopped;
 
                 _stopwatch = Stopwatch.StartNew();
                 _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
                 _timer.Tick += OnTimerTick;
                 _timer.Start();
 
-                _waveIn.StartRecording();
+                _capture.StartRecording();
             }
-            //map mic access permission exception
-            catch (Exception)
+            catch (Exception ex)
             {
+                //clean up resources on capture start failure
                 CleanUpWriter();
-                CleanUpWaveIn();
+                CleanUpCapture();
                 DeleteTempFile();
 
+                Trace.TraceWarning($"Microphone capture start failed: {ex.Message}");
                 Dispatch(() => Stopped?.Invoke(null, TimeSpan.Zero,
                     "Windows is blocking the microphone. Turn on Settings › Privacy & security › Microphone › Let desktop apps access your microphone."));
             }
         }
 
         //-----------------------------
-        //handles incoming audio buffer and peak meter calculation
+        //processes recorded audio chunk and writes converted pcm
         private void OnDataAvailable(object? sender, WaveInEventArgs e)
         {
-            //write buffer chunk to disk
-            if (_writer != null && e.BytesRecorded > 0)
+            //process recorded audio samples
+            if (_bufferedProvider != null && _resampler != null && e.BytesRecorded > 0)
             {
-                _writer.Write(e.Buffer, 0, e.BytesRecorded);
+                _bufferedProvider.AddSamples(e.Buffer, 0, e.BytesRecorded);
 
-                double peak = 0;
-                //calculate peak sample amplitude
-                for (var i = 0; i < e.BytesRecorded; i += 2)
+                var floatBuffer = new float[4096];
+                int samplesRead;
+                double latestPeak = 0;
+
+                //read all resampled 16khz mono float samples
+                while ((samplesRead = _resampler.Read(floatBuffer, 0, floatBuffer.Length)) > 0)
                 {
-                    var sample = (short)(e.Buffer[i] | (e.Buffer[i + 1] << 8));
-                    var sampleAbs = Math.Abs(sample) / 32768.0;
-                    if (sampleAbs > peak)
+                    //append samples for speech analysis
+                    for (var i = 0; i < samplesRead; i++)
                     {
-                        peak = sampleAbs;
+                        var s = floatBuffer[i];
+                        _recordedSamples.Add(s);
+                        var abs = Math.Abs(s);
+                        //track peak amplitude
+                        if (abs > latestPeak)
+                        {
+                            latestPeak = abs;
+                        }
+                    }
+
+                    //write sixteen bit pcm to file
+                    if (_writer != null)
+                    {
+                        var pcmBytes = new byte[samplesRead * 2];
+                        //convert float to signed 16 bit integer bytes
+                        for (var i = 0; i < samplesRead; i++)
+                        {
+                            var clamped = Math.Clamp(floatBuffer[i], -1.0f, 1.0f);
+                            var val = (short)(clamped < 0 ? clamped * 32768f : clamped * 32767f);
+                            pcmBytes[i * 2] = (byte)(val & 0xFF);
+                            pcmBytes[i * 2 + 1] = (byte)((val >> 8) & 0xFF);
+                        }
+
+                        _writer.Write(pcmBytes, 0, pcmBytes.Length);
                     }
                 }
 
-                //flag speech when peak crosses threshold
-                if (peak > 0.04)
-                {
-                    HeardSpeech = true;
-                }
-
-                Dispatch(() => LevelChanged?.Invoke(peak));
+                Dispatch(() => LevelChanged?.Invoke(Math.Min(1.0, latestPeak)));
             }
         }
 
         //-----------------------------
-        //dispatches elapsed time and triggers auto stop at limit
+        //handles interval timer tick to report elapsed time
         private void OnTimerTick(object? sender, EventArgs e)
         {
             //dispatch elapsed duration
@@ -133,11 +205,11 @@ namespace TimePlanner.Widget.Services.Ai
 
             try
             {
-                _waveIn?.StopRecording();
+                _capture?.StopRecording();
             }
-            //ignore stop errors
             catch (Exception)
             {
+                //ignore stop error
             }
         }
 
@@ -151,24 +223,38 @@ namespace TimePlanner.Widget.Services.Ai
 
             try
             {
-                _waveIn?.StopRecording();
+                _capture?.StopRecording();
             }
             catch (Exception)
             {
+                //ignore stop error
             }
 
             CleanUpWriter();
-            CleanUpWaveIn();
+            CleanUpCapture();
             DeleteTempFile();
         }
 
         //-----------------------------
-        //handles recording completion event from wave in
+        //handles recording completion event from wasapi capture
         private void OnRecordingStopped(object? sender, StoppedEventArgs e)
         {
             var length = _stopwatch?.Elapsed ?? TimeSpan.Zero;
             CleanUpWriter();
-            CleanUpWaveIn();
+            CleanUpCapture();
+
+            //calculate speech presence and digital silence
+            if (_recordedSamples.Count > 0)
+            {
+                var span = CollectionsMarshal.AsSpan(_recordedSamples);
+                IsDigitalSilence = AudioLevels.IsDigitalSilence(span);
+                HeardSpeech = AudioLevels.HasSpeech(span, 16000);
+            }
+            else
+            {
+                IsDigitalSilence = true;
+                HeardSpeech = false;
+            }
 
             //ignore completion if cancelled
             if (_cancelled)
@@ -194,6 +280,7 @@ namespace TimePlanner.Widget.Services.Ai
         //safely disposes wave file writer
         private void CleanUpWriter()
         {
+            //dispose writer instance
             if (_writer != null)
             {
                 try
@@ -202,6 +289,7 @@ namespace TimePlanner.Widget.Services.Ai
                 }
                 catch (Exception)
                 {
+                    //ignore disposal failure
                 }
 
                 _writer = null;
@@ -209,22 +297,24 @@ namespace TimePlanner.Widget.Services.Ai
         }
 
         //-----------------------------
-        //safely disposes wave in capture device
-        private void CleanUpWaveIn()
+        //safely disposes wasapi capture device
+        private void CleanUpCapture()
         {
-            if (_waveIn != null)
+            //dispose capture instance
+            if (_capture != null)
             {
                 try
                 {
-                    _waveIn.DataAvailable -= OnDataAvailable;
-                    _waveIn.RecordingStopped -= OnRecordingStopped;
-                    _waveIn.Dispose();
+                    _capture.DataAvailable -= OnDataAvailable;
+                    _capture.RecordingStopped -= OnRecordingStopped;
+                    _capture.Dispose();
                 }
                 catch (Exception)
                 {
+                    //ignore disposal failure
                 }
 
-                _waveIn = null;
+                _capture = null;
             }
         }
 
@@ -232,6 +322,7 @@ namespace TimePlanner.Widget.Services.Ai
         //deletes temporary wav file from disk
         private void DeleteTempFile()
         {
+            //delete file if path is valid
             if (!string.IsNullOrWhiteSpace(_tempPath) && File.Exists(_tempPath))
             {
                 try
@@ -240,6 +331,7 @@ namespace TimePlanner.Widget.Services.Ai
                 }
                 catch (Exception)
                 {
+                    //ignore deletion error
                 }
             }
         }
@@ -264,6 +356,7 @@ namespace TimePlanner.Widget.Services.Ai
         //disposes audio capture resources
         public void Dispose()
         {
+            //skip multiple disposes
             if (_isDisposed)
             {
                 return;
