@@ -46,6 +46,18 @@ namespace TimePlanner.Dashboard.Controllers.Api
             return result.Success ? result : Failure(result.Error);
         }
 
+        //-----------------------------
+        //for someone who lost their phone: removes their two-factor setup and ends their sessions, so they can sign in with their password and set it up again
+        [HttpPost("{id}/reset-two-factor")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ResetTwoFactor(string id)
+        {
+            var result = await _admin.ResetTwoFactorAsync(id);
+            return result.Success ? NoContent() : Failure(result.Error);
+        }
+
         [HttpPost("{id}/deactivate")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]

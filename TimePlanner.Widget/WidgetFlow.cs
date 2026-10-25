@@ -465,9 +465,9 @@ namespace TimePlanner.Widget
         //signs in to dashboard
         public event EventHandler? DashboardSignedIn;
 
-        public async Task<SignInOutcome> SignInToDashboardAsync(string email, string password)
+        public async Task<SignInOutcome> SignInToDashboardAsync(string email, string password, string? otp = null)
         {
-            var outcome = await _log.SignInToDashboardAsync(email, password);
+            var outcome = await _log.SignInToDashboardAsync(email, password, otp);
             if (outcome.Status == SignInStatus.SignedIn)
             {
                 DashboardSignedIn?.Invoke(this, EventArgs.Empty);

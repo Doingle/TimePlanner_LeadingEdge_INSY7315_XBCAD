@@ -95,6 +95,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuditLogger>();
 builder.Services.AddScoped<UserAdminService>();
 builder.Services.AddScoped<AccountService>();
+builder.Services.AddScoped<TwoFactorService>();
 builder.Services.AddAuthentication().AddJwtBearer(o =>
 {
     // keep the short claim names ("email", "role") instead of renaming them to long schema urls

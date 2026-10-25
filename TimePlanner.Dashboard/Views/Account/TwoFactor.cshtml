@@ -1,0 +1,75 @@
+@model TwoFactorViewModel
+@{
+    ViewData["Title"] = "Enter your code";
+    Layout = null;
+
+    //a wrong code is a form level error, the box is marked and the alert describes it
+    var failed = ViewData.ModelState.TryGetValue(string.Empty, out var formEntry) && formEntry.Errors.Count > 0;
+    var text = TextPreferences.From(Context.Request);
+}
+<!DOCTYPE html>
+<html lang="en" data-text-size="@text.Size" data-bold="@text.BoldValue" data-italic="@text.ItalicValue">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>@ViewData["Title"] - Time Planner</title>
+    <link rel="preload" href="~/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="~/fonts/lora-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="~/css/fonts.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/fonts-lora.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
+</head>
+<body class="login-body">
+    <main class="login-page">
+        <partial name="_LoginBrand" />
+
+        <section class="login-panel" aria-labelledby="login-title">
+            <div class="login-panel__inner">
+                <h2 class="login-title" id="login-title">Enter your code</h2>
+                <p class="login-lead">
+                    @(Model.UseRecoveryCode
+                        ? "Enter one of the recovery codes you saved when you turned on two-factor sign in. Each one works once."
+                        : "Open your authenticator app and enter the 6 digit code it shows for Time Planner.")
+                </p>
+
+                <form class="login-form" asp-action="TwoFactor" method="post" novalidate>
+                    <input type="hidden" asp-for="ReturnUrl" />
+                    <input type="hidden" asp-for="UseRecoveryCode" />
+
+                    <div class="login-field">
+                        <label class="login-label" asp-for="Code">@(Model.UseRecoveryCode ? "Recovery code" : "Code")</label>
+                        <input class="login-input" asp-for="Code" autocomplete="one-time-code" spellcheck="false" autofocus
+                               inputmode="@(Model.UseRecoveryCode ? "text" : "numeric")" aria-invalid="@(failed ? "true" : null)" aria-describedby="@(failed ? "login-error" : null)" />
+                        <span class="login-field-error" asp-validation-for="Code"></span>
+                    </div>
+
+                    <div asp-validation-summary="ModelOnly" class="login-alert" id="login-error" role="alert">
+                        <svg class="login-alert__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 8v4M12 16h.01" />
+                        </svg>
+                    </div>
+
+                    <button class="login-submit" type="submit">
+                        <span class="login-submit__idle">Continue</span>
+                    </button>
+                </form>
+
+                <p class="login-help">
+                    @if (Model.UseRecoveryCode)
+                    {
+                        <a asp-action="TwoFactor" asp-route-returnUrl="@Model.ReturnUrl">Use the code from the app instead</a>
+                    }
+                    else
+                    {
+                        <a asp-action="TwoFactor" asp-route-returnUrl="@Model.ReturnUrl" asp-route-recovery="true">Lost your phone? Use a recovery code</a>
+                    }
+                    · <a asp-action="Login">Back to log in</a>
+                </p>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

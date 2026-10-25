@@ -64,9 +64,9 @@ namespace TimePlanner.Core.Sync
 
         //-----------------------------
         //signs in and keeps only the token
-        public async Task<SignInOutcome> SignInAsync(string email, string password)
+        public async Task<SignInOutcome> SignInAsync(string email, string password, string? otp = null)
         {
-            var outcome = await _client.SignInAsync(email.Trim(), password);
+            var outcome = await _client.SignInAsync(email.Trim(), password, otp);
 
             //only a successful sign in is saved
             if (outcome.Status == SignInStatus.SignedIn)

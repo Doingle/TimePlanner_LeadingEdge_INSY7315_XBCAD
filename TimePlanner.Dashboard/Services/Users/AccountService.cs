@@ -23,7 +23,8 @@ namespace TimePlanner.Dashboard.Services.Users
         public async Task<AccountInfo> GetAsync(ApplicationUser user)
         {
             var profile = user.AppUserId == null ? null : await _app.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == user.AppUserId);
-            return new AccountInfo(profile?.Name ?? user.Email!, user.Email ?? "", (await _users.GetRolesAsync(user)).FirstOrDefault() ?? "", user.MustChangePassword);
+            return new AccountInfo(profile?.Name ?? user.Email!, user.Email ?? "", (await _users.GetRolesAsync(user)).FirstOrDefault() ?? "", user.MustChangePassword,
+                await _users.GetTwoFactorEnabledAsync(user));
         }
 
         //-----------------------------
