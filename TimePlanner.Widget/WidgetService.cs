@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Text;
 using TimePlanner.Core.Ai;
 using TimePlanner.Core.Data;
@@ -98,6 +99,10 @@ namespace TimePlanner.Widget
             services.AddSingleton<AiKeyStore>();
             services.AddSingleton<VoiceTranscriptionQueue>();
             services.AddSingleton<AiService>();
+            services.AddSingleton(DevMode.Current);
+            services.AddSingleton(sp => new OllamaSetup(new HttpClient(), sp.GetRequiredService<WidgetSession>().Preferences.Ai));
+            services.AddSingleton(sp => new OllamaInstaller(new HttpClient(), sp.GetRequiredService<OllamaSetup>()));
+            services.AddSingleton<AiSetupService>();
         }
     }
 }
