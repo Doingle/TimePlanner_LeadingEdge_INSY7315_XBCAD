@@ -44,6 +44,8 @@ public partial class HelpView : UserControl
             "Read the message shown in Timesheet. Check your internet connection and sign in if asked, then try Send day again. Wait for confirmation that it was sent. If it still fails, ask your team for help and tell them what the message says."),
         new("Can it open when I sign in to Windows?",
             "Open Settings, then Advanced options, and turn on Start with Windows. If Windows cannot apply the setting, a message will appear there."),
+        new("Voice notes and Build my day",
+            "Speak your check-in updates out loud, and let AI build your timesheet for the day.\n\nSet it up in Settings › Voice and AI. All voice recordings and models stay on this PC.\n\nYou check and adjust every suggested entry before anything is saved or sent.\n\nTo check your microphone, open Voice and AI › Advanced and select Test microphone."),
     ];
 
     private void Back_Click(object sender, RoutedEventArgs e) => _back();
