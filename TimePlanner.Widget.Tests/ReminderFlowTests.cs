@@ -971,9 +971,12 @@ public class ReminderFlowTests
                 provider.GetRequiredService<WidgetSession>().Preferences.Ai));
             services.AddSingleton(new AiKeyStore(host._aiFolder));
             services.AddSingleton<VoiceTranscriptionQueue>();
-            services.AddSingleton<AiService>();
+            services.AddSingleton<MicrophoneCatalog>();
+            services.AddSingleton(provider => new OllamaHost(new HttpClient(), provider.GetRequiredService<WidgetSession>().Preferences.Ai));
             services.AddSingleton(provider => new OllamaSetup(new HttpClient(), provider.GetRequiredService<WidgetSession>().Preferences.Ai));
-            services.AddSingleton(provider => new OllamaInstaller(new HttpClient(), provider.GetRequiredService<OllamaSetup>()));
+            services.AddSingleton(provider => new OllamaInstaller(new HttpClient(), provider.GetRequiredService<OllamaSetup>(),
+                provider.GetRequiredService<OllamaHost>(), provider.GetRequiredService<WidgetSession>().Preferences.Ai, provider.GetRequiredService<PreferencesStore>()));
+            services.AddSingleton<AiService>();
             services.AddSingleton<AiSetupService>();
             services.AddSingleton(provider => new StartupService(host.Startup, @"C:\Test\TimePlanner.Widget.exe",
                 provider.GetRequiredService<ILogger<StartupService>>()));
