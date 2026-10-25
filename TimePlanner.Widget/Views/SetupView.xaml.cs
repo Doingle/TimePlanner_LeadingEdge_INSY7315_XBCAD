@@ -57,6 +57,13 @@ namespace TimePlanner.Widget.Views
                 IntervalField.Margin = (Thickness)FindResource("GapSection");
                 PrimaryButton.Content = "Done";
             }
+            else
+            {
+                // After an earlier day the button starts today; the very first run just starts tracking
+                if (flow.Scheduler.LastEnded != null)
+                    PrimaryButton.Content = "Start today";
+                _ = EarlierNotice.LoadAsync(flow, flow.ShowStart);
+            }
             ShowWelcome(!isSettings);
 
             _intervals = CheckInPolicy.ChoicesIncluding(settings.CheckInIntervalMinutes);
