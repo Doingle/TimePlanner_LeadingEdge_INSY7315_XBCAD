@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Media;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
 using TimePlanner.Core.Domain.Enums;
@@ -65,7 +67,11 @@ namespace TimePlanner.Widget
             scheduler.Ticked += (_, _) =>
             {
                 if (_loaded)
+                {
                     _ = Reminder.RefreshAsync(Scheduler.EndedToday);
+                    _ = RetryPendingSendsAsync();
+                }
+                // Keeps the status line's date and tracking dot current on the screens that show it
                 if (_view != null && ShowsStatus(_screen))
                     WidgetCard.SetStatus(_view, Status);
                 if (_screen is Screen.Idle or Screen.Timer && Scheduler.IsDue)
@@ -134,6 +140,15 @@ namespace TimePlanner.Widget
                 : null;
             _loaded = true;
             _ = Reminder.RefreshAsync(Scheduler.EndedToday);
+            _ = RetryPendingSendsAsync(force: true);
+        }
+
+        //-----------------------------
+        //sends again the days the user already sent that did not get through. Started without waiting, a day that cannot be sent stays waiting for the next try
+        private async Task RetryPendingSendsAsync(bool force = false)
+        {
+            foreach (var day in await _log.RetryPendingSendsAsync(Session.User.UserId, force))
+                Reminder.DaySent(day);
         }
 
         /// <summary>
@@ -333,7 +348,7 @@ namespace TimePlanner.Widget
             Session.Activity = activity;
 
             if (mode == LogEntryMode.EndOfDay)
-                await EndDayAsync();   
+                await EndDayAsync();
             else
                 Present(Screen.EntrySaved, new EntrySavedView(this));
         }
@@ -351,7 +366,6 @@ namespace TimePlanner.Widget
         public Task<RemoveOutcome> RemoveActivityAsync(IReadOnlyList<string> path) => _log.RemoveActivityAsync(path);
 
         public void KeepTracking() => ShowIdle();
-
 
         public void AskEndDay() => Present(Screen.EndDay, new EndDayView(this));
 
@@ -392,8 +406,8 @@ namespace TimePlanner.Widget
         public async Task ShowTimesheetAsync(DateOnly day, Action back, bool sendNow = false)
         {
             var slots = await _log.GetTimesheetAsync(Session.User.UserId, day);
-            var (preview, sent) = await _log.GetSendStateAsync(Session.User.UserId, day);
-            Present(Screen.Timesheet, new TimesheetReviewView(this, day, slots, preview, sent, back, sendNow));
+            var (preview, sent, pending) = await _log.GetSendStateAsync(Session.User.UserId, day);
+            Present(Screen.Timesheet, new TimesheetReviewView(this, day, slots, preview, sent, back, pending, sendNow));
         }
 
         //-----------------------------
@@ -436,7 +450,10 @@ namespace TimePlanner.Widget
         {
             var outcome = await _log.SignInToDashboardAsync(email, password);
             if (outcome.Status == SignInStatus.SignedIn)
+            {
                 DashboardSignedIn?.Invoke(this, EventArgs.Empty);
+                _ = RetryPendingSendsAsync(force: true);
+            }
             return outcome;
         }
 

@@ -10,6 +10,7 @@ namespace TimePlanner.Core.Sync
         private readonly DashboardClient _client;
         private readonly ITokenStore _tokens;
         private readonly ISendHistoryStore _history;
+        private readonly IPendingSendStore _pending;
         private readonly ITimeEntryRepository _entries;
         private readonly IProjectRepository _projects;
         private readonly IDaySessionRepository _sessions;
@@ -19,6 +20,7 @@ namespace TimePlanner.Core.Sync
             DashboardClient client,
             ITokenStore tokens,
             ISendHistoryStore history,
+            IPendingSendStore pending,
             ITimeEntryRepository entries,
             IProjectRepository projects,
             IDaySessionRepository sessions,
@@ -27,6 +29,7 @@ namespace TimePlanner.Core.Sync
             _client = client;
             _tokens = tokens;
             _history = history;
+            _pending = pending;
             _entries = entries;
             _projects = projects;
             _sessions = sessions;
@@ -157,7 +160,7 @@ namespace TimePlanner.Core.Sync
                 //being offline keeps the stored token
                 if (outcome.Status == SignInStatus.Offline)
                 {
-                    return (null, SendOutcome.Of(SendStatus.Offline, outcome.Message));
+                    return (null, SendOutcome.Of(SendStatus.Offline, outcome.Message, retryable: true));
                 }
 
                 return (null, SendOutcome.Of(SendStatus.Failed, outcome.Message));
@@ -169,8 +172,83 @@ namespace TimePlanner.Core.Sync
         }
 
         //-----------------------------
-        //sends a finished day and records it locally
+        //days the user sent that are still waiting to reach the dashboard
+        public Task<IReadOnlyList<PendingDay>> GetPendingAsync() => _pending.GetAsync();
+
+        //-----------------------------
+        //how long to wait after a number of failed tries: a minute, two, then five at a time
+        public static TimeSpan Backoff(int failedAttempts) => TimeSpan.FromMinutes(failedAttempts switch { <= 1 => 1, 2 => 2, _ => 5 });
+
+        //-----------------------------
+        //sends a finished day the user chose to send. When it fails for a reason that can pass (no connection, too many sends, a server error)
+        //the day waits in the pending list and RetryPendingAsync sends it again. Only days sent through here are ever queued
         public async Task<SendOutcome> SendDayAsync(int userId, DateOnly day, DateTime now, DateTime nowUtc)
+        {
+            var outcome = await AttemptAsync(userId, day, now, nowUtc);
+
+            //a sent or refused day is settled either way, so it no longer waits
+            if (outcome.Status is SendStatus.Sent or SendStatus.Rejected)
+            {
+                await _pending.RemoveAsync(day);
+            }
+            else if (outcome.Retryable)
+            {
+                await _pending.SaveAsync(new PendingDay(day, now, 1, nowUtc + Backoff(1)));
+                return outcome with { Message = $"{outcome.Message} The widget will keep trying." };
+            }
+
+            return outcome;
+        }
+
+        //-----------------------------
+        //sends the waiting days that are due again, using the day's entries as they are now. Returns the days that got through.
+        //It stops at the first day when the dashboard cannot be reached or the user has to sign in, since the rest would fail the same way
+        public async Task<IReadOnlyList<DateOnly>> RetryPendingAsync(int userId, DateTime now, DateTime nowUtc)
+        {
+            var delivered = new List<DateOnly>();
+            var due = (await _pending.GetAsync()).Where(p => !p.Rejected && p.NextAttemptUtc <= nowUtc).OrderBy(p => p.Day);
+
+            foreach (var item in due)
+            {
+                var outcome = await AttemptAsync(userId, item.Day, now, nowUtc);
+
+                if (outcome.Status == SendStatus.Sent)
+                {
+                    await _pending.RemoveAsync(item.Day);
+                    delivered.Add(item.Day);
+                }
+                else if (outcome.Status == SendStatus.NeedsSignIn)
+                {
+                    break;
+                }
+                else if (outcome.Retryable)
+                {
+                    var attempts = item.Attempts + 1;
+                    await _pending.SaveAsync(item with { Attempts = attempts, NextAttemptUtc = nowUtc + Backoff(attempts) });
+
+                    if (outcome.Status == SendStatus.Offline)
+                    {
+                        break;
+                    }
+                }
+                else if (outcome.Status is SendStatus.NothingToSend or SendStatus.NotEnded)
+                {
+                    //the entries are gone or the day is open again, so there is nothing left to wait for
+                    await _pending.RemoveAsync(item.Day);
+                }
+                else
+                {
+                    //the dashboard refused it, retrying would only get the same answer. The reason stays for the timesheet
+                    await _pending.SaveAsync(item with { Rejected = true, Message = outcome.Errors.FirstOrDefault() ?? outcome.Message });
+                }
+            }
+
+            return delivered;
+        }
+
+        //-----------------------------
+        //one try at sending a finished day, recorded in the history when it gets through
+        private async Task<SendOutcome> AttemptAsync(int userId, DateOnly day, DateTime now, DateTime nowUtc)
         {
             //only finished days may leave the pc
             if (!await HasEndedAsync(userId, day, now))
