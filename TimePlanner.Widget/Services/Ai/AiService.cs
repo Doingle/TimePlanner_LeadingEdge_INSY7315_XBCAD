@@ -17,13 +17,16 @@ namespace TimePlanner.Widget.Services.Ai
         private readonly WidgetSession _session;
         private readonly AiKeyStore _keyStore;
 
+        private readonly OllamaHost? _ollamaHost;
+
         public AiService(
             IVoiceNoteStore store,
             WhisperModelManager modelManager,
             VoiceTranscriptionQueue queue,
             TimeLogService timeLogs,
             WidgetSession session,
-            AiKeyStore keyStore)
+            AiKeyStore keyStore,
+            OllamaHost? ollamaHost = null)
         {
             _store = store;
             _modelManager = modelManager;
@@ -31,9 +34,11 @@ namespace TimePlanner.Widget.Services.Ai
             _timeLogs = timeLogs;
             _session = session;
             _keyStore = keyStore;
+            _ollamaHost = ollamaHost;
         }
 
         public AiSettings Settings => _session.Preferences.Ai;
+        public OllamaHost? OllamaHost => _ollamaHost;
 
         //-----------------------------
         //true when voice notes are enabled and models ready
@@ -130,7 +135,8 @@ namespace TimePlanner.Widget.Services.Ai
             Flatten(activityTree.Tree, []);
 
             var notes = await _store.GetDayAsync(day);
-            var request = DayBuildRequestFactory.Create(day, notes, slots, projectTuples, paths);
+            var eligibleNotes = notes.Where(n => !string.IsNullOrWhiteSpace(n.Transcript)).ToList();
+            var request = DayBuildRequestFactory.Create(day, eligibleNotes, slots, projectTuples, paths);
 
             var instructionsPath = Path.Combine(AppContext.BaseDirectory, "Ai", "instructions.md");
             var examplesPath = Path.Combine(AppContext.BaseDirectory, "Ai", "examples.md");
@@ -171,6 +177,17 @@ namespace TimePlanner.Widget.Services.Ai
             //apply day hardware choice to gpu layers when using ollama
             if (Settings.Compiler == CompilerKind.Ollama)
             {
+                //ensure ollama host is running
+                if (_ollamaHost != null)
+                {
+                    var started = await _ollamaHost.EnsureRunningAsync(ct);
+                    //fail when engine cannot be reached
+                    if (!started)
+                    {
+                        throw new AiUnavailableException("The AI engine couldn't start.");
+                    }
+                }
+
                 //use graphics acceleration
                 if (Settings.DayHardware == HardwareChoice.Graphics)
                 {
@@ -366,6 +383,12 @@ namespace TimePlanner.Widget.Services.Ai
         //tests compiler connectivity and model readiness
         public async Task<string?> TestCompilerAsync(CancellationToken ct)
         {
+            //ensure ollama host running for local compiler
+            if (Settings.Compiler == CompilerKind.Ollama && _ollamaHost != null)
+            {
+                await _ollamaHost.EnsureRunningAsync(ct);
+            }
+
             string? apiKey;
             //retrieve organisation token or compiler api key
             if (Settings.Compiler == CompilerKind.Dashboard)
@@ -395,6 +418,12 @@ namespace TimePlanner.Widget.Services.Ai
         //lists models installed in local ollama
         public async Task<IReadOnlyList<string>> ListOllamaModelsAsync(CancellationToken ct)
         {
+            //ensure ollama host is running
+            if (_ollamaHost != null)
+            {
+                await _ollamaHost.EnsureRunningAsync(ct);
+            }
+
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(Settings.TimeoutSeconds) };
             var compiler = new OllamaDayCompiler(http, Settings, DayPromptBuilder.Default);
             return await compiler.ListModelsAsync(ct);
@@ -404,6 +433,12 @@ namespace TimePlanner.Widget.Services.Ai
         //checks status of local ollama server and model
         public async Task<OllamaStatus> CheckOllamaAsync(CancellationToken ct)
         {
+            //ensure ollama host is running
+            if (_ollamaHost != null)
+            {
+                await _ollamaHost.EnsureRunningAsync(ct);
+            }
+
             using var http = new HttpClient();
             var setup = new OllamaSetup(http, Settings);
             return await setup.CheckAsync(ct);
@@ -413,6 +448,12 @@ namespace TimePlanner.Widget.Services.Ai
         //pulls missing compiler model from ollama library
         public async Task PullOllamaAsync(IProgress<double>? progress, CancellationToken ct)
         {
+            //ensure ollama host is running
+            if (_ollamaHost != null)
+            {
+                await _ollamaHost.EnsureRunningAsync(ct);
+            }
+
             using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
             var setup = new OllamaSetup(http, Settings);
             await setup.PullAsync(progress, ct);

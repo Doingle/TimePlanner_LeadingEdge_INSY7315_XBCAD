@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using TimePlanner.Core.Ai;
 using Whisper.net;
@@ -49,6 +50,9 @@ namespace TimePlanner.Widget.Services.Ai
                 factory = _factory;
             }
 
+            //check if speech was detected in wav file
+            var hasSpeech = CheckAudioHasSpeech(wavPath);
+
             var promptText = string.Join(", ", hints.Vocabulary);
             //clamp prompt length to limit
             if (promptText.Length > 400)
@@ -60,23 +64,62 @@ namespace TimePlanner.Widget.Services.Ai
 
             return await Task.Run(async () =>
             {
-                using var processor = factory.CreateBuilder()
+                var builder = factory.CreateBuilder()
                     .WithLanguage(hints.Language)
-                    .WithPrompt(promptText)
-                    .WithThreads(threads)
-                    .Build();
+                    .WithThreads(threads);
+
+                //transcribe without prompt when no speech was heard
+                if (hasSpeech && !string.IsNullOrWhiteSpace(promptText))
+                {
+                    builder.WithPrompt(promptText);
+                }
+
+                using var processor = builder.Build();
 
                 using var stream = File.OpenRead(wavPath);
-                var segments = new List<string>();
+                var segments = new List<(string Text, float? NoSpeech)>();
 
                 //gather all recognized segments
                 await foreach (var segment in processor.ProcessAsync(stream, ct))
                 {
-                    segments.Add(segment.Text);
+                    segments.Add((segment.Text, segment.NoSpeechProbability));
                 }
 
-                return string.Join(" ", segments).Trim();
+                return TranscriptFilter.Clean(segments, hints.Vocabulary);
             }, ct);
+        }
+
+        //-----------------------------
+        //reads 16khz mono wav samples to detect presence of speech
+        private static bool CheckAudioHasSpeech(string wavPath)
+        {
+            try
+            {
+                var bytes = File.ReadAllBytes(wavPath);
+                //verify minimum riff header length
+                if (bytes.Length > 44)
+                {
+                    var sampleCount = (bytes.Length - 44) / 2;
+                    var samples = new float[sampleCount];
+
+                    //convert 16 bit pcm bytes to float samples
+                    for (var i = 0; i < sampleCount; i++)
+                    {
+                        var offset = 44 + i * 2;
+                        var val = (short)(bytes[offset] | (bytes[offset + 1] << 8));
+                        samples[i] = val / 32768f;
+                    }
+
+                    return AudioLevels.HasSpeech(samples, 16000);
+                }
+            }
+            catch (Exception ex)
+            {
+                //fallback to assuming speech present on read failure
+                Trace.TraceWarning($"Failed to inspect wav speech levels: {ex.Message}");
+            }
+
+            return true;
         }
 
         //-----------------------------

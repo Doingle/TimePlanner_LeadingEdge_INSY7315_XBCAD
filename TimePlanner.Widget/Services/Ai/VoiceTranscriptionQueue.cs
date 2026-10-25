@@ -126,6 +126,17 @@ namespace TimePlanner.Widget.Services.Ai
                         var hints = new TranscriptionHints(vocabulary, "en");
                         var text = await transcriber.TranscribeAsync(audioPath, hints, _cts.Token);
 
+                        //empty transcription marks note as failed with no speech explanation
+                        if (string.IsNullOrWhiteSpace(text))
+                        {
+                            note.Status = VoiceNoteStatus.Failed;
+                            note.Error = "No speech found in this note.";
+                            note.Transcript = null;
+                            await _store.UpdateAsync(note);
+                            RaiseNoteChanged(note.Id);
+                            continue;
+                        }
+
                         note.Transcript = text;
                         note.Status = VoiceNoteStatus.Transcribed;
                         note.Error = null;
