@@ -23,12 +23,55 @@ namespace TimePlanner.Widget.Services
         // Enough of the user's recent activities to find the last few they used in any one project
         private const int RecentHistory = 50;
 
-        /// <summary>The Windows user, added with the default settings the first time. Core brings the database up to date first.</summary>
+        /// <summary>
+        /// The Windows user, added with the default settings the first time. Core brings the database up to date first.
+        /// A day left open overnight is left for the scheduler to close, so the widget can say it did.
+        /// </summary>
         public async Task<AppUser> SignInAsync()
         {
             await using var scope = scopes.CreateAsyncScope();
             return await scope.ServiceProvider.GetRequiredService<LocalSetupService>()
-                .InitialiseAsync(Environment.UserName, clock.LocalNow());
+                .InitialiseAsync(Environment.UserName, clock.LocalNow(), closeLeftOpenDays: false);
+        }
+
+        // How far back the timesheet's day list and the not-sent reminder look
+        private const int RecentDays = 14;
+
+        /// <summary>The latest earlier day with logged time when it was never sent, by Core's day rules, or null.</summary>
+        public async Task<UnsentDay?> GetUnsentEarlierDayAsync(int userId)
+        {
+            var today = DateOnly.FromDateTime(clock.LocalNow());
+            var recent = await GetRecentDaysAsync(userId);
+            var day = DayRules.UnsentEarlierDay(
+                recent.Where(d => d.Entries > 0).Select(d => d.Day),
+                recent.Where(d => d.Sent != null).Select(d => d.Day),
+                today);
+            return day is { } unsent && recent.FirstOrDefault(d => d.Day == unsent) is { } found
+                ? new UnsentDay(found.Day, found.Logged, found.Entries)
+                : null;
+        }
+
+        /// <summary>Today and the days before it, newest first, with what was logged and whether each was sent.</summary>
+        public async Task<IReadOnlyList<DayChoice>> GetRecentDaysAsync(int userId)
+        {
+            var today = DateOnly.FromDateTime(clock.LocalNow());
+            var first = today.AddDays(-(RecentDays - 1));
+
+            await using var scope = scopes.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            var entries = await services.GetRequiredService<ITimeEntryRepository>()
+                .GetForUserAsync(userId, first.ToDateTime(TimeOnly.MinValue), today.AddDays(1).ToDateTime(TimeOnly.MinValue));
+            var sent = await services.GetRequiredService<ISendHistoryStore>().GetAsync();
+
+            return Enumerable.Range(0, RecentDays)
+                .Select(back => today.AddDays(-back))
+                .Select(day =>
+                {
+                    var onDay = entries.Where(e => DateOnly.FromDateTime(e.StartTime) == day).ToList();
+                    return new DayChoice(day, onDay.Aggregate(TimeSpan.Zero, (total, e) => total + e.GetDuration()), onDay.Count,
+                        sent.FirstOrDefault(s => s.Day == day));
+                })
+                .ToList();
         }
 
         public async Task SaveSettingsAsync(UserSettings settings)
