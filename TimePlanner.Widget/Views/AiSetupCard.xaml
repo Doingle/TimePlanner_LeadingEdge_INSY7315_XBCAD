@@ -7,7 +7,7 @@
             <!-- not set up state -->
             <StackPanel x:Name="NotSetUpPanel">
                 <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                           Text="Speak your check-ins and let AI build your day. Needs a one-time download of about 3–4 GB. Everything stays on this PC." />
+                           Text="Installs Ollama, a free AI engine, and two models. Ollama runs quietly only while Time Planner is open." />
                 <Button x:Name="InstallButton" Style="{StaticResource Button.Primary}" Margin="0,8,0,0" Content="Install"
                         ToolTip="Installs Ollama (the free AI engine) and two models. About 3–4 GB."
                         AutomationProperties.Name="Installs Ollama (the free AI engine) and two models. About 3–4 GB."
@@ -24,11 +24,23 @@
             </StackPanel>
 
             <!-- ready state -->
-            <DockPanel x:Name="ReadyPanel" Visibility="Collapsed">
-                <controls:Icon Kind="Check" Foreground="{DynamicResource TextAccentBrush}" Size="{StaticResource SizeIconSm}"
-                               Margin="0,2,8,0" VerticalAlignment="Top" />
-                <TextBlock x:Name="ReadyText" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" VerticalAlignment="Center" />
-            </DockPanel>
+            <StackPanel x:Name="ReadyPanel" Visibility="Collapsed">
+                <DockPanel>
+                    <controls:Icon Kind="Check" Foreground="{DynamicResource TextAccentBrush}" Size="{StaticResource SizeIconSm}"
+                                   Margin="0,2,8,0" VerticalAlignment="Top" />
+                    <TextBlock x:Name="ReadyText" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
+                <!-- slow pc hint -->
+                <StackPanel x:Name="SlowPcPanel" Margin="0,8,0,0" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                               Text="Build my day may take a minute or more on this PC. Use the Faster model?" />
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <Button x:Name="UseFasterButton" Style="{StaticResource Button.Secondary}" Content="Use Faster"
+                                Click="UseFaster_Click" Margin="0,0,8,0" />
+                        <Button Style="{StaticResource Button.Text}" Content="Dismiss" Click="DismissSlowPc_Click" />
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
 
             <!-- needs attention state -->
             <StackPanel x:Name="AttentionPanel" Visibility="Collapsed">

@@ -201,13 +201,7 @@ namespace TimePlanner.Widget.Views
                 //show needs a project indicator
                 else
                 {
-                    var needsProject = new TextBlock
-                    {
-                        Text = "Needs a project",
-                        Style = (Style)FindResource("Text.Body"),
-                        Foreground = (Brush)FindResource("TextAccentBrush"),
-                        Margin = new Thickness(0, 4, 0, 0)
-                    };
+                    var needsProject = new TextBlock { Text = "Needs a project", Style = (Style)FindResource("Text.Body"), Foreground = (Brush)FindResource("TextAccentBrush"), Margin = new Thickness(0, 4, 0, 0) };
                     stack.Children.Add(needsProject);
                 }
 
@@ -218,14 +212,7 @@ namespace TimePlanner.Widget.Views
                     if (!isMatched)
                     {
                         var noteRow = new DockPanel { Margin = new Thickness(0, 4, 0, 0) };
-                        var copyBtn = new Button
-                        {
-                            Style = (Style)FindResource("Button.Icon"),
-                            ToolTip = "Copy note",
-                            Content = new Icon { Kind = IconKind.Copy, Size = (double)FindResource("SizeIconSm") },
-                            VerticalAlignment = VerticalAlignment.Top,
-                            Margin = new Thickness(4, 0, 0, 0)
-                        };
+                        var copyBtn = new Button { Style = (Style)FindResource("Button.Icon"), ToolTip = "Copy note", Content = new Icon { Kind = IconKind.Copy, Size = (double)FindResource("SizeIconSm") }, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(4, 0, 0, 0) };
                         System.Windows.Automation.AutomationProperties.SetName(copyBtn, "Copy note");
                         DockPanel.SetDock(copyBtn, Dock.Right);
 
@@ -233,38 +220,19 @@ namespace TimePlanner.Widget.Views
                         //copies note text to clipboard
                         copyBtn.Click += (s, e) =>
                         {
-                            try
-                            {
-                                Clipboard.SetText(capturedNote);
-                            }
-                            //catch clipboard access errors
-                            catch
-                            {
-                            }
+                            try { Clipboard.SetText(capturedNote); }
+                            catch { }
                         };
                         noteRow.Children.Add(copyBtn);
 
-                        var noteText = new TextBlock
-                        {
-                            Text = suggestion.Note,
-                            Style = (Style)FindResource("Text.Caption"),
-                            Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                            TextWrapping = TextWrapping.Wrap
-                        };
+                        var noteText = new TextBlock { Text = suggestion.Note, Style = (Style)FindResource("Text.Caption"), Foreground = (Brush)FindResource("TextSecondaryBrush"), TextWrapping = TextWrapping.Wrap };
                         noteRow.Children.Add(noteText);
                         stack.Children.Add(noteRow);
                     }
                     //show standard note on matched cards
                     else
                     {
-                        var noteText = new TextBlock
-                        {
-                            Text = suggestion.Note,
-                            Style = (Style)FindResource("Text.Caption"),
-                            Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                            TextWrapping = TextWrapping.Wrap,
-                            Margin = new Thickness(0, 4, 0, 0)
-                        };
+                        var noteText = new TextBlock { Text = suggestion.Note, Style = (Style)FindResource("Text.Caption"), Foreground = (Brush)FindResource("TextSecondaryBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
                         stack.Children.Add(noteText);
                     }
                 }
@@ -400,17 +368,30 @@ namespace TimePlanner.Widget.Views
             AddedPanel.Visibility = Visibility.Collapsed;
             ErrorPanel.Visibility = Visibility.Visible;
 
-            ErrorMessage.Text = ex.Message;
+            var isEngineStart = ex.Message.Contains("couldn't start", StringComparison.OrdinalIgnoreCase)
+                || ex.Message.Contains("engine", StringComparison.OrdinalIgnoreCase)
+                || ex is System.Net.Http.HttpRequestException;
 
-            var isMissingModel = ex.Message.Contains("model isn't installed", StringComparison.OrdinalIgnoreCase)
-                || ex.Message.Contains("not installed", StringComparison.OrdinalIgnoreCase)
-                || ex.Message.Contains("missing", StringComparison.OrdinalIgnoreCase);
+            if (isEngineStart)
+            {
+                ErrorMessage.Text = "The AI engine couldn't start.";
+                SetupModelButton.Content = "Voice and AI settings";
+                SetupModelButton.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                ErrorMessage.Text = ex.Message;
+                var isMissingModel = ex.Message.Contains("model isn't installed", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("not installed", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("missing", StringComparison.OrdinalIgnoreCase);
 
-            SetupModelButton.Visibility = isMissingModel ? Visibility.Visible : Visibility.Collapsed;
+                SetupModelButton.Content = "Set up the model";
+                SetupModelButton.Visibility = isMissingModel ? Visibility.Visible : Visibility.Collapsed;
+            }
         }
 
         //-----------------------------
-        //opens voice and ai settings to install model
+        //opens voice and ai settings to install model or configure engine
         private void SetupModel_Click(object sender, RoutedEventArgs e)
         {
             _flow.ShowAiSettings(_back);

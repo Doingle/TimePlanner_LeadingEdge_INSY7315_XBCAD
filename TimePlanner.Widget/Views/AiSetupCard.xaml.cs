@@ -11,6 +11,8 @@ namespace TimePlanner.Widget.Views
         public event Action? InstallRequested;
         public event Action? CancelRequested;
         public event Action? RetryRequested;
+        public event Action? UseFasterRequested;
+        public event Action? DismissSlowPcRequested;
 
         //-----------------------------
         //initializes setup card control
@@ -64,12 +66,13 @@ namespace TimePlanner.Widget.Views
         }
 
         //-----------------------------
-        //displays ready state with hardware execution summary
-        public void SetReady(string hardwareSummary)
+        //displays ready state with hardware execution summary and optional slow pc hint
+        public void SetReady(string hardwareSummary, bool showSlowPcHint = false)
         {
             HideAll();
             ReadyPanel.Visibility = Visibility.Visible;
             ReadyText.Text = $"Ready · {hardwareSummary}";
+            SlowPcPanel.Visibility = showSlowPcHint ? Visibility.Visible : Visibility.Collapsed;
         }
 
         //-----------------------------
@@ -111,6 +114,20 @@ namespace TimePlanner.Widget.Views
         private void Retry_Click(object sender, RoutedEventArgs e)
         {
             RetryRequested?.Invoke();
+        }
+
+        //-----------------------------
+        //handles use faster button click
+        private void UseFaster_Click(object sender, RoutedEventArgs e)
+        {
+            UseFasterRequested?.Invoke();
+        }
+
+        //-----------------------------
+        //handles dismiss slow pc hint button click
+        private void DismissSlowPc_Click(object sender, RoutedEventArgs e)
+        {
+            DismissSlowPcRequested?.Invoke();
         }
     }
 }
