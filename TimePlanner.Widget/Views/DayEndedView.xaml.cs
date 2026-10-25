@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -62,6 +62,7 @@ namespace TimePlanner.Widget.Views
             // Left open past midnight, the screen moves on to Start today by itself
             Loaded += (_, _) => flow.Scheduler.Ticked += Scheduler_Ticked;
             Unloaded += (_, _) => flow.Scheduler.Ticked -= Scheduler_Ticked;
+            Loaded += async (s, e) => await CheckUnbuiltAsync();
         }
 
         private bool IsToday => DateOnly.FromDateTime(_flow.Scheduler.Now) == _date;
@@ -91,17 +92,58 @@ namespace TimePlanner.Widget.Views
             ShowOpenTimesheet();
         }
 
+        //-----------------------------
+        //checks for unbuilt voice notes and shows build day button
+        private async Task CheckUnbuiltAsync()
+        {
+            var dayOnly = DateOnly.FromDateTime(_day.Day);
+            var unbuilt = await _flow.Ai.CountUnbuiltAsync(dayOnly);
+
+            //offer day building when unbuilt notes exist
+            if (unbuilt > 0)
+            {
+                var noteWord = unbuilt == 1 ? "voice note" : "voice notes";
+                var label = $"Build my day ({unbuilt} {noteWord})";
+
+                BuildMyDayExportButton.Content = label;
+                BuildMyDayExportButton.Visibility = Visibility.Visible;
+                ExportButton.Style = (Style)FindResource("Button.Secondary");
+                OpenTimesheetButton.Style = (Style)FindResource("Button.Secondary");
+
+                BuildMyDayEmptyButton.Content = label;
+                BuildMyDayEmptyButton.Visibility = Visibility.Visible;
+                ResumeDayEmptyButton.Style = (Style)FindResource("Button.Secondary");
+                OpenTimesheetEmptyButton.Style = (Style)FindResource("Button.Secondary");
+            }
+        }
+
+        //-----------------------------
+        //opens day build view from day ended screen
+        private async void BuildMyDay_Click(object sender, RoutedEventArgs e)
+        {
+            await _flow.ShowDayBuildAsync(DateOnly.FromDateTime(_day.Day), () => _flow.ShowDayEnded(_day));
+        }
+
+        //-----------------------------
+        //exports day entries as csv file
         private void ShowOpenTimesheet() =>
             OpenTimesheetButton.Visibility = ReminderNotice.IsShown ? Visibility.Collapsed : Visibility.Visible;
 
         private async void Export_Click(object sender, RoutedEventArgs e) => await _flow.ExportCsvAsync(_day);
 
+        //-----------------------------
+        //opens timesheet review screen
         private void OpenTimesheet_Click(object sender, RoutedEventArgs e) => _flow.ShowTimesheet(_day);
 
+        //-----------------------------
+        //resumes tracking for the day
         private async void Resume_Click(object sender, RoutedEventArgs e) => await _flow.ResumeDayAsync();
 
         private async void StartToday_Click(object sender, RoutedEventArgs e) => await _flow.StartTrackingAsync();
 
+        //-----------------------------
+        //dismisses day ended screen
         private void Close_Click(object sender, RoutedEventArgs e) => _flow.DismissDayEnded();
     }
 }
+//------------------------------EOF-----------------------------\\

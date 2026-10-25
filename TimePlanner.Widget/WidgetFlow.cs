@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
+using TimePlanner.Core.Ai;
 using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Core.Services;
 using TimePlanner.Core.Services.Models;
@@ -14,6 +15,7 @@ using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
+using TimePlanner.Widget.Services.Ai;
 using TimePlanner.Widget.Views;
 
 namespace TimePlanner.Widget
@@ -35,6 +37,9 @@ namespace TimePlanner.Widget
             Timesheet,
             SignIn,
             EntryEditor,
+            VoiceNote,
+            DayBuild,
+            VoiceNoteDetail,
             Exit,
             Help,
             ManageLists,
@@ -44,7 +49,12 @@ namespace TimePlanner.Widget
         private readonly TimeLogService _log;
         private readonly CsvExportService _csv;
         private readonly PreferencesStore _preferences;
+        private readonly AiService _aiService;
+        private readonly WhisperModelManager _modelManager;
+        private readonly VoiceTranscriptionQueue _voiceQueue;
+        private readonly IVoiceNoteStore _voiceStore;
         private readonly StartupService _startup;
+        private readonly AiSetupService _aiSetup;
         private Screen _screen;
         private FrameworkElement? _view;
         private DaySummary? _endedDay;
@@ -52,7 +62,8 @@ namespace TimePlanner.Widget
 
         public WidgetFlow(IWidgetHost host, WidgetSession session, CheckInScheduler scheduler, SnoozeManager snooze,
             TimeLogService log, CsvExportService csv, PreferencesStore preferences, UnsentDayReminder reminder,
-            StartupService startup)
+            StartupService startup, AiService aiService, WhisperModelManager modelManager,
+            VoiceTranscriptionQueue voiceQueue, IVoiceNoteStore voiceStore, AiSetupService aiSetup)
         {
             _host = host;
             Session = session;
@@ -61,6 +72,11 @@ namespace TimePlanner.Widget
             _log = log;
             _csv = csv;
             _preferences = preferences;
+            _aiService = aiService;
+            _modelManager = modelManager;
+            _voiceQueue = voiceQueue;
+            _voiceStore = voiceStore;
+            _aiSetup = aiSetup;
             Reminder = reminder;
             _startup = startup;
 
@@ -141,6 +157,74 @@ namespace TimePlanner.Widget
             _loaded = true;
             _ = Reminder.RefreshAsync(Scheduler.EndedToday);
             _ = RetryPendingSendsAsync(force: true);
+            await _voiceStore.PurgeAsync(Scheduler.Now);
+            _voiceQueue.Start();
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _aiSetup.GetReadinessAsync(CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceWarning($"Background readiness check failed: {ex.Message}");
+                }
+            });
+        }
+
+        public void StartVoiceNote()
+        {
+            var windowStart = Scheduler.PeriodStart;
+            var windowEnd = Scheduler.Now;
+            var view = new VoiceNoteView(this, windowStart, windowEnd, _modelManager, _aiService);
+            Present(Screen.VoiceNote, view);
+        }
+
+        public AiService Ai => _aiService;
+        public OllamaHost? AiHost => _aiService.OllamaHost;
+        public AiSetupService AiSetup => _aiSetup;
+        public TimeLogService Logs => _log;
+        public PreferencesStore Preferences => _preferences;
+        public WhisperModelManager ModelManager => _modelManager;
+
+        public async Task SaveVoiceNoteAsync(string wavPath, DateTime windowStart, DateTime windowEnd, double seconds)
+        {
+            await _aiService.SaveRecordingAsync(wavPath, windowStart, windowEnd, seconds);
+            await Scheduler.VoiceAnsweredAsync(windowEnd);
+            ShowIdle();
+        }
+
+        //-----------------------------
+        //shows day compilation screen
+        public void ShowDayBuild(DateOnly day, Action back)
+        {
+            var view = new DayBuildView(this, day, back);
+            Present(Screen.DayBuild, view);
+        }
+
+        //-----------------------------
+        //shows day compilation screen asynchronously
+        public Task ShowDayBuildAsync(DateOnly day, Action back)
+        {
+            ShowDayBuild(day, back);
+            return Task.CompletedTask;
+        }
+
+        //-----------------------------
+        //shows detail screen for single voice note
+        public async Task ShowVoiceNoteAsync(Guid id, Action back)
+        {
+            var note = await _aiService.GetNoteAsync(id);
+
+            //return if note not found
+            if (note == null)
+            {
+                back();
+                return;
+            }
+
+            var view = new VoiceNoteDetailView(this, note, back);
+            Present(Screen.VoiceNoteDetail, view);
         }
 
         //-----------------------------
@@ -228,6 +312,13 @@ namespace TimePlanner.Widget
         public void ShowSettings() => Present(Screen.Settings, new SettingsView(this));
 
         //-----------------------------
+        //shows voice and ai settings screen
+        public void ShowAiSettings(Action back, bool openAdvanced = false)
+        {
+            var view = new AiSettingsView(this, back, openAdvanced);
+            Present(Screen.Settings, view);
+        }
+
         //opens settings → manage lists, back returns to settings
         public async Task<ManageListsView> ShowManageListsAsync()
         {

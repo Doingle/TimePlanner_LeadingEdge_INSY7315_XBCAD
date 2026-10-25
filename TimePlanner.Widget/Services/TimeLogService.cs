@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.IO;
 using Microsoft.Extensions.DependencyInjection;
+using TimePlanner.Core.Ai;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Core.Repositories.Interfaces;
@@ -16,7 +18,7 @@ namespace TimePlanner.Widget.Services
     /// An activity is a node in Core's activity tree; time logged to it in a project goes to the
     /// user's task for that project and activity, which Core adds the first time.
     /// </summary>
-    public sealed class TimeLogService(IServiceScopeFactory scopes, TimeProvider clock)
+    public sealed class TimeLogService(IServiceScopeFactory scopes, TimeProvider clock, IVoiceNoteStore voiceNotes)
     {
         private const int RecentLimit = 3;
 
@@ -490,7 +492,9 @@ namespace TimePlanner.Widget.Services
             //successful update marks day changed
             if (result.Ok)
             {
-                await scope.ServiceProvider.GetRequiredService<ISendHistoryStore>().MarkChangedAsync(DateOnly.FromDateTime(edit.Start), clock.LocalNow());
+                var day = DateOnly.FromDateTime(edit.Start);
+                _ = RemoveAiTagAsync(day, entryId);
+                await scope.ServiceProvider.GetRequiredService<ISendHistoryStore>().MarkChangedAsync(day, clock.LocalNow());
             }
 
             return result;
@@ -523,10 +527,27 @@ namespace TimePlanner.Widget.Services
             //successful deletion marks day changed
             if (result.Ok && result.Previous != null)
             {
-                await scope.ServiceProvider.GetRequiredService<ISendHistoryStore>().MarkChangedAsync(DateOnly.FromDateTime(result.Previous.Start), clock.LocalNow());
+                var day = DateOnly.FromDateTime(result.Previous.Start);
+                _ = RemoveAiTagAsync(day, entryId);
+                await scope.ServiceProvider.GetRequiredService<ISendHistoryStore>().MarkChangedAsync(day, clock.LocalNow());
             }
 
             return result;
+        }
+
+        //-----------------------------
+        //removes ai tag in background without blocking saves
+        private async Task RemoveAiTagAsync(DateOnly day, int entryId)
+        {
+            try
+            {
+                await Task.Run(async () => await voiceNotes.RemoveAiEntryIdAsync(day, entryId).ConfigureAwait(false)).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                //ignore tag clean up failure
+                Trace.TraceWarning($"Failed to remove AI tag for entry {entryId}: {ex.Message}");
+            }
         }
 
         //-----------------------------
@@ -600,6 +621,14 @@ namespace TimePlanner.Widget.Services
         {
             await using var scope = scopes.CreateAsyncScope();
             return await scope.ServiceProvider.GetRequiredService<DaySendService>().GetSignedInEmailAsync(clock.GetUtcNow().UtcDateTime);
+        }
+
+        //-----------------------------
+        //gets the signed in dashboard access token for organisation services
+        public async Task<string?> GetDashboardAccessTokenAsync()
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<DaySendService>().GetAccessTokenAsync(clock.GetUtcNow().UtcDateTime);
         }
 
         //-----------------------------

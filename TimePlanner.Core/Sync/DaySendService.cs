@@ -106,6 +106,14 @@ namespace TimePlanner.Core.Sync
         }
 
         //-----------------------------
+        //gets a valid access token or null when signed out
+        public async Task<string?> GetAccessTokenAsync(DateTime nowUtc)
+        {
+            var (token, _) = await GetTokenAsync(nowUtc, forceRefresh: false);
+            return token?.AccessToken;
+        }
+
+        //-----------------------------
         //gets a valid access token or refreshes it silently using the refresh token
         private async Task<(StoredToken? Token, SendOutcome? Problem)> GetTokenAsync(DateTime nowUtc, bool forceRefresh)
         {

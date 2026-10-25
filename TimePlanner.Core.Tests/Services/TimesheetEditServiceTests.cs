@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using TimePlanner.Core.Ai;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Core.Repositories.Interfaces;
@@ -359,6 +360,189 @@ namespace TimePlanner.Core.Tests.Services
 
             var lookup = await activityService.GetActivityLookupAsync();
             Assert.Equal(path, lookup[id1].Path);
+        }
+
+        //-----------------------------
+        //entries with a real one minute overlap are refused
+        [Fact]
+        public async Task Overlap_RealOneMinuteOverlap_IsRefused()
+        {
+            var baseTime = new DateTime(2026, 9, 28, 9, 0, 0);
+            var now = new DateTime(2026, 9, 28, 17, 0, 0);
+            using var scope = _host.CreateScope();
+            var user = await scope.ServiceProvider.GetRequiredService<LocalSetupService>().InitialiseAsync("tester", baseTime);
+
+            var entryRepo = scope.ServiceProvider.GetRequiredService<ITimeEntryRepository>();
+            var entryService = scope.ServiceProvider.GetRequiredService<EntryService>();
+            var activeProjects = await entryService.GetActiveProjectsAsync();
+            var internalProj = activeProjects.First();
+            var task = await entryService.FindOrCreateTaskAsync(user.UserId, internalProj.ProjectID, 1);
+
+            //existing entry from 09:30 to 10:01
+            var existing = new TimeEntry
+            {
+                UserId = user.UserId,
+                TaskId = task.TaskID,
+                StartTime = new DateTime(2026, 9, 28, 9, 30, 0),
+                EndTime = new DateTime(2026, 9, 28, 10, 1, 0),
+                Method = EntryMethod.Manual
+            };
+            await entryRepo.AddAsync(existing);
+
+            var editService = scope.ServiceProvider.GetRequiredService<TimesheetEditService>();
+            var overlappingEdit = new EntryEdit(new DateTime(2026, 9, 28, 10, 0, 0), new DateTime(2026, 9, 28, 10, 30, 0), ["Leading Edge (Internal)", "TimePlanner"], ["Coding"], "overlap");
+
+            var result = await editService.AddEntryAsync(user.UserId, overlappingEdit, now);
+            Assert.False(result.Ok);
+            Assert.Equal("This overlaps another entry.", result.Error);
+        }
+
+        //-----------------------------
+        //an entry ending within the current minute is allowed
+        [Fact]
+        public async Task EndInCurrentMinute_IsAllowed()
+        {
+            var baseTime = new DateTime(2026, 9, 28, 9, 0, 0);
+            //clock has reached 10:30 with seconds
+            var now = new DateTime(2026, 9, 28, 10, 30, 45);
+            using var scope = _host.CreateScope();
+            var user = await scope.ServiceProvider.GetRequiredService<LocalSetupService>().InitialiseAsync("tester", baseTime);
+
+            var editService = scope.ServiceProvider.GetRequiredService<TimesheetEditService>();
+            var edit = new EntryEdit(new DateTime(2026, 9, 28, 10, 0, 0), new DateTime(2026, 9, 28, 10, 30, 0), ["Leading Edge (Internal)", "TimePlanner"], ["Coding"], "current minute");
+
+            var result = await editService.AddEntryAsync(user.UserId, edit, now);
+            Assert.True(result.Ok);
+        }
+
+        //-----------------------------
+        //newly added entry is saved with seconds dropped
+        [Fact]
+        public async Task NewEntry_SavedWithoutSeconds()
+        {
+            var baseTime = new DateTime(2026, 9, 28, 9, 0, 0);
+            var now = new DateTime(2026, 9, 28, 17, 0, 0);
+            using var scope = _host.CreateScope();
+            var user = await scope.ServiceProvider.GetRequiredService<LocalSetupService>().InitialiseAsync("tester", baseTime);
+
+            var editService = scope.ServiceProvider.GetRequiredService<TimesheetEditService>();
+            var edit = new EntryEdit(new DateTime(2026, 9, 28, 10, 0, 15), new DateTime(2026, 9, 28, 10, 30, 45), ["Leading Edge (Internal)", "TimePlanner"], ["Coding"], "clean");
+
+            var result = await editService.AddEntryAsync(user.UserId, edit, now);
+            Assert.True(result.Ok);
+
+            var entryRepo = scope.ServiceProvider.GetRequiredService<ITimeEntryRepository>();
+            var saved = await entryRepo.GetByIdAsync(result.EntryId!.Value);
+            Assert.NotNull(saved);
+            Assert.Equal(new DateTime(2026, 9, 28, 10, 0, 0), saved.StartTime);
+            Assert.Equal(new DateTime(2026, 9, 28, 10, 30, 0), saved.EndTime);
+        }
+
+        //-----------------------------
+        //suggestion built after an entry with seconds can be added without overlap error
+        [Fact]
+        public async Task DayBuild_AfterEntryWithSeconds_SuggestionIsAddable()
+        {
+            var day = new DateOnly(2026, 9, 28);
+            var baseTime = new DateTime(2026, 9, 28, 8, 0, 0);
+            var now = new DateTime(2026, 9, 28, 17, 0, 0);
+            using var scope = _host.CreateScope();
+            var user = await scope.ServiceProvider.GetRequiredService<LocalSetupService>().InitialiseAsync("tester", baseTime);
+
+            var entryRepo = scope.ServiceProvider.GetRequiredService<ITimeEntryRepository>();
+            var entryService = scope.ServiceProvider.GetRequiredService<EntryService>();
+            var activeProjects = await entryService.GetActiveProjectsAsync();
+            var internalProj = activeProjects.First();
+            var task = await entryService.FindOrCreateTaskAsync(user.UserId, internalProj.ProjectID, 1);
+
+            //existing entry ending at 10:00:37
+            var existing = new TimeEntry
+            {
+                UserId = user.UserId,
+                TaskId = task.TaskID,
+                StartTime = new DateTime(2026, 9, 28, 9, 0, 0),
+                EndTime = new DateTime(2026, 9, 28, 10, 0, 37),
+                Method = EntryMethod.Manual
+            };
+            await entryRepo.AddAsync(existing);
+
+            var editService = scope.ServiceProvider.GetRequiredService<TimesheetEditService>();
+            var slots = await editService.GetDayAsync(user.UserId, day, now);
+
+            var note = new VoiceNote
+            {
+                Day = day,
+                Status = VoiceNoteStatus.Transcribed,
+                WindowStart = new DateTime(2026, 9, 28, 10, 0, 37),
+                WindowEnd = new DateTime(2026, 9, 28, 11, 0, 0),
+                Transcript = "worked on time planner"
+            };
+
+            var request = DayBuildRequestFactory.Create(
+                day,
+                [note],
+                slots,
+                [(internalProj.Company!.Name, internalProj.Name)],
+                [["Coding"]]);
+
+            var reply = new ModelReply
+            {
+                Entries = [new() { W = "W1", S = "10:00", E = "10:30", P = "P1", A = "A1", Note = "worked on time planner" }]
+            };
+
+            var (suggestions, _) = DayBuildChecker.Check(request, reply);
+            Assert.Single(suggestions);
+
+            var suggestion = suggestions[0];
+            var edit = new EntryEdit(suggestion.Start, suggestion.End, suggestion.ProjectPath, suggestion.ActivityPath, suggestion.Note);
+            var result = await editService.AddEntryAsync(user.UserId, edit, now);
+            Assert.True(result.Ok);
+        }
+
+        //-----------------------------
+        //suggestion with unmatched project is not added to timesheet
+        [Fact]
+        public async Task DayBuild_UnmatchedProject_IsNotAdded()
+        {
+            var day = new DateOnly(2026, 9, 28);
+            var baseTime = new DateTime(2026, 9, 28, 8, 0, 0);
+            var now = new DateTime(2026, 9, 28, 17, 0, 0);
+            using var scope = _host.CreateScope();
+            var user = await scope.ServiceProvider.GetRequiredService<LocalSetupService>().InitialiseAsync("tester", baseTime);
+
+            var editService = scope.ServiceProvider.GetRequiredService<TimesheetEditService>();
+            var slots = await editService.GetDayAsync(user.UserId, day, now);
+
+            var note = new VoiceNote
+            {
+                Day = day,
+                Status = VoiceNoteStatus.Transcribed,
+                WindowStart = new DateTime(2026, 9, 28, 10, 0, 0),
+                WindowEnd = new DateTime(2026, 9, 28, 11, 0, 0),
+                Transcript = "random mystery task"
+            };
+
+            var request = DayBuildRequestFactory.Create(
+                day,
+                [note],
+                slots,
+                [("Leading Edge (Internal)", "TimePlanner")],
+                [["Coding"]]);
+
+            var reply = new ModelReply
+            {
+                Entries = [new() { W = "W1", S = "10:00", E = "10:30", P = "P0", A = "A1", Note = "mystery task" }]
+            };
+
+            var (suggestions, _) = DayBuildChecker.Check(request, reply);
+            Assert.Single(suggestions);
+            var unmatched = suggestions[0];
+            Assert.Empty(unmatched.ProjectPath);
+
+            var edit = new EntryEdit(unmatched.Start, unmatched.End, unmatched.ProjectPath, unmatched.ActivityPath, unmatched.Note);
+            var result = await editService.AddEntryAsync(user.UserId, edit, now);
+            Assert.False(result.Ok);
+            Assert.Equal("Choose a client and project.", result.Error);
         }
     }
 }

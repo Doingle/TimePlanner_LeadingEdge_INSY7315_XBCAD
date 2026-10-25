@@ -23,6 +23,7 @@ namespace TimePlanner.Widget.Services
         private readonly TimeProvider _clock;
         private readonly ILogger<CheckInScheduler> _logger;
         private readonly DispatcherTimer _timer;
+        private readonly TimePlanner.Core.Ai.IVoiceNoteStore _voiceStore;
 
         // The engine is called from the UI thread, one call at a time
         private readonly SemaphoreSlim _gate = new(1, 1);
@@ -40,13 +41,14 @@ namespace TimePlanner.Widget.Services
         private const int EndedLookBackDays = 14;
 
         public CheckInScheduler(WidgetSession session, CheckInEngine engine, IServiceScopeFactory scopes, TimeProvider clock,
-            ILogger<CheckInScheduler> logger)
+            ILogger<CheckInScheduler> logger, TimePlanner.Core.Ai.IVoiceNoteStore voiceStore)
         {
             _session = session;
             _engine = engine;
             _scopes = scopes;
             _clock = clock;
             _logger = logger;
+            _voiceStore = voiceStore;
             _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _timer.Tick += Timer_Tick;
         }
@@ -96,6 +98,12 @@ namespace TimePlanner.Widget.Services
         {
             await CloseLeftOpenDayAsync();
             await RunAsync(() => _engine.InitialiseAsync(UserId));
+            var today = DateOnly.FromDateTime(Now);
+            var latestVoiceEnd = await _voiceStore.GetLatestWindowEndAsync(today);
+            if (latestVoiceEnd.HasValue)
+            {
+                await RunAsync(() => _engine.NotifyAnsweredWithoutEntryAsync(latestVoiceEnd.Value));
+            }
             _timer.Start();
         }
 
@@ -211,6 +219,18 @@ namespace TimePlanner.Widget.Services
                 await change(scope.ServiceProvider.GetRequiredService<DaySessionService>());
             await ReloadDayAsync();
             await RunAsync(_engine.NotifySessionChangedAsync);
+            var today = DateOnly.FromDateTime(Now);
+            var latestVoiceEnd = await _voiceStore.GetLatestWindowEndAsync(today);
+            if (latestVoiceEnd.HasValue)
+            {
+                await RunAsync(() => _engine.NotifyAnsweredWithoutEntryAsync(latestVoiceEnd.Value));
+            }
+        }
+
+        public async Task VoiceAnsweredAsync(DateTime coveredUntil)
+        {
+            await ReloadDayAsync();
+            await RunAsync(() => _engine.NotifyAnsweredWithoutEntryAsync(coveredUntil));
         }
 
         private async Task ReloadDayAsync()
@@ -231,6 +251,13 @@ namespace TimePlanner.Widget.Services
             PeriodStart = _day == null ? Now
                 : latest != null && latest.EndTime > _day.StartedAt ? latest.EndTime
                 : _day.StartedAt;
+
+            var today = DateOnly.FromDateTime(Now);
+            var latestVoiceEnd = await _voiceStore.GetLatestWindowEndAsync(today);
+            if (latestVoiceEnd.HasValue && latestVoiceEnd.Value > PeriodStart)
+            {
+                PeriodStart = latestVoiceEnd.Value;
+            }
         }
 
         private async Task RunAsync(Func<Task<CheckInStatus>> step)

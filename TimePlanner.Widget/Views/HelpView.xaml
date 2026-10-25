@@ -14,49 +14,6 @@
             </DockPanel>
             <ScrollViewer x:Name="QuestionsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                           Margin="0,16,-16,0">
-                <ScrollViewer.Resources>
-                    <Style TargetType="ScrollBar">
-                        <Setter Property="Width" Value="{StaticResource Space8}" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ScrollBar">
-                                    <Track x:Name="PART_Track" IsDirectionReversed="True" Orientation="Vertical">
-                                        <Track.DecreaseRepeatButton>
-                                            <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" Opacity="0" />
-                                        </Track.DecreaseRepeatButton>
-                                        <Track.Thumb>
-                                            <Thumb MinHeight="{StaticResource SizeControl}">
-                                                <Thumb.Template>
-                                                    <ControlTemplate TargetType="Thumb">
-                                                        <Grid Background="Transparent">
-                                                            <Border Width="2" HorizontalAlignment="Center" Background="{StaticResource HandleBrush}" CornerRadius="{StaticResource RadiusGrip}" />
-                                                        </Grid>
-                                                    </ControlTemplate>
-                                                </Thumb.Template>
-                                            </Thumb>
-                                        </Track.Thumb>
-                                        <Track.IncreaseRepeatButton>
-                                            <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" Opacity="0" />
-                                        </Track.IncreaseRepeatButton>
-                                    </Track>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </ScrollViewer.Resources>
-                <ScrollViewer.Template>
-                    <ControlTemplate TargetType="ScrollViewer">
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Content="{TemplateBinding Content}"
-                                                    ContentTemplate="{TemplateBinding ContentTemplate}" CanContentScroll="{TemplateBinding CanContentScroll}" />
-                            <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical"
-                                       Style="{StaticResource {x:Type ScrollBar}}" Maximum="{TemplateBinding ScrollableHeight}"
-                                       ViewportSize="{TemplateBinding ViewportHeight}" Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
-                                       Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
-                        </Grid>
-                    </ControlTemplate>
-                </ScrollViewer.Template>
                 <ItemsControl x:Name="Questions" Margin="0,0,4,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

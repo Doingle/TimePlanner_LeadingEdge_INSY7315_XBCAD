@@ -1,0 +1,64 @@
+<UserControl x:Class="TimePlanner.Widget.Views.AiSetupCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
+    <Border Background="{DynamicResource AccentFillBrush}" CornerRadius="{DynamicResource RadiusBanner}" Padding="12,10">
+        <StackPanel>
+            <!-- not set up state -->
+            <StackPanel x:Name="NotSetUpPanel">
+                <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                           Text="Installs Ollama, a free AI engine, and two models. Ollama runs quietly only while Time Planner is open." />
+                <Button x:Name="InstallButton" Style="{StaticResource Button.Primary}" Margin="0,8,0,0" Content="Install"
+                        ToolTip="Installs Ollama (the free AI engine) and two models. About 3–4 GB."
+                        AutomationProperties.Name="Installs Ollama (the free AI engine) and two models. About 3–4 GB."
+                        Click="Install_Click" />
+            </StackPanel>
+
+            <!-- installing state -->
+            <StackPanel x:Name="InstallingPanel" Visibility="Collapsed">
+                <TextBlock x:Name="InstallingText" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
+                <controls:BarProgress x:Name="ProgressBar" Margin="0,8,0,0" />
+                <Button x:Name="CancelButton" Style="{StaticResource Button.Text}" Margin="0,6,0,0" Content="Cancel"
+                        ToolTip="Cancel installation" AutomationProperties.Name="Cancel installation"
+                        Click="Cancel_Click" />
+            </StackPanel>
+
+            <!-- ready state -->
+            <StackPanel x:Name="ReadyPanel" Visibility="Collapsed">
+                <DockPanel>
+                    <controls:Icon Kind="Check" Foreground="{DynamicResource TextAccentBrush}" Size="{StaticResource SizeIconSm}"
+                                   Margin="0,2,8,0" VerticalAlignment="Top" />
+                    <TextBlock x:Name="ReadyText" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
+                <!-- slow pc hint -->
+                <StackPanel x:Name="SlowPcPanel" Margin="0,8,0,0" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                               Text="Build my day may take a minute or more on this PC. Use the Faster model?" />
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <Button x:Name="UseFasterButton" Style="{StaticResource Button.Secondary}" Content="Use Faster"
+                                Click="UseFaster_Click" Margin="0,0,8,0" />
+                        <Button Style="{StaticResource Button.Text}" Content="Dismiss" Click="DismissSlowPc_Click" />
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- needs attention state -->
+            <StackPanel x:Name="AttentionPanel" Visibility="Collapsed">
+                <DockPanel>
+                    <controls:Icon Kind="Alert" Foreground="{DynamicResource TextAccentBrush}" Size="{StaticResource SizeIconSm}"
+                                   Margin="0,2,8,0" VerticalAlignment="Top" />
+                    <TextBlock x:Name="AttentionText" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
+                <Button x:Name="RetryButton" Style="{StaticResource Button.Secondary}" Margin="0,8,0,0" Content="Try again"
+                        ToolTip="Try setup again" AutomationProperties.Name="Try again"
+                        Click="Retry_Click" />
+            </StackPanel>
+
+            <!-- organisation ai state -->
+            <StackPanel x:Name="OrgAiPanel" Visibility="Collapsed">
+                <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                           Text="Build my day uses your organisation's AI. Voice stays on this PC." />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

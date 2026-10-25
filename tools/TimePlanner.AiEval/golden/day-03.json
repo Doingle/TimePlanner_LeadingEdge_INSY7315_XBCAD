@@ -1,0 +1,61 @@
+{
+  "day": "2026-10-21",
+  "projects": [
+    ["Leading Edge (Internal)", "Internal"],
+    ["Acme Foods", "Ordering App"]
+  ],
+  "activities": [
+    ["Coding"],
+    ["Meetings"],
+    ["Admin"]
+  ],
+  "busy": [],
+  "windows": [
+    {
+      "start": "2026-10-21T09:00",
+      "end": "2026-10-21T10:30",
+      "transcript": "call with the northwind traders guys about their new warehouse portal then started planning the architecture"
+    },
+    {
+      "start": "2026-10-21T10:30",
+      "end": "2026-10-21T12:00",
+      "transcript": "switched back to acme ordering app implemented customer address lookup using google places api"
+    },
+    {
+      "start": "2026-10-21T12:00",
+      "end": "2026-10-21T13:30",
+      "transcript": "all hands company meeting until one then went through sprint backlog and task updates"
+    },
+    {
+      "start": "2026-10-21T13:30",
+      "end": "2026-10-21T15:00",
+      "transcript": "acme foods bug fix on mobile viewport navigation menu was overlapping the banner"
+    }
+  ],
+  "expected": [
+    {
+      "start": "10:30",
+      "end": "12:00",
+      "project": "Acme Foods › Ordering App",
+      "activity": "Coding"
+    },
+    {
+      "start": "12:00",
+      "end": "13:00",
+      "project": "Leading Edge (Internal) › Internal",
+      "activity": "Meetings"
+    },
+    {
+      "start": "13:00",
+      "end": "13:30",
+      "project": "Leading Edge (Internal) › Internal",
+      "activity": "Admin"
+    },
+    {
+      "start": "13:30",
+      "end": "15:00",
+      "project": "Acme Foods › Ordering App",
+      "activity": "Coding"
+    }
+  ]
+}

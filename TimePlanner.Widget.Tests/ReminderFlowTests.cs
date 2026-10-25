@@ -11,6 +11,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using TimePlanner.Core.Ai;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Extensions;
@@ -20,6 +21,7 @@ using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
+using TimePlanner.Widget.Services.Ai;
 using TimePlanner.Widget.Views;
 
 namespace TimePlanner.Widget.Tests;
@@ -927,6 +929,8 @@ public class ReminderFlowTests
     private sealed class TestHost : IDisposable
     {
         private readonly SqliteConnection _connection = new("Data Source=:memory:");
+        // Voice notes and keys go in a throwaway folder, so the tests never touch the real ones
+        private readonly string _aiFolder = Path.Combine(Path.GetTempPath(), "TimePlannerTests", Guid.NewGuid().ToString("N"));
         public ReminderClock Clock { get; } = new();
         public ReminderHistory History { get; } = new();
         public ReminderPending Pending { get; } = new();
@@ -961,6 +965,19 @@ public class ReminderFlowTests
             services.AddSingleton<TimeLogService>();
             services.AddSingleton<CsvExportService>();
             services.AddSingleton<UnsentDayReminder>();
+            services.AddSingleton<IVoiceNoteStore>(_ => new FileVoiceNoteStore(Path.Combine(host._aiFolder, "voice")));
+            services.AddSingleton<WhisperModelManager>();
+            services.AddSingleton(provider => new LocalWhisperTranscriber(provider.GetRequiredService<WhisperModelManager>(),
+                provider.GetRequiredService<WidgetSession>().Preferences.Ai));
+            services.AddSingleton(new AiKeyStore(host._aiFolder));
+            services.AddSingleton<VoiceTranscriptionQueue>();
+            services.AddSingleton<MicrophoneCatalog>();
+            services.AddSingleton(provider => new OllamaHost(new HttpClient(), provider.GetRequiredService<WidgetSession>().Preferences.Ai));
+            services.AddSingleton(provider => new OllamaSetup(new HttpClient(), provider.GetRequiredService<WidgetSession>().Preferences.Ai));
+            services.AddSingleton(provider => new OllamaInstaller(new HttpClient(), provider.GetRequiredService<OllamaSetup>(),
+                provider.GetRequiredService<OllamaHost>(), provider.GetRequiredService<WidgetSession>().Preferences.Ai, provider.GetRequiredService<PreferencesStore>()));
+            services.AddSingleton<AiService>();
+            services.AddSingleton<AiSetupService>();
             services.AddSingleton(provider => new StartupService(host.Startup, @"C:\Test\TimePlanner.Widget.exe",
                 provider.GetRequiredService<ILogger<StartupService>>()));
             services.AddSingleton<WidgetFlow>();
@@ -993,6 +1010,7 @@ public class ReminderFlowTests
             Services.Dispose();
             _connection.Dispose();
             Http.Dispose();
+            try { Directory.Delete(_aiFolder, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
     }
 }

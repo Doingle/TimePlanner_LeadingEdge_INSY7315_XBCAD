@@ -78,6 +78,7 @@
     </ul>
   </li>
   <li><a href="#using-the-widget">Using the Widget</a></li>
+  <li><a href="#voice-notes-and-build-my-day">Voice Notes and Build My Day</a></li>
   <li><a href="#using-the-dashboard">Using the Dashboard</a></li>
   <li><a href="#domain-model-and-business-rules">Domain Model and Business Rules</a>
     <ul>
@@ -593,7 +594,109 @@ Picking things in the widget:
 - Removing an item deletes it if nothing was logged to it. If time was logged, it's hidden instead and the logged time is kept. The internal company and the top-level categories can't be removed.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Voice notes and Build my day
 
+### What it does
+Time Planner supports hands-free voice check-ins throughout the day and automated timesheet construction at the end of the day:
+- **Voice check-ins:** At each check-in alert, click **Speak your update** (or click the mic icon next to **Log now** on the timer) to record what you worked on (up to 3 minutes) instead of manually selecting projects and activities.
+- **Background transcription:** Audio is transcribed locally in the background using Whisper.net. As soon as speech is transcribed, the raw audio recording file is permanently deleted.
+- **Build my day:** At the end of the day or from the timesheet banner, click **Build my day** to have an AI language model analyze your day's voice notes, compare them against your project and activity trees, and compile non-overlapping timesheet entries fitted into your unlogged windows.
+- **Human-in-the-loop review:** All suggested entries display an AI disclaimer banner, compiler flags, and remove buttons. You can edit any suggestion, fix transcript text, add unmatched suggestions by hand, or delete notes before sending your timesheet to the dashboard.
+
+### Using voice notes (user guide)
+Five simple steps for everyday tracking:
+1. **Speak your update:** When the check-in prompt appears, click **Speak your update** (or press the microphone button on the timer card). Speak naturally about what you worked on for up to 3 minutes.
+2. **Automatic transcription:** The widget quietly turns your voice into text in the background. The audio file is deleted as soon as transcription finishes, keeping only the text note.
+3. **Review notes anytime:** Open your timesheet to see your voice notes for the day. Click any voice note row to view its transcript, make manual corrections, retry transcription, or delete the note.
+4. **Build your day:** When your workday ends or from the timesheet banner, click **Build my day**. The AI engine reads your notes and matches your tasks to your assigned clients, projects, and activities.
+5. **Accept and add:** Check the suggested times and projects. Remove suggestions you don't want, use **Add by hand** for any note flagged as needing a project, and click **Add entries** to populate your timesheet.
+
+### Local and private
+- **100% on your PC:** All speech recognition (Whisper.net) and day compilation (local Ollama) run locally on your machine by default. No audio, transcripts, or project data leave your PC.
+- **Ephemeral audio:** Raw audio recording files are deleted from your disk the moment local transcription succeeds.
+- **Local retention:** Voice notes and transcripts are stored locally in `%LOCALAPPDATA%\TimePlanner\voice\` and are automatically cleaned up after 30 days.
+
+### One-click setup
+1. In the widget, open **Settings › Voice and AI**.
+2. Click the **Install** button.
+3. The widget automatically:
+   - Downloads and installs Ollama silently as a background service managed by Time Planner. Ollama runs quietly only while Time Planner is open (no tray icon, no welcome screen, and does not start with Windows).
+   - Downloads the recommended day compilation model (`qwen2.5:3b`, about 1.9 GB). On slower machines (< 8 tokens/s), you can also choose the faster lightweight model (`qwen2.5:1.5b`).
+   - Downloads the recommended voice transcription model (`ggml-small.en-q5_1.bin`, about 190 MB).
+   - Runs a hardware speed check comparing your graphics card and processor, configuring the fastest and most stable path.
+
+### Testing and configuring your microphone
+1. Open **Settings › Voice and AI › Advanced**.
+2. Under the **Microphone** group, your current active microphone is selected (defaults to "Windows default"). If your chosen device is disconnected, Time Planner automatically falls back to Windows default and alerts you.
+3. Click **Test microphone**: Time Planner records 3 seconds without saving and shows a live level meter.
+4. The test reports one of three clear results:
+   - **Working: we can hear you:** Microphone and levels are good.
+   - **We couldn't hear anything:** Audio was received, but no speech detected. Check that your microphone is unmuted, adjust volume, or choose another microphone.
+   - **Windows gave us silence:** All incoming audio samples were pure zeros. Click the **Open sound settings** button to launch Windows Sound settings (`ms-settings:sound`) and verify microphone access permissions and format.
+
+### Troubleshooting: when nothing is heard
+- **Check mute and privacy:** Ensure physical mute switches are off and Windows Settings › Privacy & Security › Microphone allows apps to access your microphone.
+- **Microphone blocked / digital silence:** Click **Microphone settings** or **Open sound settings** directly from the note card to open Windows Sound settings.
+- **Select specific device:** In **Settings › Voice and AI › Advanced**, switch from "Windows default" directly to your headset or dedicated microphone.
+- **Slow PC hint:** If your PC compiles at fewer than 8 tokens/second, use the **Use Faster** button on the setup card to switch to `qwen2.5:1.5b`.
+- **Developer mode diagnostics:** If running with `--dev`, open the timesheet, click the failed voice note, and inspect the raw transcript, segment probabilities, and error diagnostics.
+
+### Fastest hardware detection
+The speed check measures performance on your specific machine:
+- **Build my day:** Compares tokens per second on your graphics card versus processor. The graphics card is selected only if it is at least 15% faster; otherwise the processor is selected for optimal stability.
+- **Voice recognition:** Runs Vulkan GPU transcription with automatic CPU fallback.
+- **Rerun anytime:** Open **Settings › Voice and AI › Advanced** and click **Run speed check** whenever you update graphics drivers or change hardware.
+
+### Advanced options
+Open **Settings › Voice and AI › Advanced** to customize your setup:
+- **Hardware selection:** Explicitly choose **Automatic (recommended)**, **Graphics card**, or **Processor**.
+- **Microphone picker & test:** Select any connected audio capture device and test live input levels.
+- **AI engine management:** View model storage locations and whether Ollama is managed by Time Planner.
+- **Remove AI engine and models:** An inline confirmation removes Ollama and model files (freeing ~3 GB) while preserving your timesheets and voice note history.
+- **Your own Ollama models:** Connect to any local or remote Ollama instance (`http://localhost:11434`) and choose from any model installed on that instance.
+- **Custom Whisper models:** Point to any valid GGML Whisper `.bin` model file on disk or click **Use the built-in model** to revert to catalog defaults.
+- **Build my day engine:** Switch between **This PC (Ollama)** and **Your organisation's AI (dashboard)**.
+
+### Developer mode
+Developer features are gated behind the `--dev` command-line switch:
+- **Enable developer mode:**
+  - Launch with `--dev`, e.g., via the Visual Studio / `dotnet run` profile `Widget (dev)` or a desktop shortcut:
+    ```
+    "C:\Program Files\TimePlanner\TimePlanner.Widget.exe" --dev
+    ```
+- **What `--dev` enables:**
+  - **Developer: Check in now** in the tray menu.
+  - **Preview screens** in the tray menu (Debug builds).
+  - Direct OpenAI-compatible cloud API settings in Advanced settings (`--dev` only).
+  - `--sample-day` loading (ignored in user mode without `--dev`).
+  - Tray tooltip indicates `Time Planner (developer mode)`.
+
+### Organisation AI (groundwork)
+For teams that prefer running day compilation centrally on an organisation server:
+- **Server configuration:** In the dashboard's environment variables or Azure App Service App Settings:
+  - `Ai__Url`: The OpenAI-compatible API base URL (e.g. Azure OpenAI or self-hosted endpoint).
+  - `Ai__Model`: The model name to request.
+  - `Ai__ApiKey`: Secret API key. **API keys are set in Azure App Settings or user secrets only—never in files, database, or git repository.**
+- **Privacy:** Transcription **always stays on the employee's PC**. Only the text transcripts and catalog identifiers are sent to the dashboard endpoint using the employee's authenticated bearer token.
+- **Status handling:** Returns plain-language errors if not configured (503), unauthenticated (401), or rate-limited (429).
+
+### Removing everything
+- **Voice models:** Stored in `%LOCALAPPDATA%\TimePlanner\models\` and can be safely deleted.
+- **Voice notes & transcripts:** Stored in `%LOCALAPPDATA%\TimePlanner\voice\` and can be deleted.
+- **Ollama models:** Removed via Ollama CLI: `ollama rm qwen2.5:3b`.
+- **Ollama app:** Uninstalled via Windows **Settings › Apps › Installed apps › Ollama**.
+- **Saved API keys:** Stored with Windows DPAPI encryption in `%LOCALAPPDATA%\TimePlanner\ai-keys.bin`.
+
+### Model comparison
+Results are added after the harness has been run on recorded test days; see `tools/TimePlanner.AiEval`.
+
+| Model | Mode | Valid JSON | Project match | Activity match | Time overlap | Avg seconds |
+|---|---|---|---|---|---|---|
+
+| Whisper model | File | Size | Word error rate | Seconds per minute of audio |
+|---|---|---|---|---|
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Using the dashboard
 Every page needs a sign-in, except Login, Privacy, the error page, /health and (when enabled) the Swagger page.

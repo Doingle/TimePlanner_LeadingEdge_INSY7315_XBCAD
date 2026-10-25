@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -73,6 +73,17 @@ namespace TimePlanner.Widget.Views
                 : left == null ? "No more check-ins today"
                 : scheduler.IsSnoozed && _flow.Snooze.SnoozedUntil is { } until ? $"Check-in snoozed until {Format.Clock(until)}"
                 : "until next check-in";
+
+            var ai = _flow.Session.Preferences.Ai;
+            var voiceAvailable = ai.VoiceEnabled && _flow.AiSetup.IsVoiceReady;
+            VoiceLogButton.Visibility = voiceAvailable ? Visibility.Visible : Visibility.Collapsed;
+            //configure voice button tooltip when enabled
+            if (voiceAvailable)
+            {
+                var tip = $"Speak your update since {Format.Clock(_flow.GetLogPeriod().Start)}";
+                VoiceLogButton.ToolTip = tip;
+                AutomationProperties.SetName(VoiceLogButton, tip);
+            }
         }
 
         private async void PauseButton_Click(object sender, RoutedEventArgs e)
@@ -97,7 +108,14 @@ namespace TimePlanner.Widget.Views
 
         private async void LogNow_Click(object sender, RoutedEventArgs e) => await _flow.LogTimeAsync(LogEntryMode.LogNow);
 
-        private void EndDay_Click(object sender, RoutedEventArgs e) => _flow.AskEndDay();
+        //-----------------------------
+        //handles voice update button click from timer
+        private void VoiceLog_Click(object sender, RoutedEventArgs e)
+        {
+            _flow.StartVoiceNote();
+        }
 
+        private void EndDay_Click(object sender, RoutedEventArgs e) => _flow.AskEndDay();
     }
 }
+//------------------------------EOF-----------------------------\\
