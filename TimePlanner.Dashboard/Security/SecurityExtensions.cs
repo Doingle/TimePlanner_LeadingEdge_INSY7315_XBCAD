@@ -10,6 +10,7 @@ namespace TimePlanner.Dashboard.Security
     public static class SecurityExtensions
     {
         public const string LoginLimiter = "login";
+        public const string AiLimiter = "ai";
         public const string ImportLimiter = "import";
 
         //the largest request body any endpoint accepts, individual endpoints may ask for less
@@ -80,6 +81,16 @@ namespace TimePlanner.Dashboard.Security
                 o.AddPolicy(ImportLimiter, http => RateLimitPartition.GetFixedWindowLimiter(
                     http.User.FindFirst("sub")?.Value ?? http.User.Identity?.Name ?? http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     _ => PerMinute(http, "RateLimiting:ImportPerMinute", 20)));
+
+                // build day calls to organisation ai, limited per signed in user to 30 requests an hour
+                o.AddPolicy(AiLimiter, http => RateLimitPartition.GetFixedWindowLimiter(
+                    http.User.FindFirst("sub")?.Value ?? http.User.Identity?.Name ?? http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = http.RequestServices.GetRequiredService<IConfiguration>().GetValue("RateLimiting:AiPerHour", 30),
+                        Window = TimeSpan.FromHours(1),
+                        QueueLimit = 0
+                    }));
             });
         }
 

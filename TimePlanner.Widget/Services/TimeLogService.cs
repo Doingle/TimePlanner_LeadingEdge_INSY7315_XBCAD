@@ -338,6 +338,14 @@ namespace TimePlanner.Widget.Services
         }
 
         //-----------------------------
+        //gets the signed in dashboard access token for organisation services
+        public async Task<string?> GetDashboardAccessTokenAsync()
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<DaySendService>().GetAccessTokenAsync(clock.GetUtcNow().UtcDateTime);
+        }
+
+        //-----------------------------
         //signs out of the dashboard
         public async Task SignOutOfDashboardAsync()
         {
