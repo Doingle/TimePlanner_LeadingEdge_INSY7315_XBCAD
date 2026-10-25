@@ -620,10 +620,26 @@ Five simple steps for everyday tracking:
 1. In the widget, open **Settings › Voice and AI**.
 2. Click the **Install** button.
 3. The widget automatically:
-   - Downloads and installs Ollama silently as a per-user background application (about 3–4 GB total download; at least 8 GB free disk space needed on drive C:). Ollama starts automatically with Windows.
-   - Downloads the recommended day compilation model (`qwen2.5:3b`).
-   - Downloads the recommended voice transcription model (`ggml-small.en-q5_1.bin`, balanced).
-   - Runs a hardware speed check to compare your graphics card and processor, choosing the fastest configuration for your PC.
+   - Downloads and installs Ollama silently as a background service managed by Time Planner. Ollama runs quietly only while Time Planner is open (no tray icon, no welcome screen, and does not start with Windows).
+   - Downloads the recommended day compilation model (`qwen2.5:3b`, about 1.9 GB). On slower machines (< 8 tokens/s), you can also choose the faster lightweight model (`qwen2.5:1.5b`).
+   - Downloads the recommended voice transcription model (`ggml-small.en-q5_1.bin`, about 190 MB).
+   - Runs a hardware speed check comparing your graphics card and processor, configuring the fastest and most stable path.
+
+### Testing and configuring your microphone
+1. Open **Settings › Voice and AI › Advanced**.
+2. Under the **Microphone** group, your current active microphone is selected (defaults to "Windows default"). If your chosen device is disconnected, Time Planner automatically falls back to Windows default and alerts you.
+3. Click **Test microphone**: Time Planner records 3 seconds without saving and shows a live level meter.
+4. The test reports one of three clear results:
+   - **Working: we can hear you:** Microphone and levels are good.
+   - **We couldn't hear anything:** Audio was received, but no speech detected. Check that your microphone is unmuted, adjust volume, or choose another microphone.
+   - **Windows gave us silence:** All incoming audio samples were pure zeros. Click the **Open sound settings** button to launch Windows Sound settings (`ms-settings:sound`) and verify microphone access permissions and format.
+
+### Troubleshooting: when nothing is heard
+- **Check mute and privacy:** Ensure physical mute switches are off and Windows Settings › Privacy & Security › Microphone allows apps to access your microphone.
+- **Microphone blocked / digital silence:** Click **Microphone settings** or **Open sound settings** directly from the note card to open Windows Sound settings.
+- **Select specific device:** In **Settings › Voice and AI › Advanced**, switch from "Windows default" directly to your headset or dedicated microphone.
+- **Slow PC hint:** If your PC compiles at fewer than 8 tokens/second, use the **Use Faster** button on the setup card to switch to `qwen2.5:1.5b`.
+- **Developer mode diagnostics:** If running with `--dev`, open the timesheet, click the failed voice note, and inspect the raw transcript, segment probabilities, and error diagnostics.
 
 ### Fastest hardware detection
 The speed check measures performance on your specific machine:
@@ -634,6 +650,9 @@ The speed check measures performance on your specific machine:
 ### Advanced options
 Open **Settings › Voice and AI › Advanced** to customize your setup:
 - **Hardware selection:** Explicitly choose **Automatic (recommended)**, **Graphics card**, or **Processor**.
+- **Microphone picker & test:** Select any connected audio capture device and test live input levels.
+- **AI engine management:** View model storage locations and whether Ollama is managed by Time Planner.
+- **Remove AI engine and models:** An inline confirmation removes Ollama and model files (freeing ~3 GB) while preserving your timesheets and voice note history.
 - **Your own Ollama models:** Connect to any local or remote Ollama instance (`http://localhost:11434`) and choose from any model installed on that instance.
 - **Custom Whisper models:** Point to any valid GGML Whisper `.bin` model file on disk or click **Use the built-in model** to revert to catalog defaults.
 - **Build my day engine:** Switch between **This PC (Ollama)** and **Your organisation's AI (dashboard)**.
