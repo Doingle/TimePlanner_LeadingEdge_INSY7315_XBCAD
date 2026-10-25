@@ -108,6 +108,24 @@ namespace TimePlanner.Widget.Views
 
             try
             {
+                //an edit that would change other entries asks first, and nothing is saved until the user says yes
+                if (_entry?.EntryId is int entryId)
+                {
+                    var preview = await _flow.PreviewUpdateEntryAsync(entryId, edit);
+
+                    if (!preview.Ok)
+                    {
+                        ShowError(preview.Error ?? "Could not save entry.");
+                        return;
+                    }
+
+                    if (preview.NeedsConfirmation)
+                    {
+                        ShowBanner(entryId, edit, preview.Changes);
+                        return;
+                    }
+                }
+
                 var result = _entry != null && _entry.EntryId.HasValue
                     ? await _flow.UpdateEntryAsync(_entry.EntryId.Value, edit)
                     : await _flow.AddEntryAsync(edit);
@@ -129,6 +147,81 @@ namespace TimePlanner.Widget.Views
             finally
             {
                 SaveButton.IsEnabled = true;
+            }
+        }
+
+        private int _bannerEntryId;
+        private EntryEdit? _bannerEdit;
+
+        //-----------------------------
+        //what the banner says: each entry the edit would change, with its new times, then the question
+        internal static string BannerMessage(IReadOnlyList<NeighbourChange> changes)
+        {
+            var lines = changes.Select(c => c.IsRemoval
+                ? $"This removes {c.Label} ({Format.Clock(c.OldStart)}–{Format.Clock(c.OldEnd)})."
+                : $"This changes {c.Label} to {Format.Clock(c.NewStart!.Value)}–{Format.Clock(c.NewEnd!.Value)}.");
+            return string.Join("\n", lines) + " Continue?";
+        }
+
+        //-----------------------------
+        //asks about the changes to other entries. Yes will save exactly the edit described here
+        private void ShowBanner(int entryId, EntryEdit edit, IReadOnlyList<NeighbourChange> changes)
+        {
+            _bannerEntryId = entryId;
+            _bannerEdit = edit;
+            BannerText.Text = BannerMessage(changes);
+            ConfirmBanner.Visibility = Visibility.Visible;
+        }
+
+        //-----------------------------
+        //hides the banner. Any change to the fields does this too, so Yes can never save something other than what the banner described
+        private void HideBanner()
+        {
+            _bannerEdit = null;
+            ConfirmBanner.Visibility = Visibility.Collapsed;
+        }
+
+        private void Fields_Changed(object sender, TextChangedEventArgs e) => HideBanner();
+
+        //-----------------------------
+        //keeps editing, nothing was saved
+        private void BannerNo_Click(object sender, RoutedEventArgs e) => HideBanner();
+
+        //-----------------------------
+        //saves the edit together with the changes the banner described, and offers an undo on the timesheet
+        private async void BannerYes_Click(object sender, RoutedEventArgs e)
+        {
+            if (_bannerEdit is not { } edit)
+            {
+                return;
+            }
+
+            BannerYes.IsEnabled = false;
+
+            try
+            {
+                var result = await _flow.UpdateEntryAsync(_bannerEntryId, edit, confirmed: true);
+
+                //a refused save goes back to the form with the reason
+                if (!result.Ok)
+                {
+                    HideBanner();
+                    ShowError(result.Error ?? "Could not save entry.");
+                    return;
+                }
+
+                _flow.OfferUndo(result);
+                _back();
+            }
+            catch (ArgumentException ex)
+            {
+                //shows error message when activity path fails
+                HideBanner();
+                ShowError(ex.Message);
+            }
+            finally
+            {
+                BannerYes.IsEnabled = true;
             }
         }
 
@@ -158,6 +251,7 @@ namespace TimePlanner.Widget.Views
                 return;
             }
 
+            HideBanner();
             var project = FindProject(ProjectPicker.SelectedPath);
             _flow.Session.ProjectId = project?.ProjectID;
             var choices = project != null
@@ -169,7 +263,11 @@ namespace TimePlanner.Widget.Views
 
         //-----------------------------
         //tracks activity picker selection
-        private void Activity_SelectionChanged(object? sender, EventArgs e) => _flow.Session.Activity = ActivityPicker.SelectedPath;
+        private void Activity_SelectionChanged(object? sender, EventArgs e)
+        {
+            HideBanner();
+            _flow.Session.Activity = ActivityPicker.SelectedPath;
+        }
 
         //-----------------------------
         //builds project tree from project list
