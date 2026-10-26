@@ -11,6 +11,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
@@ -96,6 +97,12 @@ namespace TimePlanner.Widget
                 && Host.Content is SetupView or TimerView or DayEndedView;
 
             var wasVisible = UpdateNotice.Visibility == Visibility.Visible;
+
+            //set available version on update notice when becoming visible
+            if (show && !wasVisible && _updates?.Available?.LatestVersion is { } ver && WidgetRelease.Parse(ver) is { } parsed)
+            {
+                UpdateNotice.SetAvailableUpdate(parsed);
+            }
 
             UpdateNotice.Visibility = show
                 ? Visibility.Visible
