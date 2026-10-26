@@ -77,6 +77,28 @@ public sealed class IdleInteractionTests
     }
 
     [Fact]
+    public void MainCardTopStaysStillWhenScreensChangeHeight()
+    {
+        var area = new Rect(0, 0, 1920, 1040);
+        var shadow = MainWindow.ShadowMargin;
+
+        // A card saved by its bottom edge near the taskbar now hangs from a top with room for the tallest screen
+        var pinned = new WidgetPosition(1904, 1024, true, true).PinnedAtTop(MainWindow.MainRoom);
+        Assert.Equal(new WidgetPosition(1904, 1024 - MainWindow.MainRoom, true, false), pinned);
+
+        // Timer, Settings and the tallest screens all start at the same top
+        foreach (var height in new[] { 210d, 450, 650 })
+        {
+            var size = new Size(320 + shadow.Left + shadow.Right, height + shadow.Top + shadow.Bottom);
+            Assert.Equal(1024 - MainWindow.MainRoom, pinned.Locate(area, size, shadow).Y + shadow.Top);
+        }
+
+        // A position already held by its top is left as it is
+        var top = new WidgetPosition(600, 120, false, false);
+        Assert.Same(top, top.PinnedAtTop(MainWindow.MainRoom));
+    }
+
+    [Fact]
     public void AnchoredCornerStaysStillWhenShapeSizeChanges()
     {
         var anchor = new WidgetPosition(1904, 16, true, false);

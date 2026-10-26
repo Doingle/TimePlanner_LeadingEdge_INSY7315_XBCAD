@@ -18,6 +18,7 @@ namespace TimePlanner.Core.Services
         private UserSettings _settings = new();
         private DaySession? _session;
         private DateTime _anchor;
+        private DateTime _clockTimingFrom;
         private int _skipsUsedToday;
         private DateOnly _skipDay;
         private DateTime? _dueSince;
@@ -59,6 +60,7 @@ namespace TimePlanner.Core.Services
             await LoadSettingsAsync();
             await LoadSessionAsync();
             await RebuildAnchorAsync();
+            _clockTimingFrom = _anchor;
             ResolvePrompt();
             return await TickAsync();
         }
@@ -69,7 +71,7 @@ namespace TimePlanner.Core.Services
         {
             var previousInterval = _settings.CheckInIntervalMinutes;
             await LoadSettingsAsync();
-            if (_settings.CheckInIntervalMinutes != previousInterval)
+            if (_settings.CheckInIntervalMinutes != previousInterval && Timing == CheckInTiming.FromLastCheckIn)
             {
                 // Recalculate from the same work anchor; an old due/snoozed prompt must not pin the timer.
                 // Keep the snooze/skip allowance and all unlogged work intact.
@@ -87,6 +89,7 @@ namespace TimePlanner.Core.Services
             if (timing != Timing)
             {
                 Timing = timing;
+                _clockTimingFrom = _clock.Now;
                 _dueSince = null;
                 _snoozedUntil = null;
             }
@@ -95,21 +98,9 @@ namespace TimePlanner.Core.Services
         }
 
         //-----------------------------
-        //the hour or half hour nearest a due time, never too soon after the last check in
-        //a check in lands at least half an interval after the anchor so answering late can't bring the next one straight after
-        public static DateTime OnTheHalfHour(DateTime due, DateTime anchor, TimeSpan interval)
-        {
-            //nearest mark with a tie going later
-            var mark = new DateTime((due.Ticks + HalfHour.Ticks / 2) / HalfHour.Ticks * HalfHour.Ticks, due.Kind);
-
-            //a mark too close to the anchor moves on to the next one
-            while (mark - anchor < interval / 2)
-            {
-                mark += HalfHour;
-            }
-
-            return mark;
-        }
+        //The next local :00 or :30, strictly after starting, answering or resuming.
+        public static DateTime NextHalfHour(DateTime from) =>
+            new((from.Ticks / HalfHour.Ticks + 1) * HalfHour.Ticks, from.Kind);
 
         //-----------------------------
         //reloads the day after start pause resume or end
@@ -320,12 +311,17 @@ namespace TimePlanner.Core.Services
         }
 
         //-----------------------------
-        //when the prompt falls: a full interval of work after the anchor with breaks left out,
-        //then on the clock timing the nearest hour or half hour to that
+        //Clock timing is independent of the interval and paused work duration.
         private DateTime DueAt(DateTime now)
         {
-            var due = now + (Interval - ActiveTimeSince(_anchor, now));
-            return Timing == CheckInTiming.OnTheHalfHour ? OnTheHalfHour(due, _anchor, Interval) : due;
+            if (Timing != CheckInTiming.OnTheHalfHour)
+                return now + (Interval - ActiveTimeSince(_anchor, now));
+
+            var from = _anchor > _clockTimingFrom ? _anchor : _clockTimingFrom;
+            foreach (var pause in _session?.Pauses ?? Enumerable.Empty<SessionPause>())
+                if (pause.EndedAt is { } resumed && resumed > from)
+                    from = resumed;
+            return NextHalfHour(from);
         }
 
         //-----------------------------

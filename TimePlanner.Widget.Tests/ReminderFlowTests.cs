@@ -733,7 +733,7 @@ public class ReminderFlowTests
             flow.ShowTimer();
             var timer = Assert.IsType<TimerView>(host.Window.Screen);
             Assert.Equal("03:00", ((TextBlock)timer.FindName("TimerText")).Text);
-            Assert.Equal("not logged yet\nno check-ins today", ((TextBlock)timer.FindName("StatusText")).Text);
+            Assert.Equal("not logged yet", ((TextBlock)timer.FindName("StatusText")).Text);
             Render(timer, "timer-day-off");
         }
     });
@@ -756,11 +756,17 @@ public class ReminderFlowTests
         Assert.Equal(Visibility.Visible, ((Border)settings.FindName("LargerTextRow")).Visibility);
         Render(settings, "settings");
 
-        // More options: the hour and half hour switch, and the working days summary
+        // Timing is on the main screen; the existing working-days screen stays in More options.
+        Assert.Equal(Visibility.Visible, ((StackPanel)settings.FindName("MainView")).Visibility);
+        ((RadioButton)settings.FindName("ClockOption")).IsChecked = true;
+        await WaitUntil(() => host.Flow.Session.Preferences.CheckInTiming == CheckInTiming.OnTheHalfHour);
+        await WaitUntil(() => ((StackPanel)settings.FindName("IntervalField")).Visibility == Visibility.Collapsed);
+        Render(settings, "settings-clock-times");
+        ((RadioButton)settings.FindName("IntervalOption")).IsChecked = true;
+        await WaitUntil(() => host.Flow.Session.Preferences.CheckInTiming == CheckInTiming.FromLastCheckIn);
+        await WaitUntil(() => ((StackPanel)settings.FindName("IntervalField")).Visibility == Visibility.Visible);
         settings.ShowAdvanced();
         Assert.Equal("Mon – Fri", ((TextBlock)settings.FindName("WorkingDaysSummary")).Text);
-        ((ToggleButton)settings.FindName("HalfHourSwitch")).IsChecked = true;
-        await WaitUntil(() => host.Flow.Session.Preferences.CheckInTiming == CheckInTiming.OnTheHalfHour);
         Render(settings, "more-options");
 
         // Working days opens its own list, Monday first
@@ -797,11 +803,11 @@ public class ReminderFlowTests
         var started = host.Clock.LocalNow();
         Assert.Equal(started.AddMinutes(60), host.Flow.Scheduler.PromptAt);
 
-        // Started at 10:10, an hour of work is 11:10, nearest the hour
+        // Started at 10:10, so clock timing waits twenty minutes for 10:30.
         await host.Flow.ChangeTimingAsync(CheckInTiming.OnTheHalfHour);
-        Assert.Equal(started.Date.AddHours(11), host.Flow.Scheduler.PromptAt);
-        Assert.Equal(TimeSpan.FromMinutes(50), host.Flow.Scheduler.TimeLeft);
-        Assert.Equal(started.Date.AddHours(11), host.Flow.Scheduler.NextCheckIn(TimeSpan.FromMinutes(60)));
+        Assert.Equal(started.Date.AddHours(10.5), host.Flow.Scheduler.PromptAt);
+        Assert.Equal(TimeSpan.FromMinutes(20), host.Flow.Scheduler.TimeLeft);
+        Assert.Equal(started.Date.AddHours(10.5), host.Flow.Scheduler.NextCheckIn(TimeSpan.FromMinutes(60)));
     });
 
     // A new scheduler and flow over the same in-memory database, as when the widget is opened again
