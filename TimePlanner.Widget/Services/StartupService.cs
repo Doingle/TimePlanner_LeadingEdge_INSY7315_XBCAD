@@ -11,8 +11,11 @@ namespace TimePlanner.Widget.Services
     /// </summary>
     public sealed class StartupService(IStartupRegistration registration, string? programPath, ILogger<StartupService> logger)
     {
-        /// <summary>The command Windows runs at sign-in: this program, quoted for paths with spaces.</summary>
-        public string? Command => string.IsNullOrEmpty(programPath) ? null : $"\"{programPath}\"";
+        /// <summary>Marks a start by Windows at sign-in, so on a day off the widget can wait in the tray instead of popping up.</summary>
+        public const string SignInArgument = "--startup";
+
+        /// <summary>The command Windows runs at sign-in: this program, quoted for paths with spaces, marked as a sign-in start.</summary>
+        public string? Command => string.IsNullOrEmpty(programPath) ? null : $"\"{programPath}\" {SignInArgument}";
 
         /// <summary>
         /// Adds, updates or removes the entry. Returns null when Windows now matches the preference, or a

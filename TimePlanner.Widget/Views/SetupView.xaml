@@ -3,6 +3,27 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
              xmlns:views="clr-namespace:TimePlanner.Widget.Views">
+    <UserControl.Resources>
+        <!-- A plain list row that opens another screen: no outline, the row is the button -->
+        <Style x:Key="PlainRow" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontWeight" Value="{StaticResource FontWeightRegular}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="False" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- The close rows of More options sit 4 apart -->
+        <Thickness x:Key="Space4Top">0,4,0,0</Thickness>
+    </UserControl.Resources>
     <controls:WidgetCard x:Name="Card">
         <controls:WidgetCard.Banner>
             <!-- Covers the card's 1px outline on the top and sides, so no light edge shows around the colour -->
@@ -42,13 +63,58 @@
                     <TextBlock Style="{StaticResource Text.Title}" Text="Settings" Margin="4,0,0,0" VerticalAlignment="Center" />
                 </DockPanel>
 
-                <StackPanel x:Name="IntervalField">
+                <StackPanel x:Name="TimingSection">
+                    <TextBlock Style="{StaticResource Text.Label}" Text="Check-in timing" />
+                    <Border Background="{StaticResource SurfaceSubtleBrush}" CornerRadius="{StaticResource RadiusControl}" Padding="4">
+                        <UniformGrid x:Name="TimingOptions" Columns="2">
+                            <UniformGrid.Resources>
+                                <Style TargetType="RadioButton" BasedOn="{StaticResource Option}">
+                                    <Setter Property="Height" Value="{StaticResource Space32}" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="RadioButton">
+                                                <Border x:Name="Selection" Background="Transparent" CornerRadius="{StaticResource RadiusRow}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter TargetName="Selection" Property="Background" Value="{StaticResource SurfaceBrush}" />
+                                                        <Setter Property="Foreground" Value="{StaticResource TextAccentBrush}" />
+                                                        <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5" /></Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </UniformGrid.Resources>
+                            <RadioButton x:Name="IntervalOption" GroupName="Timing" Content="Interval" Checked="Timing_Checked" />
+                            <RadioButton x:Name="ClockOption" GroupName="Timing" Content="Clock times" Checked="Timing_Checked" />
+                        </UniformGrid>
+                    </Border>
+                    <TextBlock x:Name="ClockTimingHelp" Style="{StaticResource Text.Help}" Text="On the hour and half-hour" Visibility="Collapsed" />
+                </StackPanel>
+                <StackPanel x:Name="IntervalField" Margin="{StaticResource GapFieldToField}">
                     <TextBlock x:Name="IntervalLabel" Style="{StaticResource Text.Label}" Text="Check in every" />
                     <ComboBox x:Name="IntervalSelect" Style="{StaticResource Select}"
                               AutomationProperties.LabeledBy="{Binding ElementName=IntervalLabel}"
                               SelectionChanged="Interval_SelectionChanged" />
                     <TextBlock x:Name="IntervalHelp" Style="{StaticResource Text.Help}" Text="First check-in at 10:00 AM" />
                 </StackPanel>
+
+                <!-- Settings only, an outlined row with its switch. Saved, but it doesn't change the widget yet -->
+                <Border x:Name="LargerTextRow" Margin="{StaticResource GapFieldToField}" Height="{StaticResource SizeControl}"
+                        Padding="16,0,8,0" CornerRadius="{StaticResource RadiusControl}" Visibility="Collapsed"
+                        Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderControlBrush}"
+                        BorderThickness="{DynamicResource BorderWidth}">
+                    <DockPanel>
+                        <ToggleButton x:Name="LargerTextSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}" Margin="16,0,0,0"
+                                      VerticalAlignment="Center" AutomationProperties.LabeledBy="{Binding ElementName=LargerTextLabel}"
+                                      Checked="LargerText_Changed" Unchecked="LargerText_Changed" />
+                        <TextBlock x:Name="LargerTextLabel" Text="Larger text and buttons" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Border>
 
                 <Button x:Name="AdvancedRow" Style="{StaticResource NavRow}" Margin="{StaticResource GapFieldToField}"
                         Click="OpenAdvanced_Click">
@@ -58,7 +124,7 @@
                                        Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" />
                             <controls:Icon Kind="ChevronRight" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
                         </StackPanel>
-                        <TextBlock Text="Advanced options" VerticalAlignment="Center" />
+                        <TextBlock Text="More options" VerticalAlignment="Center" />
                     </DockPanel>
                 </Button>
 
@@ -102,7 +168,7 @@
                             AutomationProperties.Name="Back to setup" Click="CloseAdvanced_Click">
                         <controls:Icon Kind="ChevronLeft" />
                     </Button>
-                    <TextBlock Style="{StaticResource Text.Title}" Text="Advanced options" Margin="4,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock Style="{StaticResource Text.Title}" Text="More options" Margin="4,0,0,0" VerticalAlignment="Center" />
                 </DockPanel>
 
                 <StackPanel Margin="{StaticResource GapSection}">
@@ -142,14 +208,28 @@
                     <TextBlock x:Name="ShapeHelp" Style="{StaticResource Text.Help}" Text="Shows the time left." />
                 </StackPanel>
 
-                <DockPanel Margin="{StaticResource GapFieldToField}" MinHeight="{StaticResource SizeControl}">
+                <!-- The working days list, on a screen of its own -->
+                <Button x:Name="WorkingDaysRow" Style="{StaticResource PlainRow}" Margin="{StaticResource Space4Top}"
+                        Click="WorkingDays_Click">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <TextBlock x:Name="WorkingDaysSummary" Text="Mon – Fri" Margin="0,0,4,0" VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <controls:Icon Kind="ChevronRight" Size="{StaticResource SizeIconSm}" VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                        </StackPanel>
+                        <TextBlock Text="Working days" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Button>
+
+                <DockPanel Margin="{StaticResource Space4Top}" MinHeight="{StaticResource SizeControl}">
                     <ToggleButton x:Name="SoundSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}" Margin="16,0,0,0"
                                   AutomationProperties.LabeledBy="{Binding ElementName=SoundLabel}"
                                   Checked="Sound_Changed" Unchecked="Sound_Changed" />
                     <TextBlock x:Name="SoundLabel" Text="Sound on check-in" VerticalAlignment="Center" />
                 </DockPanel>
 
-                <StackPanel Margin="{StaticResource GapFieldToField}">
+                <StackPanel Margin="{StaticResource Space4Top}">
                     <DockPanel MinHeight="{StaticResource SizeControl}">
                         <ToggleButton x:Name="StartupSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}" Margin="16,0,0,0"
                                       AutomationProperties.LabeledBy="{Binding ElementName=StartupLabel}"

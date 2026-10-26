@@ -28,6 +28,9 @@ namespace TimePlanner.Widget
 
         private const double ScreenInset = 16;
 
+        // Space under the main card's top for its tallest screen, so going from screen to screen never moves the top
+        public const double MainRoom = 680;
+
         private enum Corner
         {
             TopLeft,
@@ -271,11 +274,13 @@ namespace TimePlanner.Widget
             var area = WorkArea();
             var m = ShadowMargin;
 
+            // The idle shape starts in the top corner; the main card hangs from its top, low enough on the right
+            // to sit near the taskbar yet with room below it for the tallest screen
             _anchor ??= new Point(
                 area.Right - ScreenInset,
                 _idle
                     ? area.Top + ScreenInset
-                    : area.Bottom - ScreenInset);
+                    : Math.Max(area.Top + ScreenInset, area.Bottom - ScreenInset - MainRoom));
 
             var anchor = _anchor.Value;
 
@@ -321,7 +326,9 @@ namespace TimePlanner.Widget
                 card.Left + card.Width / 2 >
                 area.Left + area.Width / 2;
 
+            // The idle shape holds whichever edge is nearer; the main card always holds its top, so it stays put from screen to screen
             var bottom =
+                _idle &&
                 card.Top + card.Height / 2 >
                 area.Top + area.Height / 2;
 
@@ -346,6 +353,11 @@ namespace TimePlanner.Widget
                 ? _shown?.Preferences?.IdlePosition
                 : _shown?.Preferences?.MainPosition;
 
+            // A main card saved by its bottom edge (before the card held its top) moves to its top, and is saved that way
+            var converted = !_idle && saved?.IsValid == true && saved.Bottom;
+            if (converted)
+                saved = saved!.PinnedAtTop(MainRoom);
+
             if (saved?.IsValid == true)
             {
                 _anchor = new Point(saved.X, saved.Y);
@@ -362,12 +374,10 @@ namespace TimePlanner.Widget
             {
                 _anchor = null;
 
-                _corner = _idle
-                    ? Corner.TopRight
-                    : Corner.BottomRight;
+                _corner = Corner.TopRight;
             }
 
-            _positionDirty = false;
+            _positionDirty = converted;
         }
 
         public void SavePosition()

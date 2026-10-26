@@ -54,7 +54,7 @@ namespace TimePlanner.Widget.Views
             new("How do I take a break?",
                 "Select the pause button beside the countdown. Select it again when you are ready to carry on. Paused time is excluded from your work time. Lunch breaks are not added automatically."),
             new("How do I change my check-in time?",
-                "Open Settings and change Check in every. Time that has already passed still counts, so the countdown may be shorter than the interval you chose. If that interval has already passed, a check-in may be due straight away."),
+                "Open Settings and choose Interval or Clock times. Interval counts your chosen number of working minutes from your last check-in. Time already worked still counts. Clock times checks in on the hour and half-hour, such as 10:30 and 11:00. After a pause, it waits for the next clock time."),
             new("How do I fix a time I logged?",
                 "Open Timesheet from the tray menu, choose the day, then click the entry you want to change. Make your changes and select Save. If you already sent that day, send it again to update the dashboard."),
             new("How do I change the small timer?",

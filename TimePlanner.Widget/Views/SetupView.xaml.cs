@@ -11,6 +11,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using System.Windows.Automation;
+using TimePlanner.Core.Services.Models;
 using TimePlanner.Widget.Models;
 using TimePlanner.Core.Ai;
 
@@ -35,6 +37,7 @@ namespace TimePlanner.Widget.Views
 
         private const string ShapeOff = "Nothing shows while the widget is hidden.";
 
+
         private readonly WidgetFlow _flow;
         private readonly bool _isSettings;
         private readonly List<int> _intervals;
@@ -55,7 +58,9 @@ namespace TimePlanner.Widget.Views
                 SettingsHeader.Visibility = Visibility.Visible;
                 HelpButton.Visibility = Visibility.Collapsed;
                 ManageListsRow.Visibility = Visibility.Visible;
-                IntervalField.Margin = (Thickness)FindResource("GapSection");
+                LargerTextRow.Visibility = Visibility.Visible;
+                AdvancedRow.Margin = (Thickness)FindResource("GapStacked");
+                TimingSection.Margin = (Thickness)FindResource("GapSection");
                 PrimaryButton.Content = "Done";
                 AiSettingsRow.Visibility = Visibility.Visible;
                 UpdateAiSummary();
@@ -72,6 +77,11 @@ namespace TimePlanner.Widget.Views
             _intervals = CheckInPolicy.ChoicesIncluding(settings.CheckInIntervalMinutes);
             IntervalSelect.ItemsSource = _intervals.Select(Format.Interval).ToList();
             IntervalSelect.SelectedIndex = _intervals.IndexOf(settings.CheckInIntervalMinutes);
+            ClockOption.IsChecked = preferences.CheckInTiming == CheckInTiming.OnTheHalfHour;
+            IntervalOption.IsChecked = !ClockOption.IsChecked;
+            ShowTiming();
+            WorkingDaysSummary.Text = Format.Days(preferences.WorkingDays);
+            LargerTextSwitch.IsChecked = preferences.LargerText;
 
             (preferences.IdleVisibility switch
             {
@@ -152,14 +162,49 @@ namespace TimePlanner.Widget.Views
             if (!_ready || IntervalSelect.SelectedIndex < 0)
                 return;
 
-            IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = false;
+            TimingOptions.IsEnabled = IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = false;
             try
             {
                 _intervalSave = _flow.ChangeIntervalAsync(_intervals[IntervalSelect.SelectedIndex]);
                 await _intervalSave;
                 ShowNextCheckIn();
             }
-            finally { IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = true; }
+            finally { TimingOptions.IsEnabled = IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = true; }
+        }
+
+        private async void Timing_Checked(object sender, RoutedEventArgs e)
+        {
+            if (!_ready)
+                return;
+            TimingOptions.IsEnabled = IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = false;
+            try
+            {
+                _intervalSave = _flow.ChangeTimingAsync(ClockOption.IsChecked == true ? CheckInTiming.OnTheHalfHour : CheckInTiming.FromLastCheckIn);
+                await _intervalSave;
+                ShowTiming();
+                ShowNextCheckIn();
+            }
+            finally { TimingOptions.IsEnabled = IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = true; }
+        }
+
+        private void ShowTiming()
+        {
+            var clock = ClockOption.IsChecked == true;
+            IntervalField.Visibility = clock ? Visibility.Collapsed : Visibility.Visible;
+            ClockTimingHelp.Visibility = clock ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // The working days list is a screen of its own, which comes back to More options
+        private void WorkingDays_Click(object sender, RoutedEventArgs e)
+        {
+            var settings = _isSettings;
+            _flow.ShowWorkingDays(() => _flow.ShowMoreOptions(settings));
+        }
+
+        private void LargerText_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_ready)
+                _flow.ChangeLargerText(LargerTextSwitch.IsChecked == true);
         }
 
         private void ShowNextCheckIn()
@@ -170,7 +215,8 @@ namespace TimePlanner.Widget.Views
             var lead = _isSettings ? "Next check-in moves to " : "First check-in at ";
 
             // Tracking runs until the day is ended, so a check-in is always coming unless the timer is paused
-            IntervalHelp.Text = next is { } at ? lead + Format.Clock(at)
+            IntervalHelp.Text = scheduler.IsDayOff ? "No check-ins on this working-day setting."
+                : next is { } at ? lead + Format.Clock(at)
                 : "The interval counts from when you resume the timer.";
         }
 

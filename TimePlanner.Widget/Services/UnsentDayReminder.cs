@@ -4,7 +4,7 @@ using TimePlanner.Core.Sync;
 namespace TimePlanner.Widget.Services;
 
 /// <summary>
-/// "Timesheet not sent yet" on Day ended: shown once the user ends a weekday that isn't sent, until it is.
+/// "Timesheet not sent yet" on Day ended: shown once the user ends a working day that isn't sent, until it is.
 /// Never sends data.
 /// </summary>
 public sealed class UnsentDayReminder(ISendHistoryStore history, TimeProvider clock, ILogger<UnsentDayReminder> logger)
@@ -19,8 +19,11 @@ public sealed class UnsentDayReminder(ISendHistoryStore history, TimeProvider cl
     public bool IsVisible { get; private set; }
     public event EventHandler? Changed;
 
+    /// <summary>Which days count as working days. Monday to Friday until the widget's preferences say otherwise.</summary>
+    public Func<DayOfWeek, bool> IsWorkingDay { get; set; } = day => day is not (DayOfWeek.Saturday or DayOfWeek.Sunday);
+
     private bool Eligible => _dayEnded
-        && Today.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday)
+        && IsWorkingDay(Today.DayOfWeek)
         && _sentDay != Today;
 
     /// <summary>

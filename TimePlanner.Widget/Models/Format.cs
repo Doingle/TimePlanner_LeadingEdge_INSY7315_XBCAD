@@ -46,6 +46,25 @@ namespace TimePlanner.Widget.Models
         /// <summary>"Friday 23 Oct": the date in the status line and the timesheet's day list.</summary>
         public static string Date(DateOnly day) => day.ToString("dddd d MMM", Culture);
 
+        /// <summary>Monday first, the order the working days are listed in.</summary>
+        public static readonly IReadOnlyList<DayOfWeek> Week =
+            [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday];
+
+        /// <summary>"Mon – Fri" for a run of three or more days, "Mon, Wed, Fri" otherwise, "Every day" or "None".</summary>
+        public static string Days(IEnumerable<DayOfWeek> days)
+        {
+            var positions = days.Select(day => Week.ToList().IndexOf(day)).Where(i => i >= 0).Distinct().Order().ToList();
+            string Short(int i) => Week[i].ToString()[..3];
+
+            if (positions.Count == 0)
+                return "None";
+            if (positions.Count == Week.Count)
+                return "Every day";
+            if (positions.Count >= 3 && positions[^1] - positions[0] == positions.Count - 1)
+                return $"{Short(positions[0])} – {Short(positions[^1])}";
+            return string.Join(", ", positions.Select(Short));
+        }
+
         /// <summary>"Yesterday", a weekday in the last week, or "Fri 9 Oct" further back.</summary>
         public static string RelativeDay(DateOnly day, DateOnly today) => (today.DayNumber - day.DayNumber) switch
         {

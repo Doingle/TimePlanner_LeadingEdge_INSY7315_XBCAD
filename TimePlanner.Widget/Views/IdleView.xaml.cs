@@ -69,6 +69,17 @@ namespace TimePlanner.Widget.Views
 
         private void ShowTime()
         {
+            // A day off has no check-ins: the pill counts up the time not logged yet
+            if (_flow.Scheduler.IsDayOff)
+            {
+                var unlogged = _flow.Scheduler.Unlogged;
+                PillTime.Text = Format.Countdown(unlogged);
+                RingProgress.Fraction = 0;
+                AutomationProperties.SetName(Pill, $"{Format.Spoken(unlogged)} not logged yet, no check-ins today");
+                AutomationProperties.SetName(Ring, "No check-ins today");
+                return;
+            }
+
             var left = _flow.Scheduler.TimeLeft;
             PillTime.Text = left is { } time ? Format.Countdown(time) : "--:--";
             RingProgress.Fraction = _flow.Scheduler.Elapsed;
