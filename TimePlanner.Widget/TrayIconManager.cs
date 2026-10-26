@@ -1,11 +1,13 @@
 using Hardcodet.Wpf.TaskbarNotification;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using TimePlanner.Widget.Controls;
+using TimePlanner.Widget.Services;
 
 namespace TimePlanner.Widget
 {
@@ -18,20 +20,32 @@ namespace TimePlanner.Widget
 
         //-----------------------------
         // Menu actions share the widget's navigation and confirmation flow.
-        public TrayIconManager(Action show, Action log, Action timesheet, Action settings, Action help, Action exit, Func<bool> canLog)
+        public TrayIconManager(Action show, Action log, Action timesheet, Action settings, Action help, Action exit, Func<bool> canLog, Action? devCheckIn = null
+#if DEBUG
+            , Func<ScreenPreview, Task>? showPreview = null
+#endif
+        )
         {
-            _menu = CreateMenu(show, log, timesheet, settings, help, exit, canLog);
+            _menu = CreateMenu(show, log, timesheet, settings, help, exit, canLog, devCheckIn
+#if DEBUG
+                , showPreview
+#endif
+            );
             _icon = new TaskbarIcon
             {
                 Icon = LoadIcon(),
-                ToolTipText = "Time Planner",
+                ToolTipText = DevMode.Enabled ? "Time Planner (developer mode)" : "Time Planner",
                 ContextMenu = _menu,
                 NoLeftClickDelay = true,
             };
             _icon.TrayLeftMouseUp += (_, _) => show();
         }
 
-        public static ContextMenu CreateMenu(Action show, Action log, Action timesheet, Action settings, Action help, Action exit, Func<bool> canLog)
+        public static ContextMenu CreateMenu(Action show, Action log, Action timesheet, Action settings, Action help, Action exit, Func<bool> canLog, Action? devCheckIn = null
+#if DEBUG
+            , Func<ScreenPreview, Task>? showPreview = null
+#endif
+        )
         {
             var menu = new TrayMenu();
             Icon MenuIcon(IconKind kind) => new() { Kind = kind, Size = (double)Application.Current.FindResource("SizeIconSm") };
@@ -58,6 +72,35 @@ namespace TimePlanner.Widget
             var settingsItem = new MenuItem { Header = "Settings", Icon = MenuIcon(IconKind.Settings) };
             settingsItem.Click += (_, _) => settings();
             menu.Items.Add(settingsItem);
+
+            //dev feature not available to users
+            if (DevMode.Enabled && devCheckIn != null)
+            {
+                menu.Items.Add(new Separator { Style = (Style)Application.Current.FindResource("Menu.Separator") });
+                var devItem = new MenuItem { Header = "Developer: Check in now", Icon = MenuIcon(IconKind.Clock) };
+                devItem.Click += (_, _) => devCheckIn();
+                menu.Items.Add(devItem);
+            }
+
+#if DEBUG
+            //dev feature not available to users
+            if (DevMode.Enabled && showPreview != null)
+            {
+                var previewMenu = new MenuItem { Header = "Preview screens" };
+                foreach (var group in ScreenPreviews.All.GroupBy(p => p.Section))
+                {
+                    var sectionItem = new MenuItem { Header = group.Key };
+                    foreach (var p in group)
+                    {
+                        var item = new MenuItem { Header = p.Title };
+                        item.Click += async (_, _) => await showPreview(p);
+                        sectionItem.Items.Add(item);
+                    }
+                    previewMenu.Items.Add(sectionItem);
+                }
+                menu.Items.Add(previewMenu);
+            }
+#endif
 
             menu.Items.Add(new Separator { Style = (Style)Application.Current.FindResource("Menu.Separator") });
             var helpItem = new MenuItem { Header = "Help", Icon = MenuIcon(IconKind.Help) };

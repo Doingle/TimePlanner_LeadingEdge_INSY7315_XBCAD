@@ -595,6 +595,24 @@ namespace TimePlanner.Core.Tests.Services
             Assert.Equal(CheckInPhase.Due, (await engine.TickAsync()).Phase);
             engine.IsCheckInDay = _ => false;
             Assert.Equal(CheckInPhase.DayOff, (await engine.TickAsync()).Phase);
+        //answering without entry clears prompt and resets interval without using skip
+        [Fact]
+        public async Task AnsweredWithoutEntry_ClearsPromptAndResetsInterval()
+        {
+            var (_, engine) = await CreateSetupAsync();
+
+            _clock.Now = new DateTime(2026, 9, 28, 9, 30, 0);
+            var dueStatus = await engine.TickAsync();
+            Assert.Equal(CheckInPhase.Due, dueStatus.Phase);
+            var initialSkips = dueStatus.SkipsLeft;
+
+            var answeredAt = new DateTime(2026, 9, 28, 9, 32, 0);
+            _clock.Now = answeredAt;
+            var afterStatus = await engine.NotifyAnsweredWithoutEntryAsync(answeredAt);
+
+            Assert.Equal(CheckInPhase.Waiting, afterStatus.Phase);
+            Assert.Equal(answeredAt.AddMinutes(90), afterStatus.NextCheckInAt);
+            Assert.Equal(initialSkips, afterStatus.SkipsLeft);
         }
     }
 }

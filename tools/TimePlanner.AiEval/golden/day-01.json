@@ -1,0 +1,78 @@
+{
+  "day": "2026-10-19",
+  "projects": [
+    ["Leading Edge (Internal)", "Internal"],
+    ["Acme Foods", "Ordering App"],
+    ["Brightside Clinic", "Booking Site"]
+  ],
+  "activities": [
+    ["Coding"],
+    ["Coding", "Bug fixing"],
+    ["Meetings"],
+    ["Admin"],
+    ["Learning"]
+  ],
+  "busy": [
+    ["2026-10-19T12:00", "2026-10-19T12:30"]
+  ],
+  "windows": [
+    {
+      "start": "2026-10-19T08:30",
+      "end": "2026-10-19T10:00",
+      "transcript": "so um started on the acme ordering app fixing that checkout bug where totals were wrong it was a rounding thing in decimal conversion fixed it then quick stand up at like half nine"
+    },
+    {
+      "start": "2026-10-19T10:00",
+      "end": "2026-10-19T11:30",
+      "transcript": "carried on with the brightside booking site calendar sorted the timezone bug where appointments showed in local time instead of utc"
+    },
+    {
+      "start": "2026-10-19T11:30",
+      "end": "2026-10-19T13:00",
+      "transcript": "did some documentation for internal onboarding until twelve then lunch break then started code review for acme"
+    },
+    {
+      "start": "2026-10-19T13:00",
+      "end": "2026-10-19T15:00",
+      "transcript": "spent the whole afternoon on the brightside booking site implementing the stripe payments flow"
+    }
+  ],
+  "expected": [
+    {
+      "start": "08:30",
+      "end": "09:30",
+      "project": "Acme Foods › Ordering App",
+      "activity": "Coding › Bug fixing"
+    },
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "project": "Leading Edge (Internal) › Internal",
+      "activity": "Meetings"
+    },
+    {
+      "start": "10:00",
+      "end": "11:30",
+      "project": "Brightside Clinic › Booking Site",
+      "activity": "Coding › Bug fixing"
+    },
+    {
+      "start": "11:30",
+      "end": "12:00",
+      "project": "Leading Edge (Internal) › Internal",
+      "activity": "Admin"
+    },
+    {
+      "start": "12:30",
+      "end": "13:00",
+      "project": "Acme Foods › Ordering App",
+      "activity": "Coding"
+    },
+    {
+      "start": "13:00",
+      "end": "15:00",
+      "project": "Brightside Clinic › Booking Site",
+      "activity": "Coding"
+    }
+  ]
+}

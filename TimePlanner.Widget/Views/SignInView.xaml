@@ -33,6 +33,13 @@
                              VerticalContentAlignment="Center" />
             </StackPanel>
 
+            <!-- Only shown once the dashboard says this account has two-factor sign in on -->
+            <StackPanel x:Name="CodeLine" Visibility="Collapsed" Margin="{StaticResource GapFieldToField}">
+                <TextBlock Style="{StaticResource Text.Label}" Text="Code from your authenticator app" />
+                <TextBox x:Name="CodeBox" Style="{StaticResource Input}" controls:Field.Placeholder="123456"
+                         AutomationProperties.Name="Code from your authenticator app, or a recovery code" />
+            </StackPanel>
+
             <StackPanel x:Name="ErrorLine" Visibility="Collapsed" Margin="0,8,0,0">
                 <TextBlock x:Name="ErrorText" Style="{StaticResource Text.Error}" />
             </StackPanel>

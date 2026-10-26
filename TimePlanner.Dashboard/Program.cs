@@ -12,6 +12,7 @@ using TimePlanner.Core.Extensions;
 using TimePlanner.Dashboard.Data;
 using TimePlanner.Dashboard.Data.SqlServer;
 using TimePlanner.Dashboard.Security;
+using TimePlanner.Dashboard.Models;
 using TimePlanner.Dashboard.Services;
 using TimePlanner.Dashboard.Services.Overview;
 using TimePlanner.Dashboard.Services.Reports;
@@ -95,6 +96,9 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuditLogger>();
 builder.Services.AddScoped<UserAdminService>();
 builder.Services.AddScoped<AccountService>();
+builder.Services.Configure<AiServerOptions>(builder.Configuration.GetSection("Ai"));
+builder.Services.AddHttpClient("ai");
+builder.Services.AddScoped<TwoFactorService>();
 builder.Services.AddAuthentication().AddJwtBearer(o =>
 {
     // keep the short claim names ("email", "role") instead of renaming them to long schema urls

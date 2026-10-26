@@ -37,6 +37,11 @@ namespace TimePlanner.Dashboard.Data
         public const string TimesheetImported = "TimesheetImported";
         public const string TimesheetImportRejected = "TimesheetImportRejected";
         public const string TimesheetExported = "TimesheetExported";
+        public const string TwoFactorEnabled = "TwoFactorEnabled";
+        public const string TwoFactorDisabled = "TwoFactorDisabled";
+        public const string TwoFactorFailed = "TwoFactorFailed";
+        public const string RecoveryCodeUsed = "RecoveryCodeUsed";
+        public const string TwoFactorReset = "TwoFactorReset";
     }
 }
 //------------------------------EOF-----------------------------\\

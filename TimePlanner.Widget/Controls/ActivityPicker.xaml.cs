@@ -37,6 +37,14 @@ namespace TimePlanner.Widget.Controls
         {
             InitializeComponent();
             RenderValue();
+            Unloaded += (_, _) =>
+            {
+                //closes open menu when control unloads
+                if (_menu is { IsOpen: true })
+                {
+                    _menu.IsOpen = false;
+                }
+            };
         }
 
         //-----------------------------

@@ -22,6 +22,6 @@ namespace TimePlanner.Dashboard.Services.Users
 
     //-----------------------------
     //what a person sees about their own account
-    public record AccountInfo(string Name, string Email, string Role, bool MustChangePassword);
+    public record AccountInfo(string Name, string Email, string Role, bool MustChangePassword, bool TwoFactorEnabled = false);
 }
 //------------------------------EOF-----------------------------\\

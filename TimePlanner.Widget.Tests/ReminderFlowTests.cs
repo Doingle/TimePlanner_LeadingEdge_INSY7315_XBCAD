@@ -12,6 +12,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using TimePlanner.Core.Ai;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
 using TimePlanner.Core.Extensions;
@@ -21,6 +22,7 @@ using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
 using TimePlanner.Widget.Services;
+using TimePlanner.Widget.Services.Ai;
 using TimePlanner.Widget.Views;
 
 namespace TimePlanner.Widget.Tests;
@@ -405,6 +407,155 @@ public class ReminderFlowTests
         Assert.Equal(success ? Visibility.Visible : Visibility.Collapsed, ((Button)ended.FindName("OpenTimesheetButton")).Visibility);
         Assert.Equal(1, host.Http.Requests);
         Assert.Equal(success ? 1 : 0, host.History.Days.Count);
+    });
+
+    private static async Task WaitFor(Func<bool> condition) => await WaitFor(() => Task.FromResult(condition()));
+
+    //the save and the undo run after the click, so the test waits for their result rather than for the click to return
+    private static async Task WaitFor(Func<Task<bool>> condition)
+    {
+        for (var i = 0; i < 100 && !await condition(); i++)
+            await Task.Delay(30);
+        Assert.True(await condition(), "The screen did not update in time.");
+    }
+
+    private static Button? FindButton(DependencyObject root, string content)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            if (child is Button button && Equals(button.Content, content))
+                return button;
+            if (FindButton(child, content) is { } found)
+                return found;
+        }
+        return null;
+    }
+
+    [Fact]
+    public Task EditThatChangesAnotherEntry_AsksFirst_SavesBothOnYes_AndUndoPutsBothBack() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var userId = host.Flow.Session.User.UserId;
+        var day = DateOnly.FromDateTime(host.Clock.LocalNow());
+        DateTime At(int hour, int minute) => day.ToDateTime(new TimeOnly(hour, minute));
+        string[] project = ["Client A", "Project A"];
+        var first = (await host.Flow.AddEntryAsync(new EntryEdit(At(8, 0), At(9, 0), project, ["Coding"], "first"))).EntryId!.Value;
+        var second = (await host.Flow.AddEntryAsync(new EntryEdit(At(9, 0), At(9, 30), project, ["Coding"], "second"))).EntryId!.Value;
+
+        async Task<(DateTime Start, DateTime End)> TimesOf(int id)
+        {
+            var slot = (await host.Flow.GetTimesheetAsync(userId, day)).Single(s => s.EntryId == id);
+            return (slot.Start, slot.End);
+        }
+
+        var slot = (await host.Flow.GetTimesheetAsync(userId, day)).Single(s => s.EntryId == first);
+        await host.Flow.ShowEntryEditorAsync(day, slot, slot.Start, slot.End, () => { });
+        var editor = Assert.IsType<EntryEditView>(host.Window.Screen);
+        var banner = (Border)editor.FindName("ConfirmBanner");
+        ((TextBox)editor.FindName("EndBox")).Text = "08:45";
+
+        //saving asks first and stores nothing yet
+        Click((Button)editor.FindName("SaveButton"));
+        await WaitFor(() => banner.Visibility == Visibility.Visible);
+        Assert.Equal("This changes Coding · Project A to 8:45 AM–9:30 AM. Continue?", ((TextBlock)editor.FindName("BannerText")).Text);
+        Assert.Equal((At(8, 0), At(9, 0)), await TimesOf(first));
+
+        //No keeps the editor open with nothing saved
+        Click(FindButton(banner, "No")!);
+        Assert.Equal(Visibility.Collapsed, banner.Visibility);
+        Assert.Same(editor, host.Window.Screen);
+        Assert.Equal((At(9, 0), At(9, 30)), await TimesOf(second));
+
+        //Yes saves both together and goes back to the timesheet
+        Click((Button)editor.FindName("SaveButton"));
+        await WaitFor(() => banner.Visibility == Visibility.Visible);
+        Click(FindButton(banner, "Yes")!);
+        await WaitFor(async () => await TimesOf(first) == (At(8, 0), At(8, 45)));
+        Assert.Equal((At(8, 0), At(8, 45)), await TimesOf(first));
+        Assert.Equal((At(8, 45), At(9, 30)), await TimesOf(second));
+
+        //the timesheet offers an undo that reverses both
+        await host.Flow.ShowTimesheetAsync(day, () => { });
+        var timesheet = Assert.IsType<TimesheetReviewView>(host.Window.Screen);
+        var undoBar = (Grid)timesheet.FindName("UndoBar");
+        Assert.Equal(Visibility.Visible, undoBar.Visibility);
+        Assert.Equal("Entry updated · other entries changed", ((TextBlock)timesheet.FindName("UndoText")).Text);
+        Click(FindButton(undoBar, "Undo")!);
+        await WaitFor(async () => await TimesOf(first) == (At(8, 0), At(9, 0)));
+        Assert.Equal((At(9, 0), At(9, 30)), await TimesOf(second));
+    });
+
+    [Fact]
+    public Task SignIn_AsksForTheCodeOnlyWhenTheDashboardNeedsOne() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        host.Http.RequiresCode = true;
+        var signedIn = false;
+        host.Flow.ShowSignIn(() => { signedIn = true; return Task.CompletedTask; }, () => { });
+        var view = Assert.IsType<SignInView>(host.Window.Screen);
+        var codeLine = (FrameworkElement)view.FindName("CodeLine");
+        var button = (Button)view.FindName("SignInButton");
+        var error = (TextBlock)view.FindName("ErrorText");
+        var code = (TextBox)view.FindName("CodeBox");
+        Assert.Equal(Visibility.Collapsed, codeLine.Visibility);
+        ((TextBox)view.FindName("EmailBox")).Text = "admin@example.com";
+        ((PasswordBox)view.FindName("PasswordBox")).Password = "a-password";
+
+        //the password is right but a code is needed: the box appears, nothing is signed in
+        Click(button);
+        await WaitFor(() => codeLine.Visibility == Visibility.Visible && button.IsEnabled);
+        Assert.Contains("two-factor code is required", error.Text);
+        Assert.False(signedIn);
+
+        //a wrong code is refused and the box stays
+        code.Text = "000000";
+        Click(button);
+        await WaitFor(() => error.Text.Contains("not right") && button.IsEnabled);
+        Assert.False(signedIn);
+
+        code.Text = "123456";
+        Click(button);
+        await WaitFor(() => signedIn);
+    });
+
+    [Fact]
+    public Task SignIn_WithoutTwoFactor_NeverShowsTheCodeBox() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var signedIn = false;
+        host.Flow.ShowSignIn(() => { signedIn = true; return Task.CompletedTask; }, () => { });
+        var view = Assert.IsType<SignInView>(host.Window.Screen);
+        ((TextBox)view.FindName("EmailBox")).Text = "developer@example.com";
+        ((PasswordBox)view.FindName("PasswordBox")).Password = "a-password";
+
+        Click((Button)view.FindName("SignInButton"));
+        await WaitFor(() => signedIn);
+
+        Assert.Equal(Visibility.Collapsed, ((FrameworkElement)view.FindName("CodeLine")).Visibility);
+    });
+
+    [Fact]
+    public Task EditThatCoversAnEntry_AsksBeforeRemovingIt() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var userId = host.Flow.Session.User.UserId;
+        var day = DateOnly.FromDateTime(host.Clock.LocalNow());
+        DateTime At(int hour, int minute) => day.ToDateTime(new TimeOnly(hour, minute));
+        string[] project = ["Client A", "Project A"];
+        var first = (await host.Flow.AddEntryAsync(new EntryEdit(At(8, 0), At(9, 0), project, ["Coding"], "first"))).EntryId!.Value;
+        await host.Flow.AddEntryAsync(new EntryEdit(At(9, 0), At(9, 30), project, ["Coding"], "second"));
+
+        var slot = (await host.Flow.GetTimesheetAsync(userId, day)).Single(s => s.EntryId == first);
+        await host.Flow.ShowEntryEditorAsync(day, slot, slot.Start, slot.End, () => { });
+        var editor = Assert.IsType<EntryEditView>(host.Window.Screen);
+        var banner = (Border)editor.FindName("ConfirmBanner");
+        ((TextBox)editor.FindName("EndBox")).Text = "09:45";
+
+        Click((Button)editor.FindName("SaveButton"));
+        await WaitFor(() => banner.Visibility == Visibility.Visible);
+
+        Assert.Equal("This removes Coding · Project A (9:00 AM–9:30 AM). Continue?", ((TextBlock)editor.FindName("BannerText")).Text);
+        Assert.Equal(2, (await host.Flow.GetTimesheetAsync(userId, day)).Count(s => s.EntryId != null));
     });
 
     [Fact]
@@ -867,11 +1018,27 @@ public class ReminderFlowTests
         public int Requests { get; private set; }
         public bool Succeeds { get; set; } = true;
         public bool StallVersionCheck { get; set; }
+        //an account with two-factor on: the login only works when the request carries the code 123456
+        public bool RequiresCode { get; set; }
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             if (request.RequestUri!.AbsolutePath == "/api/v1/widget/version")
                 return StallVersionCheck ? WaitForCancellation(cancellationToken) : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 { Content = JsonContent.Create(new WidgetRelease("2.0.0")) });
+            if (request.RequestUri.AbsolutePath == "/api/v1/auth/login" && RequiresCode)
+            {
+                using var body = System.Text.Json.JsonDocument.Parse(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+                var otp = body.RootElement.TryGetProperty("otp", out var sent) && sent.ValueKind == System.Text.Json.JsonValueKind.String ? sent.GetString() : null;
+                if (otp != "123456")
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                    {
+                        Content = JsonContent.Create(new Dictionary<string, object>
+                        {
+                            ["title"] = otp == null ? "A two-factor code is required." : "The two-factor code is not right.",
+                            ["twoFactorRequired"] = true
+                        })
+                    });
+            }
             if (request.RequestUri.AbsolutePath == "/api/v1/auth/login")
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 { Content = JsonContent.Create(new { accessToken = "test-only", tokenType = "Bearer", expiresAtUtc = DateTime.UtcNow.AddHours(1) }) });
@@ -893,6 +1060,8 @@ public class ReminderFlowTests
     private sealed class TestHost : IDisposable
     {
         private readonly SqliteConnection _connection = new("Data Source=:memory:");
+        // Voice notes and keys go in a throwaway folder, so the tests never touch the real ones
+        private readonly string _aiFolder = Path.Combine(Path.GetTempPath(), "TimePlannerTests", Guid.NewGuid().ToString("N"));
         public ReminderClock Clock { get; } = new();
         public ReminderHistory History { get; } = new();
         public ReminderPending Pending { get; } = new();
@@ -927,6 +1096,19 @@ public class ReminderFlowTests
             services.AddSingleton<TimeLogService>();
             services.AddSingleton<CsvExportService>();
             services.AddSingleton<UnsentDayReminder>();
+            services.AddSingleton<IVoiceNoteStore>(_ => new FileVoiceNoteStore(Path.Combine(host._aiFolder, "voice")));
+            services.AddSingleton<WhisperModelManager>();
+            services.AddSingleton(provider => new LocalWhisperTranscriber(provider.GetRequiredService<WhisperModelManager>(),
+                provider.GetRequiredService<WidgetSession>().Preferences.Ai));
+            services.AddSingleton(new AiKeyStore(host._aiFolder));
+            services.AddSingleton<VoiceTranscriptionQueue>();
+            services.AddSingleton<MicrophoneCatalog>();
+            services.AddSingleton(provider => new OllamaHost(new HttpClient(), provider.GetRequiredService<WidgetSession>().Preferences.Ai));
+            services.AddSingleton(provider => new OllamaSetup(new HttpClient(), provider.GetRequiredService<WidgetSession>().Preferences.Ai));
+            services.AddSingleton(provider => new OllamaInstaller(new HttpClient(), provider.GetRequiredService<OllamaSetup>(),
+                provider.GetRequiredService<OllamaHost>(), provider.GetRequiredService<WidgetSession>().Preferences.Ai, provider.GetRequiredService<PreferencesStore>()));
+            services.AddSingleton<AiService>();
+            services.AddSingleton<AiSetupService>();
             services.AddSingleton(provider => new StartupService(host.Startup, @"C:\Test\TimePlanner.Widget.exe",
                 provider.GetRequiredService<ILogger<StartupService>>()));
             services.AddSingleton<WidgetFlow>();
@@ -959,6 +1141,7 @@ public class ReminderFlowTests
             Services.Dispose();
             _connection.Dispose();
             Http.Dispose();
+            try { Directory.Delete(_aiFolder, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
     }
 }

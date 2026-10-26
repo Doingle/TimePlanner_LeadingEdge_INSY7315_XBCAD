@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -14,6 +14,7 @@ using System.Windows.Threading;
 using System.Windows.Automation;
 using TimePlanner.Core.Services.Models;
 using TimePlanner.Widget.Models;
+using TimePlanner.Core.Ai;
 
 namespace TimePlanner.Widget.Views
 {
@@ -61,6 +62,8 @@ namespace TimePlanner.Widget.Views
                 AdvancedRow.Margin = (Thickness)FindResource("GapStacked");
                 TimingSection.Margin = (Thickness)FindResource("GapSection");
                 PrimaryButton.Content = "Done";
+                AiSettingsRow.Visibility = Visibility.Visible;
+                UpdateAiSummary();
             }
             else
             {
@@ -284,5 +287,37 @@ namespace TimePlanner.Widget.Views
                 ? "Hidden"
                 : $"{preferences.IdleShape}, {(preferences.IdleVisibility == IdleVisibility.Faded ? "faded" : "visible")}";
         }
+
+        //-----------------------------
+        //opens voice and ai settings view
+        private void AiSettings_Click(object sender, RoutedEventArgs e)
+        {
+            _flow.ShowAiSettings(() => _flow.ShowSettings());
+        }
+
+        //-----------------------------
+        //updates summary displayed on voice and ai settings row
+        private void UpdateAiSummary()
+        {
+            var ai = _flow.Session.Preferences.Ai;
+            //not setup state
+            if (!ai.SetupCompleted)
+            {
+                AiSummary.Text = "Not set up";
+                return;
+            }
+
+            //organisation ai or local model readiness
+            if (ai.Compiler == CompilerKind.Dashboard || _flow.Ai.VoiceReady)
+            {
+                AiSummary.Text = "Ready";
+            }
+            //otherwise needs attention
+            else
+            {
+                AiSummary.Text = "Needs attention";
+            }
+        }
     }
 }
+//------------------------------EOF-----------------------------\\

@@ -151,6 +151,16 @@
 
     @if (!temporary)
     {
+        <div class="st-sheet st-narrow">
+            <section class="st-setting" aria-labelledby="st-twofactor-title">
+                <h2 class="st-setting__title" id="st-twofactor-title">Two-factor sign in</h2>
+                <p class="st-field__hint">@(account.TwoFactorEnabled ? "On: you sign in with your password and a code from your authenticator app." : "Off: add a code from an authenticator app as a second step when you sign in.")</p>
+                <div class="st-form__actions">
+                    <a class="st-button" asp-action="TwoFactor">@(account.TwoFactorEnabled ? "Manage" : "Set up")</a>
+                </div>
+            </section>
+        </div>
+
         <p class="st-note st-narrow">Tracking settings are in the widget.</p>
     }
 </div>

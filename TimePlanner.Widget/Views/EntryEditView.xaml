@@ -26,11 +26,11 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
                     <TextBlock Style="{StaticResource Text.Label}" Text="Start time" />
-                    <TextBox x:Name="StartBox" Style="{StaticResource Input}" controls:Field.Placeholder="09:00" />
+                    <TextBox x:Name="StartBox" Style="{StaticResource Input}" controls:Field.Placeholder="09:00" TextChanged="Fields_Changed" />
                 </StackPanel>
                 <StackPanel Grid.Column="2">
                     <TextBlock Style="{StaticResource Text.Label}" Text="End time" />
-                    <TextBox x:Name="EndBox" Style="{StaticResource Input}" controls:Field.Placeholder="09:30" />
+                    <TextBox x:Name="EndBox" Style="{StaticResource Input}" controls:Field.Placeholder="09:30" TextChanged="Fields_Changed" />
                 </StackPanel>
             </Grid>
 
@@ -49,12 +49,29 @@
                     <Run Text="Note " /><Run Style="{StaticResource Run.Optional}" Text="(optional)" />
                 </TextBlock>
                 <TextBox x:Name="NoteBox" Style="{StaticResource TextArea}" controls:Field.Placeholder="What did you work on?"
-                         MaxLength="500" />
+                         MaxLength="500" TextChanged="Fields_Changed" />
             </StackPanel>
 
             <StackPanel x:Name="ErrorLine" Visibility="Collapsed" Margin="0,8,0,0">
                 <TextBlock x:Name="ErrorText" Style="{StaticResource Text.Error}" />
             </StackPanel>
+
+            <!-- Shown instead of saving when the edit would change other entries: the user says yes or no first -->
+            <Border x:Name="ConfirmBanner" Visibility="Collapsed" Margin="0,8,0,0" Padding="8,6"
+                    Background="{StaticResource ActionBrush}" CornerRadius="{StaticResource RadiusControl}">
+                <StackPanel>
+                    <TextBlock x:Name="BannerText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextOnActionBrush}"
+                               TextWrapping="Wrap" AutomationProperties.LiveSetting="Assertive" />
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <Button x:Name="BannerYes" Style="{StaticResource Button.Text}" Content="Yes" FontWeight="Bold"
+                                Foreground="{StaticResource TextOnActionBrush}" AutomationProperties.Name="Yes, change the other entries too"
+                                Click="BannerYes_Click" />
+                        <Button Style="{StaticResource Button.Text}" Content="No" Margin="8,0,0,0"
+                                Foreground="{StaticResource TextOnActionBrush}" AutomationProperties.Name="No, keep editing"
+                                Click="BannerNo_Click" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
 
             <StackPanel Margin="{StaticResource GapSection}">
                 <Button x:Name="SaveButton" Style="{StaticResource Button.Primary}" Content="Save" Click="Save_Click" />

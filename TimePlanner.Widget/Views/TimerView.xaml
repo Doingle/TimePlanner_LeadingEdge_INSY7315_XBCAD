@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="TimePlanner.Widget.Views.TimerView"
+<UserControl x:Class="TimePlanner.Widget.Views.TimerView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
@@ -30,7 +30,13 @@
             </DockPanel>
 
             <StackPanel Margin="{StaticResource GapSection}">
-                <Button x:Name="LogButton" Style="{StaticResource Button.Primary}" Click="LogNow_Click" />
+                <DockPanel>
+                    <Button x:Name="VoiceLogButton" DockPanel.Dock="Right" Style="{StaticResource Button.IconOutlined}"
+                            Margin="8,0,0,0" Visibility="Collapsed" Click="VoiceLog_Click">
+                        <controls:Icon Kind="Mic" />
+                    </Button>
+                    <Button x:Name="LogButton" Style="{StaticResource Button.Primary}" Click="LogNow_Click" />
+                </DockPanel>
                 <Grid Style="{StaticResource FootRow}">
                     <Button Style="{StaticResource Button.Text}" Content="End day" Click="EndDay_Click" />
                 </Grid>
