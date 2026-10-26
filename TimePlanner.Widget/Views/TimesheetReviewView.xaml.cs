@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Automation;
@@ -23,12 +22,8 @@ namespace TimePlanner.Widget.Views
     {
         private readonly WidgetFlow _flow;
         private readonly DateOnly _day;
-        private readonly DayPreview _preview;
+        private readonly TimesheetReviewModel _model;
         private readonly Action _back;
-        private readonly IReadOnlyList<TimesheetSlot> _slots;
-        private HashSet<int> _aiEntryIds = new();
-        private List<VoiceNote> _unbuiltNotes = new();
-        private readonly string _sendLabel;
         private DispatcherTimer? _undoTimer;
         private Action? _undoAction;
 
@@ -38,51 +33,17 @@ namespace TimePlanner.Widget.Views
             InitializeComponent();
             _flow = flow;
             _day = day;
-            _preview = preview;
             _back = back;
-            _slots = slots;
 
-            var today = DateOnly.FromDateTime(flow.Scheduler.Now);
-            var totalLogged = slots.Where(s => s.Kind == SlotKind.Entry).Sum(s => (s.End - s.Start).TotalMinutes);
-            Subtitle.Text = $"{DayLabel(day, today)} · {Format.Duration(TimeSpan.FromMinutes(totalLogged))}";
+            _model = new TimesheetReviewModel(day, DateOnly.FromDateTime(flow.Scheduler.Now), slots, preview, sent, pending);
+            Subtitle.Text = _model.Subtitle;
+            StatusText.Text = _model.Status;
             AutomationProperties.SetName(DayButton, $"Day shown: {Format.Date(day)}. Choose another day");
-
-            //sets send status caption. A send that is still on its way comes first, whatever was sent before
-            if (pending is { Rejected: false })
-            {
-                StatusText.Text = "Waiting to send · will retry";
-            }
-            else if (pending is { Rejected: true })
-            {
-                StatusText.Text = $"Not sent · {pending.Message ?? "the dashboard refused it"}";
-            }
-            else if (sent == null)
-            {
-                StatusText.Text = "Not sent";
-            }
-            else if (sent.ChangedAt > sent.SentAt)
-            {
-                StatusText.Text = "Changed since sent · send again";
-            }
-            else
-            {
-                StatusText.Text = DateOnly.FromDateTime(sent.SentAt) == today
-                    ? $"Sent {Format.Clock(sent.SentAt)}"
-                    : $"Sent {Format.Date(DateOnly.FromDateTime(sent.SentAt))}, {Format.Clock(sent.SentAt)}";
-            }
-
-            //an earlier day is still open to changes, and today is one click away
-            PastDayHelp.Visibility = day < today ? Visibility.Visible : Visibility.Collapsed;
-            TodayButton.Visibility = day < today ? Visibility.Visible : Visibility.Collapsed;
-
-            //disables next day navigation on today
-            NextDayButton.IsEnabled = day < today;
-
-            //a day sent before goes again, which replaces it on the dashboard
-            _sendLabel = sent != null ? "Send again" : "Send day";
-            SendButton.Content = _sendLabel;
-            SendButton.IsEnabled = preview.CanSend;
-
+            PastDayHelp.Visibility = _model.IsPastDay ? Visibility.Visible : Visibility.Collapsed;
+            TodayButton.Visibility = _model.IsPastDay ? Visibility.Visible : Visibility.Collapsed;
+            NextDayButton.IsEnabled = _model.IsPastDay;
+            SendButton.Content = _model.SendLabel;
+            SendButton.IsEnabled = _model.CanSend;
             RenderSlots();
             _ = LoadAccountStatusAsync();
 
@@ -107,7 +68,7 @@ namespace TimePlanner.Widget.Views
             }
 
             //send now from a not-sent notice starts sending once the entries are in view
-            if (sendNow && preview.CanSend)
+            if (sendNow && _model.CanSend)
             {
                 Loaded += SendOnceLoaded;
             }
@@ -121,16 +82,6 @@ namespace TimePlanner.Widget.Views
             await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
             await SendAsync();
         }
-
-        //-----------------------------
-        //today, yesterday or the date
-        private static string DayLabel(DateOnly day, DateOnly today) =>
-            (today.DayNumber - day.DayNumber) switch
-            {
-                0 => $"Today, {Format.Date(day)}",
-                1 => $"Yesterday, {Format.Date(day)}",
-                _ => Format.Date(day),
-            };
 
         //-----------------------------
         //goes back to today
@@ -187,7 +138,6 @@ namespace TimePlanner.Widget.Views
         //reloads notes when transcription state updates
         private void OnNoteChanged(Guid id) => _ = Dispatcher.InvokeAsync(LoadAiAndRenderAsync);
 
-        private IReadOnlyList<VoiceNote> _allNotes = Array.Empty<VoiceNote>();
         private Action? _bannerAction;
 
         //-----------------------------
@@ -195,11 +145,8 @@ namespace TimePlanner.Widget.Views
         private async Task LoadAiAndRenderAsync()
         {
             var notes = await _flow.Ai.GetNotesAsync(_day);
-            _allNotes = notes;
-            _unbuiltNotes = notes.Where(n => n.Status != VoiceNoteStatus.Built).ToList();
-
             var aiIds = await _flow.Ai.GetAiEntryIdsAsync(_day);
-            _aiEntryIds = aiIds.ToHashSet();
+            _model.UpdateAi(notes, aiIds);
 
             UpdateUnbuiltBanner();
             RenderSlots();
@@ -209,68 +156,22 @@ namespace TimePlanner.Widget.Views
         //updates banner offering the next step in priority order
         private void UpdateUnbuiltBanner()
         {
-            //priority 1: failed note
-            var failedNote = _allNotes.FirstOrDefault(n => n.Status == VoiceNoteStatus.Failed);
-            if (failedNote != null)
-            {
-                UnbuiltBanner.Visibility = Visibility.Visible;
-                var count = _allNotes.Count(n => n.Status == VoiceNoteStatus.Failed);
-                UnbuiltBannerText.Text = count == 1
-                    ? "1 voice note couldn't be turned into text"
-                    : $"{count} voice notes couldn't be turned into text";
-                BuildDayButton.Visibility = Visibility.Visible;
-                BuildDayButton.Content = "View";
-                BuildDayButton.ToolTip = "Open this voice note";
-                System.Windows.Automation.AutomationProperties.SetName(BuildDayButton, "Open this voice note");
-                BuildDayButton.IsEnabled = true;
-                _bannerAction = async () => await _flow.ShowVoiceNoteAsync(failedNote.Id, ReopenTimesheet);
-                return;
-            }
-
-            //priority 2: notes are transcribing
-            var transcribingCount = _allNotes.Count(n => n.Status == VoiceNoteStatus.Recorded);
-            if (transcribingCount > 0)
-            {
-                UnbuiltBanner.Visibility = Visibility.Visible;
-                UnbuiltBannerText.Text = transcribingCount == 1
-                    ? "Turning 1 voice note into text…"
-                    : $"Turning {transcribingCount} voice notes into text…";
-                BuildDayButton.Visibility = Visibility.Collapsed;
-                _bannerAction = null;
-                return;
-            }
-
-            //priority 3: notes haven't been built
-            var unbuiltCount = _allNotes.Count(n => n.Status == VoiceNoteStatus.Transcribed);
-            if (unbuiltCount > 0)
-            {
-                UnbuiltBanner.Visibility = Visibility.Visible;
-                UnbuiltBannerText.Text = unbuiltCount == 1
-                    ? "1 voice note isn't in your timesheet yet"
-                    : $"{unbuiltCount} voice notes aren't in your timesheet yet";
-                BuildDayButton.Visibility = Visibility.Visible;
-                BuildDayButton.Content = "Build my day";
-                var tip = "Turn today's voice notes into timesheet entries. You check them before anything is added.";
-                BuildDayButton.ToolTip = tip;
-                System.Windows.Automation.AutomationProperties.SetName(BuildDayButton, tip);
-                BuildDayButton.IsEnabled = true;
-                _bannerAction = async () => await _flow.ShowDayBuildAsync(_day, ReopenTimesheet);
-                return;
-            }
-
-            //priority 4: there are ai entries
-            if (_aiEntryIds.Count > 0)
-            {
-                UnbuiltBanner.Visibility = Visibility.Visible;
-                UnbuiltBannerText.Text = "Check the AI entries before sending";
-                BuildDayButton.Visibility = Visibility.Collapsed;
-                _bannerAction = null;
-                return;
-            }
-
-            //otherwise hide banner
-            UnbuiltBanner.Visibility = Visibility.Collapsed;
+            var banner = _model.Banner;
+            UnbuiltBanner.Visibility = banner != null ? Visibility.Visible : Visibility.Collapsed;
             _bannerAction = null;
+            if (banner == null) return;
+
+            UnbuiltBannerText.Text = banner.Text;
+            BuildDayButton.Visibility = banner.ButtonLabel != null ? Visibility.Visible : Visibility.Collapsed;
+            if (banner.ButtonLabel == null) return;
+
+            BuildDayButton.Content = banner.ButtonLabel;
+            BuildDayButton.ToolTip = banner.ToolTip;
+            AutomationProperties.SetName(BuildDayButton, banner.ToolTip!);
+            BuildDayButton.IsEnabled = true;
+            _bannerAction = banner.NoteId is { } id
+                ? async () => await _flow.ShowVoiceNoteAsync(id, ReopenTimesheet)
+                : async () => await _flow.ShowDayBuildAsync(_day, ReopenTimesheet);
         }
 
         //-----------------------------
@@ -313,7 +214,8 @@ namespace TimePlanner.Widget.Views
             SlotContainer.Children.Clear();
 
             //shows message when day has no slots and no voice notes
-            if (_slots.Count == 0 && _unbuiltNotes.Count == 0)
+            var items = _model.Items;
+            if (items.Count == 0)
             {
                 var empty = new TextBlock
                 {
@@ -323,17 +225,6 @@ namespace TimePlanner.Widget.Views
                 SlotContainer.Children.Add(empty);
                 return;
             }
-
-            var items = new List<(DateTime Start, TimesheetSlot? Slot, VoiceNote? Note)>();
-            foreach (var slot in _slots)
-            {
-                items.Add((slot.Start, slot, null));
-            }
-            foreach (var note in _unbuiltNotes)
-            {
-                items.Add((note.WindowStart, null, note));
-            }
-            items.Sort((a, b) => a.Start.CompareTo(b.Start));
 
             //builds card for each slot or unbuilt voice note
             foreach (var item in items)
@@ -485,7 +376,7 @@ namespace TimePlanner.Widget.Views
             };
 
             //add ai tag when entry was created by day compilation
-            if (slot.EntryId.HasValue && _aiEntryIds.Contains(slot.EntryId.Value))
+            if (_model.IsAiEntry(slot))
             {
                 projectText.Inlines.Add(new Run("AI · ")
                 {
@@ -672,9 +563,7 @@ namespace TimePlanner.Widget.Views
         private async void AddTime_Click(object sender, RoutedEventArgs e)
         {
             var slots = await _flow.GetTimesheetAsync(_flow.Session.User.UserId, _day);
-            var lastEntry = slots.LastOrDefault(s => s.Kind == SlotKind.Entry);
-            var start = lastEntry?.End ?? _day.ToDateTime(new TimeOnly(9, 0));
-            var end = start.AddMinutes(30);
+            var (start, end) = TimesheetReviewModel.NewEntryRange(_day, slots);
 
             await _flow.ShowEntryEditorAsync(_day, null, start, end, ReopenTimesheet);
         }
@@ -687,30 +576,7 @@ namespace TimePlanner.Widget.Views
         //asks, then sends the day
         private async Task SendAsync()
         {
-            var aiCount = _slots.Count(s => s.EntryId.HasValue && _aiEntryIds.Contains(s.EntryId.Value));
-            var unbuiltCount = _unbuiltNotes.Count;
-
-            var sb = new System.Text.StringBuilder();
-
-            //warn about ai entries
-            if (aiCount > 0)
-            {
-                var entryWord = aiCount == 1 ? "AI-built entry" : "AI-built entries";
-                sb.AppendLine($"This day includes {aiCount} {entryWord}. AI can be inaccurate, so check them before sending.");
-            }
-
-            sb.Append($"Send {_preview.Rows.Count} entries ({_preview.Hours:0.##} h) for {Format.Day(_day.ToDateTime(TimeOnly.MinValue))} to the dashboard?");
-
-            //warn about unbuilt notes
-            if (unbuiltCount > 0)
-            {
-                var noteWord = unbuiltCount == 1 ? "voice note hasn't" : "voice notes haven't";
-                var themWord = unbuiltCount == 1 ? "it" : "them";
-                sb.AppendLine();
-                sb.Append($"{unbuiltCount} {noteWord} been added yet. Send without {themWord}?");
-            }
-
-            var confirm = MessageBox.Show(sb.ToString(), "Send day", MessageBoxButton.YesNo);
+            var confirm = MessageBox.Show(_model.SendConfirmation, "Send day", MessageBoxButton.YesNo);
 
             //user cancelled send
             if (confirm != MessageBoxResult.Yes)
@@ -728,7 +594,7 @@ namespace TimePlanner.Widget.Views
             finally
             {
                 SendButton.IsEnabled = true;
-                SendButton.Content = _sendLabel;
+                SendButton.Content = _model.SendLabel;
             }
         }
 
@@ -736,7 +602,7 @@ namespace TimePlanner.Widget.Views
         //tells the user the day reached the dashboard
         private void ConfirmSent()
         {
-            MessageBox.Show($"Sent {_preview.Rows.Count} entries ({_preview.Hours:0.##} h) for {Format.Day(_day.ToDateTime(TimeOnly.MinValue))} to the dashboard.", "Day sent");
+            MessageBox.Show(_model.SentConfirmation, "Day sent");
         }
 
         //-----------------------------
