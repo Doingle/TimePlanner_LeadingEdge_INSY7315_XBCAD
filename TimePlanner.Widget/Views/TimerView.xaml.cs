@@ -71,7 +71,7 @@ namespace TimePlanner.Widget.Views
             {
                 TimerText.Text = Format.Countdown(scheduler.Unlogged);
                 AutomationProperties.SetName(TimerText, $"{Format.Spoken(scheduler.Unlogged)} not logged yet");
-                StatusText.Text = paused is { } breakAt ? $"Paused at {Format.Clock(breakAt)}" : "not logged yet\nno check-ins today";
+                StatusText.Text = paused is { } breakAt ? $"Paused at {Format.Clock(breakAt)}" : "not logged yet";
                 return;
             }
 
