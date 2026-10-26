@@ -64,6 +64,15 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+            <Border BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Margin="0,14,0,0" Padding="0,12,0,0">
+                <StackPanel>
+                    <TextBlock x:Name="VersionText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                    <Button x:Name="CopySupportDetailsButton" Style="{StaticResource Button.Secondary}" Content="Copy details for support"
+                            HorizontalAlignment="Left" Click="CopySupportDetails_Click" />
+                    <TextBlock x:Name="CopiedCaption" Style="{StaticResource Text.Help}" Visibility="Collapsed" Margin="0,6,0,0"
+                               Text="Copied. Paste it into your message to the Time Planner team." />
+                </StackPanel>
+            </Border>
         </StackPanel>
     </controls:WidgetCard>
 </UserControl>
