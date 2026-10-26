@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using TimePlanner.Core.Ai;
+using TimePlanner.Core.Services.Models;
 using TimePlanner.Widget.Models;
 
 namespace TimePlanner.Widget.Services
@@ -37,11 +38,6 @@ namespace TimePlanner.Widget.Services
                 return new WidgetPreferences();
             }
 
-        /// <summary>Every choice is one the widget offers ("Pill, Ring" would otherwise read as a mix of two).</summary>
-        private static bool IsValid(WidgetPreferences preferences) =>
-            Enum.IsDefined(preferences.IdleVisibility) && Enum.IsDefined(preferences.IdleShape)
-            && Enum.IsDefined(preferences.CheckInTiming)
-            && preferences.WorkingDays != null && preferences.WorkingDays.All(day => Enum.IsDefined(day));
             JsonDocument doc;
             try
             {
@@ -74,6 +70,30 @@ namespace TimePlanner.Widget.Services
                 }
 
                 var prefs = new WidgetPreferences();
+
+                if (TryGetEnum<CheckInTiming>(root, "CheckInTiming", out var timing))
+                    prefs.CheckInTiming = timing;
+
+                if (TryGetBool(root, "LargerText", out var largerText))
+                    prefs.LargerText = largerText;
+
+                if (root.TryGetProperty("WorkingDays", out var days) && days.ValueKind == JsonValueKind.Array)
+                {
+                    var parsedDays = new List<DayOfWeek>();
+                    var valid = true;
+                    foreach (var day in days.EnumerateArray())
+                    {
+                        if (day.ValueKind != JsonValueKind.String ||
+                            !Enum.TryParse<DayOfWeek>(day.GetString(), ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
+                        {
+                            valid = false;
+                            break;
+                        }
+                        parsedDays.Add(parsed);
+                    }
+                    if (valid)
+                        prefs.WorkingDays = parsedDays;
+                }
 
                 //read root level preferences
                 if (TryGetEnum<IdleVisibility>(root, "IdleVisibility", out var vis))

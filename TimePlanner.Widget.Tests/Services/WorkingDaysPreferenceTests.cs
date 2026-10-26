@@ -49,12 +49,14 @@ namespace TimePlanner.Widget.Tests.Services
             {
                 WorkingDays = [DayOfWeek.Sunday, DayOfWeek.Monday],
                 CheckInTiming = CheckInTiming.OnTheHalfHour,
+                LargerText = true,
             });
 
             var reloaded = new PreferencesStore(_path).Load();
 
             Assert.Equal([DayOfWeek.Sunday, DayOfWeek.Monday], reloaded.WorkingDays);
             Assert.Equal(CheckInTiming.OnTheHalfHour, reloaded.CheckInTiming);
+            Assert.True(reloaded.LargerText);
             Assert.Contains("\"OnTheHalfHour\"", File.ReadAllText(_path));
         }
 
@@ -72,6 +74,34 @@ namespace TimePlanner.Widget.Tests.Services
 
             Assert.Equal(5, preferences.WorkingDays.Count);
             Assert.Equal(CheckInTiming.FromLastCheckIn, preferences.CheckInTiming);
+        }
+
+        [Theory]
+        [InlineData("null")]
+        [InlineData("[\"Monday\", \"Funday\"]")]
+        [InlineData("[1]")]
+        [InlineData("false")]
+        public void InvalidWorkingDays_KeepOtherValidSettings(string days)
+        {
+            File.WriteAllText(_path, "{\"WorkingDays\":" + days +
+                ",\"CheckInTiming\":\"OnTheHalfHour\",\"LargerText\":true,\"StartWithWindows\":false,\"Ai\":{\"VoiceEnabled\":true}}");
+            var loaded = new PreferencesStore(_path).Load();
+            Assert.Equal(5, loaded.WorkingDays.Count);
+            Assert.Equal(CheckInTiming.OnTheHalfHour, loaded.CheckInTiming);
+            Assert.True(loaded.LargerText);
+            Assert.False(loaded.StartWithWindows);
+            Assert.True(loaded.Ai.VoiceEnabled);
+        }
+
+        [Fact]
+        public void EmptyWorkingDaysAndInvalidTiming_KeepIndependentChoices()
+        {
+            File.WriteAllText(_path, """{"WorkingDays":[],"CheckInTiming":"Unknown","LargerText":true,"IdleShape":"Ring"}""");
+            var loaded = new PreferencesStore(_path).Load();
+            Assert.Empty(loaded.WorkingDays);
+            Assert.Equal(CheckInTiming.FromLastCheckIn, loaded.CheckInTiming);
+            Assert.True(loaded.LargerText);
+            Assert.Equal(IdleShape.Ring, loaded.IdleShape);
         }
     }
 }
