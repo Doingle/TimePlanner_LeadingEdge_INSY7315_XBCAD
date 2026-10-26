@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,8 +23,11 @@ namespace TimePlanner.Widget
     {
         // One widget per Windows user: a second copy would track the same day twice
         private const string InstanceName = @"Local\TimePlanner.Widget";
+        public const string QuitSignalName = @"Local\TimePlanner.Widget.Quit";
 
         private Mutex? _instance;
+        private EventWaitHandle? _quitSignal;
+        private RegisteredWaitHandle? _quitWait;
         private MainWindow _window = null!;
         private IHost? _app;
         private IWidgetHost? _appSlot;
@@ -48,6 +52,51 @@ namespace TimePlanner.Widget
                 RunVoiceBenchChildProcess(mode, modelPath, resultFile);
                 Environment.Exit(0);
                 return;
+            }
+
+            //handle uninstall ai flag before mutex or ui initialization
+            var uninstallAiIdx = Array.FindIndex(e.Args, a => string.Equals(a, "--uninstall-ai", StringComparison.OrdinalIgnoreCase));
+            if (uninstallAiIdx >= 0)
+            {
+                try
+                {
+                    var whisperFolder = new WhisperModelManager().ModelsFolder;
+                    //check if preferences file exists
+                    if (!File.Exists(WidgetServices.PreferencesPath))
+                    {
+                        //delete whisper folder files if present when preferences never existed
+                        if (Directory.Exists(whisperFolder))
+                        {
+                            foreach (var file in Directory.GetFiles(whisperFolder))
+                            {
+                                try
+                                {
+                                    File.Delete(file);
+                                }
+                                catch
+                                {
+                                    //ignore file deletion failure
+                                }
+                            }
+                        }
+                        Environment.Exit(0);
+                        return;
+                    }
+
+                    var store = new PreferencesStore(WidgetServices.PreferencesPath);
+                    var prefs = store.Load();
+                    var removalService = new AiRemovalService();
+                    removalService.RemoveAsync(prefs.Ai, whisperFolder, host: null, CancellationToken.None).GetAwaiter().GetResult();
+                    store.Save(prefs);
+                    Environment.Exit(0);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Trace.TraceError("Failed to uninstall AI: {0}", ex);
+                    Environment.Exit(1);
+                    return;
+                }
             }
 
             //scan developer flags
@@ -91,6 +140,22 @@ namespace TimePlanner.Widget
                 Shutdown();
                 return;
             }
+
+            //register quit signal listener so installer can close widget cleanly
+            _quitSignal = new EventWaitHandle(false, EventResetMode.AutoReset, QuitSignalName);
+            _quitWait = ThreadPool.RegisterWaitForSingleObject(
+                _quitSignal,
+                (state, timedOut) =>
+                {
+                    //trigger clean shutdown when signalled
+                    if (!timedOut)
+                    {
+                        Dispatcher.BeginInvoke(() => Shutdown());
+                    }
+                },
+                null,
+                Timeout.Infinite,
+                executeOnlyOnce: true);
 
             try
             {
@@ -176,6 +241,11 @@ namespace TimePlanner.Widget
             ClosePreview();
 #endif
             _app?.Dispose();
+            //clean up quit signal wait handle and registration
+            _quitWait?.Unregister(null);
+            _quitWait = null;
+            _quitSignal?.Dispose();
+            _quitSignal = null;
             if (_instance != null)
             {
                 _instance.ReleaseMutex();
