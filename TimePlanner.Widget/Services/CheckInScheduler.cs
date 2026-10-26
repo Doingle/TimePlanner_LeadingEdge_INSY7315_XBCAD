@@ -349,16 +349,17 @@ namespace TimePlanner.Widget.Services
         /// <summary>
         /// When a check-in would come due with <paramref name="interval"/>. Before the day starts it
         /// counts from now; during it, the work since the last check-in counts towards it. On the hour and
-        /// half hour, that moves to the nearest mark, as the engine does. Null while paused.
+        /// half hour, uses the engine's next clock mark. Null while paused or on a day off.
         /// </summary>
         public DateTime? NextCheckIn(TimeSpan interval)
         {
-            if (IsPaused)
+            if (IsPaused || IsDayOff)
                 return null;
 
-            var from = IsRunning ? PeriodStart : Now;
+            if (Timing == CheckInTiming.OnTheHalfHour)
+                return IsRunning ? PromptAt : CheckInEngine.NextHalfHour(Now);
             var due = IsRunning ? Now + Longer(TimeSpan.Zero, interval - Unlogged) : Now + interval;
-            return Timing == CheckInTiming.OnTheHalfHour ? CheckInEngine.OnTheHalfHour(due, from, interval) : due;
+            return due;
         }
 
         private static TimeSpan Longer(TimeSpan a, TimeSpan b) => a > b ? a : b;
