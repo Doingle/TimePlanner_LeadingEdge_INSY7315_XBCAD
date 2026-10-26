@@ -595,6 +595,8 @@ namespace TimePlanner.Core.Tests.Services
             Assert.Equal(CheckInPhase.Due, (await engine.TickAsync()).Phase);
             engine.IsCheckInDay = _ => false;
             Assert.Equal(CheckInPhase.DayOff, (await engine.TickAsync()).Phase);
+        }
+
         //answering without entry clears prompt and resets interval without using skip
         [Fact]
         public async Task AnsweredWithoutEntry_ClearsPromptAndResetsInterval()
