@@ -63,7 +63,39 @@
                     <TextBlock Style="{StaticResource Text.Title}" Text="Settings" Margin="4,0,0,0" VerticalAlignment="Center" />
                 </DockPanel>
 
-                <StackPanel x:Name="IntervalField">
+                <StackPanel x:Name="TimingSection">
+                    <TextBlock Style="{StaticResource Text.Label}" Text="Check-in timing" />
+                    <Border Background="{StaticResource SurfaceSubtleBrush}" CornerRadius="{StaticResource RadiusControl}" Padding="4">
+                        <UniformGrid x:Name="TimingOptions" Columns="2">
+                            <UniformGrid.Resources>
+                                <Style TargetType="RadioButton" BasedOn="{StaticResource Option}">
+                                    <Setter Property="Height" Value="{StaticResource Space32}" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="RadioButton">
+                                                <Border x:Name="Selection" Background="Transparent" CornerRadius="{StaticResource RadiusRow}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter TargetName="Selection" Property="Background" Value="{StaticResource SurfaceBrush}" />
+                                                        <Setter Property="Foreground" Value="{StaticResource TextAccentBrush}" />
+                                                        <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5" /></Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </UniformGrid.Resources>
+                            <RadioButton x:Name="IntervalOption" GroupName="Timing" Content="Interval" Checked="Timing_Checked" />
+                            <RadioButton x:Name="ClockOption" GroupName="Timing" Content="Clock times" Checked="Timing_Checked" />
+                        </UniformGrid>
+                    </Border>
+                    <TextBlock x:Name="ClockTimingHelp" Style="{StaticResource Text.Help}" Text="On the hour and half-hour" Visibility="Collapsed" />
+                </StackPanel>
+                <StackPanel x:Name="IntervalField" Margin="{StaticResource GapFieldToField}">
                     <TextBlock x:Name="IntervalLabel" Style="{StaticResource Text.Label}" Text="Check in every" />
                     <ComboBox x:Name="IntervalSelect" Style="{StaticResource Select}"
                               AutomationProperties.LabeledBy="{Binding ElementName=IntervalLabel}"
@@ -163,14 +195,6 @@
                     </Grid>
                     <TextBlock x:Name="ShapeHelp" Style="{StaticResource Text.Help}" Text="Shows the time left." />
                 </StackPanel>
-
-                <!-- Check-ins on the hour and half hour, or every interval from the last one -->
-                <DockPanel Margin="{StaticResource GapFieldToField}" MinHeight="{StaticResource SizeControl}">
-                    <ToggleButton x:Name="HalfHourSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}" Margin="16,0,0,0"
-                                  AutomationProperties.LabeledBy="{Binding ElementName=HalfHourLabel}"
-                                  Checked="HalfHour_Changed" Unchecked="HalfHour_Changed" />
-                    <TextBlock x:Name="HalfHourLabel" Text="On the hour and half hour" VerticalAlignment="Center" />
-                </DockPanel>
 
                 <!-- The working days list, on a screen of its own -->
                 <Button x:Name="WorkingDaysRow" Style="{StaticResource PlainRow}" Margin="{StaticResource Space4Top}"
