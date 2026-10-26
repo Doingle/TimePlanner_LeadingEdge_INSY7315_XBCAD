@@ -16,7 +16,7 @@ namespace TimePlanner.Widget.Tests.Services
             new(registration, path, NullLogger<StartupService>.Instance);
 
         //-----------------------------
-        //enabling registers this program, quoted because the path has a space
+        //enabling registers this program, quoted because the path has a space, and marked as a sign-in start
         [Fact]
         public void Apply_Enabled_RegistersQuotedProgramPath()
         {
@@ -25,7 +25,20 @@ namespace TimePlanner.Widget.Tests.Services
             var problem = Create(registration).Apply(enabled: true);
 
             Assert.Null(problem);
-            Assert.Equal($"\"{ProgramPath}\"", registration.Command);
+            Assert.Equal($"\"{ProgramPath}\" --startup", registration.Command);
+        }
+
+        //-----------------------------
+        //an entry from before the sign-in mark is brought up to date
+        [Fact]
+        public void Apply_EntryWithoutSignInMark_IsUpdated()
+        {
+            var registration = new InMemoryStartupRegistration();
+            registration.Register($"\"{ProgramPath}\"");
+
+            Create(registration).Apply(enabled: true);
+
+            Assert.Equal($"\"{ProgramPath}\" --startup", registration.Command);
         }
 
         //-----------------------------
@@ -63,7 +76,7 @@ namespace TimePlanner.Widget.Tests.Services
         [Fact]
         public void Apply_AlreadyRegistered_DoesNotWriteAgain()
         {
-            var registration = new CountingRegistration { Command = $"\"{ProgramPath.ToUpperInvariant()}\"" };
+            var registration = new CountingRegistration { Command = $"\"{ProgramPath.ToUpperInvariant()}\" --startup" };
 
             Create(registration).Apply(enabled: true);
 

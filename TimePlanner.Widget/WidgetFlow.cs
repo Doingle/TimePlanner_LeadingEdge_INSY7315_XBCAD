@@ -43,6 +43,7 @@ namespace TimePlanner.Widget
             Exit,
             Help,
             ManageLists,
+            WorkingDays,
         }
 
         private readonly IWidgetHost _host;
@@ -100,9 +101,23 @@ namespace TimePlanner.Widget
                 if (Scheduler.ClosedOvernight is not { } closed)
                     return;
                 _endedDay = await _log.GetDayAsync(Session.User.UserId, closed.StartedAt);
+
+                // Into a day off, the widget goes quietly to the tray; Day ended waits there for the next time it is opened
+                if (!IsWorkingDay)
+                {
+                    _screen = Screen.None;
+                    _host.HideWidget();
+                    return;
+                }
                 ShowDayEnded(_endedDay, activate: false);
             };
+
+            // Today isn't sent yet only on working days, which the user chooses
+            Reminder.IsWorkingDay = day => Session.Preferences.WorkingDays.Contains(day);
         }
+
+        /// <summary>Today is one of the working days in the preferences.</summary>
+        public bool IsWorkingDay => Session.Preferences.IsWorkingDay(Scheduler.Now);
 
         /// <summary>The status line on the time-tracking cards: today's date, with a dot that is green only while tracking.</summary>
         public CardStatus Status
@@ -249,6 +264,21 @@ namespace TimePlanner.Widget
                 ShowSetup();
         }
 
+        /// <summary>
+        /// Started by Windows at sign-in: on a day off nothing pops up, the widget just waits in the tray, where a day
+        /// can still be started by hand. A day still being tracked (started by hand earlier) shows as usual.
+        /// </summary>
+        public void ShowStartAtSignIn()
+        {
+            if (!Scheduler.IsRunning && !IsWorkingDay)
+            {
+                _screen = Screen.None;
+                _host.HideWidget();
+                return;
+            }
+            ShowStart();
+        }
+
         /// <summary>The latest earlier day with time that was never sent, for the "isn't sent yet" notice.</summary>
         public Task<UnsentDay?> GetUnsentEarlierDayAsync() => _log.GetUnsentEarlierDayAsync(Session.User.UserId);
 
@@ -310,6 +340,17 @@ namespace TimePlanner.Widget
         }
 
         public void ShowSettings() => Present(Screen.Settings, new SettingsView(this));
+
+        /// <summary>More options, back on the Settings screen it came from, or on Setup.</summary>
+        public void ShowMoreOptions(bool fromSettings)
+        {
+            var view = fromSettings ? new SettingsView(this) : new SetupView(this, isSettings: false);
+            Present(fromSettings ? Screen.Settings : Screen.Setup, view);
+            view.ShowAdvanced(moveFocus: true);
+        }
+
+        /// <summary>The working days list, from More options.</summary>
+        public void ShowWorkingDays(Action back) => Present(Screen.WorkingDays, new WorkingDaysView(this, back));
 
         //-----------------------------
         //shows voice and ai settings screen
@@ -622,6 +663,30 @@ namespace TimePlanner.Widget
         }
 
         public void SavePreferences() => _preferences.Save(Session.Preferences);
+
+        /// <summary>Every interval from the last check-in, or on the hour and half hour. Saved in the preferences file.</summary>
+        public async Task ChangeTimingAsync(CheckInTiming timing)
+        {
+            Session.Preferences.CheckInTiming = timing;
+            SavePreferences();
+            await Scheduler.TimingChangedAsync();
+        }
+
+        /// <summary>The days the widget opens at sign-in. Saved in the preferences file, Monday first.</summary>
+        public Task ChangeWorkingDaysAsync(IEnumerable<DayOfWeek> days)
+        {
+            Session.Preferences.WorkingDays = days.OrderBy(day => ((int)day + 6) % 7).ToList();
+            SavePreferences();
+            // Today may have just become a day off, or a working day again
+            return Scheduler.RefreshAsync();
+        }
+
+        /// <summary>The "Larger text and buttons" switch. Saved, but it doesn't change the widget yet.</summary>
+        public void ChangeLargerText(bool on)
+        {
+            Session.Preferences.LargerText = on;
+            SavePreferences();
+        }
 
         /// <summary>
         /// Changes Windows startup straight away. The choice is saved only when Windows accepted it, so the

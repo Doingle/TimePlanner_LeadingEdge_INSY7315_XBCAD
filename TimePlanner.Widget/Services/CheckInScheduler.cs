@@ -87,6 +87,9 @@ namespace TimePlanner.Widget.Services
 
         public bool IsSnoozed => Status.Phase == CheckInPhase.Snoozed;
 
+        /// <summary>A day started by hand on a day off: tracked, with no check-ins, paused or not.</summary>
+        public bool IsDayOff => IsRunning && !_session.Preferences.IsWorkingDay(Now);
+
         private int UserId => _session.User.UserId;
 
         private TimeSpan Interval => TimeSpan.FromMinutes(Math.Max(1, _session.Settings.CheckInIntervalMinutes));
@@ -97,6 +100,9 @@ namespace TimePlanner.Widget.Services
         public async Task InitialiseAsync()
         {
             await CloseLeftOpenDayAsync();
+            _engine.Timing = Timing;
+            // Check-ins only on the working days ticked in the preferences
+            _engine.IsCheckInDay = day => _session.Preferences.IsWorkingDay(day);
             await RunAsync(() => _engine.InitialiseAsync(UserId));
             var today = DateOnly.FromDateTime(Now);
             var latestVoiceEnd = await _voiceStore.GetLatestWindowEndAsync(today);
@@ -106,6 +112,12 @@ namespace TimePlanner.Widget.Services
             }
             _timer.Start();
         }
+
+        /// <summary>When check-ins fall, from the preferences file.</summary>
+        private CheckInTiming Timing => _session.Preferences.CheckInTiming;
+
+        /// <summary>The user changed the check-in timing, which is saved already.</summary>
+        public Task TimingChangedAsync() => RunAsync(() => _engine.SetTimingAsync(Timing));
 
         public Task StartAsync()
         {
@@ -340,7 +352,7 @@ namespace TimePlanner.Widget.Services
         {
             get
             {
-                if (!IsRunning)
+                if (!IsRunning || IsDayOff)
                     return null;
                 if (PausedAt is { } pausedAt)
                     return Longer(TimeSpan.Zero, Interval - WorkedBetween(PeriodStart, pausedAt));
@@ -349,19 +361,32 @@ namespace TimePlanner.Widget.Services
         }
 
         /// <summary>How much of the interval has been worked, 0 to 1: the idle ring.</summary>
-        public double Elapsed => IsRunning ? Math.Clamp(WorkedBetween(PeriodStart, PausedAt ?? Now) / Interval, 0, 1) : 0;
+        /// <remarks>Measured against the time left, so on the hour and half hour the ring is full just as the check-in shows.</remarks>
+        public double Elapsed
+        {
+            get
+            {
+                if (!IsRunning || TimeLeft is not { } left)
+                    return 0;
+                var worked = WorkedBetween(PeriodStart, PausedAt ?? Now);
+                return worked + left > TimeSpan.Zero ? Math.Clamp(worked / (worked + left), 0, 1) : 1;
+            }
+        }
 
         /// <summary>
         /// When a check-in would come due with <paramref name="interval"/>. Before the day starts it
-        /// counts from now; during it, the work since the last check-in counts towards it. Null while paused.
+        /// counts from now; during it, the work since the last check-in counts towards it. On the hour and
+        /// half hour, uses the engine's next clock mark. Null while paused or on a day off.
         /// </summary>
         public DateTime? NextCheckIn(TimeSpan interval)
         {
-            if (!IsRunning)
-                return Now + interval;
-            if (IsPaused)
+            if (IsPaused || IsDayOff)
                 return null;
-            return Now + Longer(TimeSpan.Zero, interval - Unlogged);
+
+            if (Timing == CheckInTiming.OnTheHalfHour)
+                return IsRunning ? PromptAt : CheckInEngine.NextHalfHour(Now);
+            var due = IsRunning ? Now + Longer(TimeSpan.Zero, interval - Unlogged) : Now + interval;
+            return due;
         }
 
         private static TimeSpan Longer(TimeSpan a, TimeSpan b) => a > b ? a : b;

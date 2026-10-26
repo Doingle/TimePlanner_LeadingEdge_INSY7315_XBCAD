@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -23,7 +24,20 @@ namespace TimePlanner.Widget
         // One widget per Windows user: a second copy would track the same day twice
         private const string InstanceName = @"Local\TimePlanner.Widget";
 
+        // Opening the widget again while it runs (perhaps waiting in the tray on a day off) tells it to show itself
+        private const string ShowSignalName = @"Local\TimePlanner.Widget.Show";
+
+        // Lets the running widget come to the front when a second copy asks it to show
+        private const int AnyProcess = -1;
+
+        [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool AllowSetForegroundWindow(int processId);
+
         private Mutex? _instance;
+        private EventWaitHandle? _showSignal;
+        private RegisteredWaitHandle? _showWait;
         private MainWindow _window = null!;
         private IHost? _app;
         private IWidgetHost? _appSlot;
@@ -86,11 +100,24 @@ namespace TimePlanner.Widget
             _instance = new Mutex(initiallyOwned: true, InstanceName, out var first);
             if (!first)
             {
+                // The widget already runs, maybe out of sight in the tray: it shows itself instead
+                if (EventWaitHandle.TryOpenExisting(ShowSignalName, out var show))
+                {
+                    using (show)
+                    {
+                        AllowSetForegroundWindow(AnyProcess);
+                        show.Set();
+                    }
+                }
                 _instance.Dispose();
                 _instance = null;
                 Shutdown();
                 return;
             }
+
+            _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ShowSignalName);
+            _showWait = ThreadPool.RegisterWaitForSingleObject(_showSignal,
+                (_, _) => Dispatcher.BeginInvoke(ShowWidget), null, Timeout.Infinite, executeOnlyOnce: false);
 
             try
             {
@@ -126,7 +153,11 @@ namespace TimePlanner.Widget
             }
 
             _tray = CreateTray();
-            _flow.ShowStart();
+            // Started by Windows at sign-in, a day off stays in the tray; opened by hand, the widget always shows
+            if (e.Args.Any(a => string.Equals(a, Services.StartupService.SignInArgument, StringComparison.OrdinalIgnoreCase)))
+                _flow.ShowStartAtSignIn();
+            else
+                _flow.ShowStart();
             var updates = _app.Services.GetRequiredService<Services.WidgetUpdateChecker>();
             _window.AttachUpdates(updates);
             _flow.DashboardSignedIn += (_, _) => _ = updates.CheckAsync();
@@ -159,6 +190,8 @@ namespace TimePlanner.Widget
 
         protected override void OnExit(ExitEventArgs e)
         {
+            _showWait?.Unregister(null);
+            _showSignal?.Dispose();
             try
             {
                 //stop managed ollama server process

@@ -18,6 +18,7 @@ namespace TimePlanner.Core.Services
         private UserSettings _settings = new();
         private DaySession? _session;
         private DateTime _anchor;
+        private DateTime _clockTimingFrom;
         private int _skipsUsedToday;
         private DateOnly _skipDay;
         private DateTime? _dueSince;
@@ -30,7 +31,18 @@ namespace TimePlanner.Core.Services
             _clock = clock;
         }
 
+        //the hour and half hour marks clock timing lands on
+        private static readonly TimeSpan HalfHour = TimeSpan.FromMinutes(30);
+
         private TimeSpan Interval => TimeSpan.FromMinutes(_settings.CheckInIntervalMinutes);
+
+        //-----------------------------
+        //when check ins fall, set before initialising and changed with SetTimingAsync
+        public CheckInTiming Timing { get; set; } = CheckInTiming.FromLastCheckIn;
+
+        //-----------------------------
+        //whether a date gets check ins, every day unless the widget's working days say otherwise
+        public Func<DateTime, bool> IsCheckInDay { get; set; } = _ => true;
 
         private int SnoozesLeft => Math.Max(0, _settings.MaxSnoozes - _snoozesUsed);
 
@@ -48,6 +60,7 @@ namespace TimePlanner.Core.Services
             await LoadSettingsAsync();
             await LoadSessionAsync();
             await RebuildAnchorAsync();
+            _clockTimingFrom = _anchor;
             ResolvePrompt();
             return await TickAsync();
         }
@@ -58,7 +71,7 @@ namespace TimePlanner.Core.Services
         {
             var previousInterval = _settings.CheckInIntervalMinutes;
             await LoadSettingsAsync();
-            if (_settings.CheckInIntervalMinutes != previousInterval)
+            if (_settings.CheckInIntervalMinutes != previousInterval && Timing == CheckInTiming.FromLastCheckIn)
             {
                 // Recalculate from the same work anchor; an old due/snoozed prompt must not pin the timer.
                 // Keep the snooze/skip allowance and all unlogged work intact.
@@ -67,6 +80,27 @@ namespace TimePlanner.Core.Services
             }
             return await TickAsync();
         }
+
+        //-----------------------------
+        //switches between counting from the last check in and the hour and half hour
+        public Task<CheckInStatus> SetTimingAsync(CheckInTiming timing)
+        {
+            //an old due or snoozed prompt must not pin the new timing, the work since the anchor stays
+            if (timing != Timing)
+            {
+                Timing = timing;
+                _clockTimingFrom = _clock.Now;
+                _dueSince = null;
+                _snoozedUntil = null;
+            }
+
+            return TickAsync();
+        }
+
+        //-----------------------------
+        //The next local :00 or :30, strictly after starting, answering or resuming.
+        public static DateTime NextHalfHour(DateTime from) =>
+            new((from.Ticks / HalfHour.Ticks + 1) * HalfHour.Ticks, from.Kind);
 
         //-----------------------------
         //reloads the day after start pause resume or end
@@ -109,6 +143,13 @@ namespace TimePlanner.Core.Services
                 return Status(CheckInPhase.Paused, now);
             }
 
+            //no prompts on a day off, so nothing can come due, be snoozed or be skipped for being ignored
+            if (!IsCheckInDay(now))
+            {
+                ResolvePrompt();
+                return Status(CheckInPhase.DayOff, now);
+            }
+
             //a snooze holds the prompt back
             if (_snoozedUntil != null)
             {
@@ -123,7 +164,7 @@ namespace TimePlanner.Core.Services
             }
 
             //Only explicit day-session pauses suspend check-ins.
-            if (_dueSince == null && ActiveTimeSince(_anchor, now) >= Interval)
+            if (_dueSince == null && now >= DueAt(now))
             {
                 _dueSince = now;
             }
@@ -284,13 +325,25 @@ namespace TimePlanner.Core.Services
         }
 
         //-----------------------------
-        //next prompt time from the chosen interval and explicit pauses
+        //Clock timing is independent of the interval and paused work duration.
+        private DateTime DueAt(DateTime now)
+        {
+            if (Timing != CheckInTiming.OnTheHalfHour)
+                return now + (Interval - ActiveTimeSince(_anchor, now));
+
+            var from = _anchor > _clockTimingFrom ? _anchor : _clockTimingFrom;
+            foreach (var pause in _session?.Pauses ?? Enumerable.Empty<SessionPause>())
+                if (pause.EndedAt is { } resumed && resumed > from)
+                    from = resumed;
+            return NextHalfHour(from);
+        }
+
+        //-----------------------------
+        //next prompt time from the chosen interval, timing and explicit pauses
         private DateTime NextDueAt(DateTime now)
         {
-            var remaining = Interval - ActiveTimeSince(_anchor, now);
-            var due = remaining > TimeSpan.Zero ? now + remaining : now;
-
-            return due;
+            var due = DueAt(now);
+            return due > now ? due : now;
         }
 
         //-----------------------------
