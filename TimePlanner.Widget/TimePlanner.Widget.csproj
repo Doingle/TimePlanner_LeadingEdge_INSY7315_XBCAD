@@ -45,4 +45,8 @@
 		</None>
 	</ItemGroup>
 
+	<ItemGroup Condition="'$(DashboardUrl)' != ''">
+		<AssemblyMetadata Include="DashboardUrl" Value="$(DashboardUrl)" />
+	</ItemGroup>
+
 </Project>
