@@ -48,4 +48,14 @@ public class WidgetReleaseTests
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://dashboard.test/") };
         Assert.Null(await new DashboardClient(http).GetWidgetReleaseAsync());
     }
+
+    //-----------------------------
+    //path traversal input fails parsing returning null
+    [Fact]
+    public void PathTraversalReturnsNull()
+    {
+        var parsed = WidgetRelease.Parse("1.2.3/../../x");
+        Assert.Null(parsed);
+    }
 }
+
