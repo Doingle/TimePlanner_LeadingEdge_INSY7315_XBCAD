@@ -28,7 +28,7 @@ namespace TimePlanner.Widget.Models
 
         public bool IsWorkingDay(DateTime day) => WorkingDays.Contains(day.DayOfWeek);
 
-        // The "Larger text and buttons" switch in Settings. Kept, but it doesn't change the widget yet
+        // The "Larger text and buttons" switch in Settings: large view, every screen 1.5 times the size. Off for a first run
         public bool LargerText { get; set; }
     }
 }

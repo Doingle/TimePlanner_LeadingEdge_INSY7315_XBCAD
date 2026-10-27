@@ -45,7 +45,7 @@
 
                 <!-- first-use tip -->
                 <DockPanel x:Name="FirstUseTipPanel" Margin="0,4,0,0" Visibility="Collapsed">
-                    <Button x:Name="DismissTipButton" DockPanel.Dock="Right" Style="{StaticResource Button.Icon}"
+                    <Button x:Name="DismissTipButton" DockPanel.Dock="Right" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Close"
                             ToolTip="Don't show again" AutomationProperties.Name="Don't show again"
                             Click="DismissTip_Click" VerticalAlignment="Center">
                         <controls:Icon Kind="Close" Size="{StaticResource SizeIconSm}" />

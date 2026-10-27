@@ -9,7 +9,7 @@
             <StackPanel x:Name="MainView">
                 <!-- header -->
                 <DockPanel Margin="-8,0,0,0">
-                    <Button Style="{StaticResource Button.Icon}" ToolTip="Back to Settings" AutomationProperties.Name="Back to Settings" Click="Back_Click">
+                    <Button Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back to Settings" AutomationProperties.Name="Back to Settings" Click="Back_Click">
                         <controls:Icon Kind="ChevronLeft" />
                     </Button>
                     <Border x:Name="DevBadge" DockPanel.Dock="Right" Background="{DynamicResource ActionBrush}"

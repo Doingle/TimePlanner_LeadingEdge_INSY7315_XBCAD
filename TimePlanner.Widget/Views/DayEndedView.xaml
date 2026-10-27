@@ -6,7 +6,7 @@
 
     <controls:WidgetCard x:Name="Card" Padding="{StaticResource ShellPaddingWithFoot}" AutomationProperties.Name="Day ended">
         <controls:WidgetCard.CornerContent>
-            <Button Style="{StaticResource Button.Icon}" ToolTip="Close" AutomationProperties.Name="Close" Click="Close_Click">
+            <Button Style="{StaticResource Button.IconWord}" controls:WidgetCard.Word="Close" ToolTip="Close" AutomationProperties.Name="Close" Click="Close_Click">
                 <controls:Icon Kind="Close" />
             </Button>
         </controls:WidgetCard.CornerContent>

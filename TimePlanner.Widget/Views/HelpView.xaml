@@ -6,7 +6,7 @@
     <controls:WidgetCard AutomationProperties.Name="Help">
         <StackPanel>
             <DockPanel Margin="-8,0,0,0">
-                <Button x:Name="BackButton" Style="{StaticResource Button.Icon}" Click="Back_Click"
+                <Button x:Name="BackButton" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" Click="Back_Click"
                         ToolTip="Back" AutomationProperties.Name="Back to previous screen">
                     <controls:Icon Kind="ChevronLeft" />
                 </Button>
