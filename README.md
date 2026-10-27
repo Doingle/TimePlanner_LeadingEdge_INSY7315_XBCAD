@@ -1097,14 +1097,13 @@ The **Build** workflow runs on every pull request and every push to `main` and `
 A rule on main and development required a pull request with passing Build checks, and blocks force pushes and branch deletion, with no bypass. When commits were pushed straight to main by mistake, we moved them to development through a pull request and reverted them on main, this ultimately led to a better configuration of our branch protection as we set the rule but it wasn't enforced until the mistaken main merge occured.
 
 ### Deployment
-The **Deploy Dashboard** workflow runs on every push to `main`, which only happens through a release or hotfix pull request:
+The **Deploy Dashboard** workflow tests and publishes the dashboard once, then deploys that package:
 
-1. runs the Core and API tests again (on Linux so that it matched the server)
-2. publishes the dashboard in Release
-3. deploys to Azure App Service with the publish profile stored as a GitHub secret
-4. polls `/health` for up to five minutes, and fails the run if the site doesn't come back healthy.
+- **Staging:** triggered by hand from the Actions tab (`workflow_dispatch`) from any branch (default `development`) to verify changes on a hosted environment before release.
+- **Main:** a push to `main` (release or hotfix pull request) deploys to the **demo** site and verifies its `/health` check.
+- **Pilot:** deployed from Leading Edge's private mirror repository, never from this public repository (see the Leading Edge pilot site section below).
 
-Deploys first ran from `development` too. We changed it to `main` only, so the live site only changes when we release create a release, this was to avoid future changes occuring untested during the pilot.
+Deploys first ran from `development` too. We changed it to `main` only, so the live site only changes when we create a release, this was to avoid future changes occuring untested during the pilot.
 
 ### Releasing the widget
 The **Release Widget** workflow runs when a version tag is created (we create it by publishing a GitHub Release on `main`):
@@ -1140,16 +1139,42 @@ It can also be run by hand from the Actions tab (`workflow_dispatch`) to get a t
 
 | Setting | Value |
 |---|---|
-| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `ASPNETCORE_ENVIRONMENT` | `Production` (staging uses `Staging`) |
 | `Database__Provider` | `SqlServer` |
 | `ConnectionStrings__Default` | the Azure SQL connection string with: `Connection Timeout=60;` in case of slow first connections|
-| `Jwt__Key` | a long random key |
+| `Jwt__Key` | a long random key (each environment uses its own) |
 | `Seed__AdminEmail`, `Seed__AdminPassword` | Grit Solutions Admin |
 | `AllowedHosts` | the site's host names |
 | `Proxy__TrustForwardedHeaders` | `true` |
 | `Api__EnableDocs` | shows Swagger |
 
-Deploys come only from `main` through the workflow action **Deploy Dashboard**. The database is migrated automatically when the a new version starts
+Staging uses `ASPNETCORE_ENVIRONMENT=Staging` and its own `Jwt__Key`. The staging banner is shown only when `ASPNETCORE_ENVIRONMENT=Staging`.
+
+### Environments
+
+| Site | Web app | Database | Deployed by | Data |
+|---|---|---|---|---|
+| Staging | 3rd app on B1 | free offer SQL | Run workflow (by hand) | test data only |
+| Demo | 1st app on B1 | Basic | push to `main` | sample data for markers |
+| Pilot | Leading Edge's app | Basic | Leading Edge's private mirror: staging by hand, then push to its main | Leading Edge's real data |
+
+The Leading Edge pilot dashboard is deployed from a separate private repository owned by Leading Edge, which mirrors this one. The mirror runs the same Deploy Dashboard workflow with its own variables and secrets. It deploys to the staging site by hand (test data only), then deploys automatically to the Leading Edge site on every push to its `main`. A version reaches the mirror only after it has run on this repository's demo site.
+
+For security, the mirror is not linked or named here, and this public repository holds no Leading Edge credentials, so nothing pushed here can reach the Leading Edge site. Leading Edge controls who can change its live site, while this repository stays public for marking.
+
+### Deployment lifecycle
+
+```mermaid
+flowchart TD
+  FB[Feature branch] -->|PR| DEV[development]
+  DEV -.->|Run workflow (by hand)| STAGE[Staging]
+  DEV -->|Release PR| MAIN[main]
+  MAIN -->|Deploy Dashboard| DEMO[Demo]
+  MAIN -.->|mirrored| MIRROR["Leading Edge mirror (private)"]
+  MIRROR -.->|Run workflow (by hand)| STAGE
+  MIRROR -->|Push to main| PILOT[Pilot]
+  MAIN -->|Tag| WIDGET[Widget release]
+```
 
 ### Hosting rationale
 
@@ -1161,39 +1186,51 @@ Deploys come only from `main` through the workflow action **Deploy Dashboard**. 
 | Region | **South Africa North** | None | Closest to Leading Edge and the team. Page sends are quicker. |
 | Widget data | **SQLite on each PC** | Logging straight to the server | Works offline, and a dev's day stays private and editable until they send it, a requirement from Leading Edge to avoid feeling spyed on. |
 | Secrets | **App settings and GitHub secrets** | Config files in the repo | Nothing secret is committed, and each environment has its own keys |
-| Environments | **Separate demo and pilot sites**, they have their own web app and database | One shared site | Leading Edge's real timesheets and client names are never visible to markers or anyone outside the company or Grit Solutions |
+| Environments | **Separate staging, demo and pilot sites**, each with their own web app and database | One shared site | Leading Edge's real timesheets and client names are never visible to markers or anyone outside the company or Grit Solutions, and staging enables pre-release testing with test data |
 | Long term | Azure for the MVP and pilot | Leading Edge's own server | Moving to Leading Edge's on site server was out of MVP scope. Hosting on Azure lets us show the dashboard working at task 2, and the app runs on any .NET 10 host when they're ready so that the transfer is easier with the dashboard hosted now. The server dashboard will be dockerized though before hosting|
 
 **Scaling:** a bigger App Service plan or database tier is a setting change, with no code changes.
 
 **Stability:**
 - `/health` is checked after every deploy and a failing check fails the workflow
-- migrations run at startup and  schema changes repair old rows first
+- migrations run at startup and schema changes repair old rows first
 - sign in and import are rate limited
-- deploys come only from our protected `main` branch
+- live deploys come only from our protected `main` branch
 - the database has point in time restore
 
-**Approximate monthly cost (Changes from documentation projection):** App Service B1  US$13 (shared by both web apps), and US$5 per Azure SQL Basic database, it's protected by a budget alert. This decision let's us demonstrate the dashboard hosting capability before deployment to leading edges on site server, which was out of our MVP scope.
+### Monitoring
+- **Application Insights** is switched on in the Azure portal (no SDK, no code to maintain) on the demo and pilot web apps.
+- A free URL ping **availability test on `/health`** runs with an email alert.
+- The Azure App Service **Health check stays off**: it would query the database every minute, creating unnecessary overhead on Basic DTU databases.
+
+### Costs
+- **App Service plan (B1):** about $17.70 a month, shared by all three web apps.
+- **Azure SQL Database:** each Basic database is about $7.15 a month (demo and pilot); the staging database is $0 on the Azure SQL free offer (serverless auto-pause).
+- **Total:** about $32 a month in total.
+- The **$100 Azure credit** lasts to about early January 2027, which sets the deadline for moving to Leading Edge's hosting.
 
 ### Environment separation
 
-| | Demo  | Leading Edge pilot |
-|---|---|---|
-| Who uses it | for markers | Leading Edge staff only |
-| Azure Web App | its own | its own |
-| Azure SQL | its own database, on its own server | its own database, on its own server |
-| Signing key and admin | its own | its own, different |
-| Accounts | the demo accounts | real employees only|
-| Widget download |  regular release zip | the pilot zip which pointes at seperate pilot site |
+| | Staging | Demo | Leading Edge pilot |
+|---|---|---|---|
+| Who uses it | Grit Solutions testing | for markers | Leading Edge staff only |
+| Azure Web App | 3rd app on B1 | 1st app on B1 | Leading Edge's app |
+| Azure SQL | free offer SQL | its own database, on its own server | its own database, on its own server |
+| Signing key and admin | its own | its own | its own, different |
+| Accounts | test accounts | demo accounts | real employees only |
+| Widget download | points to staging | regular release zip | pilot zip pointing to pilot site |
 
 ```mermaid
 flowchart TB
-  subgraph Plan[Same build from main]
+  subgraph Plan[Shared B1 App Service Plan]
+    S[Staging web app]
     M[Demo / marking web app]
-    P[Pilot web app]
   end
+  P[Leading Edge pilot web app]
+  S --> DS[(Azure SQL: free offer)]
   M --> DM[(Azure SQL: demo)]
   P --> DP[(Azure SQL: pilot)]
+  Testers[Testers / Devs] --> S
   Markers[Demo users] --> M
   Staff[Leading Edge staff] --> P
 ```
