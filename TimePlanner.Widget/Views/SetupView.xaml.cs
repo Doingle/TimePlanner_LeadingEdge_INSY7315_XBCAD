@@ -12,6 +12,8 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Windows.Automation;
+using System.Globalization;
+using TimePlanner.Core.Services;
 using TimePlanner.Core.Services.Models;
 using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
@@ -44,6 +46,7 @@ namespace TimePlanner.Widget.Views
         private readonly List<int> _intervals;
         private readonly bool _ready;
         private bool _revertingStartup;
+        private bool _settingTiming;
         private Task _intervalSave = Task.CompletedTask;
 
         public SetupView(WidgetFlow flow, bool isSettings)
@@ -83,6 +86,20 @@ namespace TimePlanner.Widget.Views
             IntervalSelect.SelectedIndex = _intervals.IndexOf(settings.CheckInIntervalMinutes);
             ClockOption.IsChecked = preferences.CheckInTiming == CheckInTiming.OnTheHalfHour;
             IntervalOption.IsChecked = !ClockOption.IsChecked;
+            if (isSettings)
+            {
+                // Settings has its own Interval / Clock times choice, so the drop-down is just the intervals
+                IntervalSelect.Tag = null;
+            }
+            else
+            {
+                // Setup picks clock times inside the drop-down instead, with no interval chosen
+                TimingSection.Visibility = Visibility.Collapsed;
+                IntervalField.Margin = new Thickness(0);
+                HalfHourBox.IsChecked = ClockOption.IsChecked;
+                if (HalfHourBox.IsChecked == true)
+                    IntervalSelect.SelectedIndex = -1;
+            }
             ShowTiming();
             WorkingDaysSummary.Text = Format.Days(preferences.WorkingDays);
             LargerTextSwitch.IsChecked = preferences.LargerText;
@@ -163,7 +180,7 @@ namespace TimePlanner.Widget.Views
 
         private async void Interval_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!_ready || IntervalSelect.SelectedIndex < 0)
+            if (!_ready || _settingTiming || IntervalSelect.SelectedIndex < 0)
                 return;
 
             TimingOptions.IsEnabled = IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = false;
@@ -171,9 +188,61 @@ namespace TimePlanner.Widget.Views
             {
                 _intervalSave = _flow.ChangeIntervalAsync(_intervals[IntervalSelect.SelectedIndex]);
                 await _intervalSave;
+
+                // On Setup, picking an interval leaves clock times
+                if (!_isSettings && HalfHourBox.IsChecked == true)
+                {
+                    _settingTiming = true;
+                    HalfHourBox.IsChecked = false;
+                    _settingTiming = false;
+                    _intervalSave = _flow.ChangeTimingAsync(CheckInTiming.FromLastCheckIn);
+                    await _intervalSave;
+                }
                 ShowNextCheckIn();
             }
             finally { TimingOptions.IsEnabled = IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = true; }
+        }
+
+        // Setup's tick box in the drop-down: clock times, or back to the interval last chosen
+        private async void HalfHourBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!_ready || _settingTiming)
+                return;
+
+            var clock = HalfHourBox.IsChecked == true;
+            IntervalSelect.IsDropDownOpen = false;
+            _settingTiming = true;
+            IntervalSelect.SelectedIndex = clock ? -1 : _intervals.IndexOf(_flow.Session.Settings.CheckInIntervalMinutes);
+            _settingTiming = false;
+
+            _intervalSave = _flow.ChangeTimingAsync(clock ? CheckInTiming.OnTheHalfHour : CheckInTiming.FromLastCheckIn);
+            await _intervalSave;
+            ShowNextCheckIn();
+        }
+
+        // In the open drop-down, Up from the first interval goes to the tick box and Down comes back
+        private void IntervalSelect_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (!IntervalSelect.IsDropDownOpen || IntervalSelect.Tag == null)
+                return;
+
+            var first = IntervalSelect.ItemContainerGenerator.ContainerFromIndex(0) as ComboBoxItem;
+            if (e.Key == Key.Up && first != null && first.IsKeyboardFocused)
+            {
+                e.Handled = HalfHourBox.Focus();
+            }
+            else if (e.Key == Key.Down && HalfHourBox.IsKeyboardFocused && first != null)
+            {
+                e.Handled = first.Focus();
+            }
+        }
+
+        // The next two marks the clock times would land on, as an example beside the tick box
+        private void IntervalSelect_DropDownOpened(object? sender, EventArgs e)
+        {
+            var next = CheckInEngine.NextHalfHour(_flow.Scheduler.Now);
+            // Non-breaking spaces keep the marks together if they wrap under the label
+            HalfHourMarks.Text = $" ({next.ToString("h:mm", CultureInfo.InvariantCulture)} & {next.AddMinutes(30).ToString("h:mm", CultureInfo.InvariantCulture)})";
         }
 
         private async void Timing_Checked(object sender, RoutedEventArgs e)
@@ -194,7 +263,8 @@ namespace TimePlanner.Widget.Views
         private void ShowTiming()
         {
             var clock = ClockOption.IsChecked == true;
-            IntervalField.Visibility = clock ? Visibility.Collapsed : Visibility.Visible;
+            // Setup keeps Check in every, which holds the clock times choice there
+            IntervalField.Visibility = clock && _isSettings ? Visibility.Collapsed : Visibility.Visible;
             ClockTimingHelp.Visibility = clock ? Visibility.Visible : Visibility.Collapsed;
         }
 
