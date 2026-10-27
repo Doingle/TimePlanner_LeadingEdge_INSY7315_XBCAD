@@ -1,0 +1,65 @@
+# deploys the dashboard package built by Deploy Dashboard to one Azure web app, then waits for its /health to answer
+name: Deploy site
+
+on:
+  workflow_call:
+    inputs:
+      site:
+        description: The site's name in logs, such as Staging
+        type: string
+        required: true
+      app-name:
+        type: string
+        required: true
+      url:
+        type: string
+        required: true
+    secrets:
+      publish-profile:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.site }}
+    runs-on: ubuntu-latest
+    # one deploy per site at a time, a second one waits instead of cancelling the first
+    concurrency:
+      group: deploy-${{ inputs.app-name }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Check the site is configured
+        env:
+          SITE: ${{ inputs.site }}
+          APP_NAME: ${{ inputs.app-name }}
+          SITE_URL: ${{ inputs.url }}
+        run: |
+          if [ -z "$APP_NAME" ] || [ -z "$SITE_URL" ]; then echo "::error::$SITE has no web app name or URL. Set its repository variables first"; exit 1; fi
+          case "$SITE_URL" in https://*) ;; *) echo "::error::$SITE URL must start with https://"; exit 1;; esac
+
+      - name: Get the dashboard package
+        uses: actions/download-artifact@v4
+        with:
+          name: dashboard
+          path: publish/dashboard
+
+      - name: Deploy to Azure
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ inputs.app-name }}
+          publish-profile: ${{ secrets.publish-profile }}
+          package: publish/dashboard
+
+      # a staging database on the free offer may be paused, so the first answer can take a minute
+      - name: Check the site is healthy
+        env:
+          SITE_URL: ${{ inputs.url }}
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL/health")
+            if [ "$code" = "200" ]; then echo "healthy"; exit 0; fi
+            echo "attempt $i returned $code"
+            sleep 15
+          done
+          echo "::error::the site did not become healthy"
+          exit 1
