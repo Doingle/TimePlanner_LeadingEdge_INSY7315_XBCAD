@@ -18,6 +18,16 @@
 
             <StackPanel Margin="{StaticResource GapSection}">
                 <Button Style="{StaticResource Button.Primary}" Content="Log time" Click="LogTime_Click" />
+                <!-- One click: the period goes to the last entry's project and activity, named under the label -->
+                <Button x:Name="SameTaskButton" Style="{StaticResource Button.Secondary}" Height="Auto" Padding="16,8"
+                        Margin="{StaticResource GapStacked}" Visibility="Collapsed" Click="SameTask_Click">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Still on the same task" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="SameTaskText" Style="{StaticResource Text.Caption}" FontWeight="{StaticResource FontWeightRegular}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"
+                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Button>
                 <Button x:Name="SpeakUpdateButton" Style="{StaticResource Button.Secondary}" Click="SpeakUpdate_Click" Margin="0,8,0,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                         <controls:Icon Kind="Mic" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
