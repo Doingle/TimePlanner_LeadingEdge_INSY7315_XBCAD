@@ -6,7 +6,7 @@
     <controls:WidgetCard>
         <controls:WidgetCard.CornerContent>
             <Button Style="{StaticResource Button.Icon}" ToolTip="Cancel"
-                    AutomationProperties.Name="Cancel" Click="Cancel_Click">
+                    AutomationProperties.Name="Cancel" controls:LargeView.Word="Close" Click="Cancel_Click">
                 <controls:Icon Kind="Close" />
             </Button>
         </controls:WidgetCard.CornerContent>
@@ -48,11 +48,13 @@
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,8,0,0"
                        TextWrapping="Wrap" Visibility="Collapsed"
                        Text="The first sign in can take up to a minute while the dashboard wakes up." />
+        </StackPanel>
 
+        <controls:WidgetCard.Foot>
             <StackPanel Margin="{StaticResource GapSection}">
                 <Button x:Name="SignInButton" Style="{StaticResource Button.Primary}" Content="Sign in" Click="SignIn_Click" />
                 <Button Style="{StaticResource Button.Text}" Content="Cancel" Margin="0,4,0,0" Click="Cancel_Click" />
             </StackPanel>
-        </StackPanel>
+        </controls:WidgetCard.Foot>
     </controls:WidgetCard>
 </UserControl>

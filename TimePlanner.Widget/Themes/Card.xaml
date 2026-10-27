@@ -76,40 +76,67 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                
-                                <!-- The top 24px moves the window -->
-                                <Border x:Name="PART_DragArea" Grid.RowSpan="2" Height="{StaticResource Space24}" VerticalAlignment="Top"
-                                    Background="Transparent" />
-                                
+
                                 <!-- Banner: lets pointer input through -->
                                 <ContentPresenter Grid.Row="0" Content="{TemplateBinding Banner}" IsHitTestVisible="False" />
-                                <DockPanel Grid.Row="1" Margin="{TemplateBinding Padding}">
-                                    <!-- Status line on the time-tracking cards: a dot, green while tracking and grey otherwise,
-                                         then the date. The state is also in words for screen readers and the tooltip -->
-                                    <StackPanel x:Name="StatusLine" DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,88,8"
-                                                Background="Transparent"
-                                                ToolTip="{Binding Path=(controls:WidgetCard.Status).Spoken, RelativeSource={RelativeSource TemplatedParent}}"
-                                                AutomationProperties.Name="{Binding Path=(controls:WidgetCard.Status).Spoken, RelativeSource={RelativeSource TemplatedParent}}"
-                                                AutomationProperties.LiveSetting="Polite">
-                                        <Ellipse x:Name="StatusDot" Width="{StaticResource Space8}" Height="{StaticResource Space8}"
-                                                 Margin="0,0,8,0" VerticalAlignment="Center" Fill="{StaticResource BorderControlBrush}" />
-                                        <TextBlock Text="{Binding Path=(controls:WidgetCard.Status).Date, RelativeSource={RelativeSource TemplatedParent}}"
-                                                   FontSize="{StaticResource FontSizeBody}" LineHeight="{StaticResource LineHeightBody}"
-                                                   LineStackingStrategy="BlockLineHeight" Foreground="{StaticResource TextPrimaryBrush}"
-                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
-                                    <ContentPresenter />
-                                </DockPanel>
-                                
+
+                                <!-- The middle. It only scrolls when the card would be taller than the screen above the taskbar,
+                                     with a thin bar in the right margin -->
+                                <ScrollViewer x:Name="PART_Scroll" Grid.Row="1" Focusable="False" Background="Transparent"
+                                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ScrollViewer.Template>
+                                        <ControlTemplate TargetType="ScrollViewer">
+                                            <Grid Background="{TemplateBinding Background}">
+                                                <ScrollContentPresenter x:Name="PART_ScrollContentPresenter"
+                                                                        CanContentScroll="{TemplateBinding CanContentScroll}" />
+                                                <ScrollBar x:Name="PART_VerticalScrollBar" Orientation="Vertical" HorizontalAlignment="Right"
+                                                           Margin="0,4,5,4" Maximum="{TemplateBinding ScrollableHeight}"
+                                                           ViewportSize="{TemplateBinding ViewportHeight}"
+                                                           Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                                                           Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </ScrollViewer.Template>
+                                    <DockPanel Margin="{TemplateBinding ContentPadding}">
+                                        <!-- Status line on the time-tracking cards: a dot, green while tracking and grey otherwise,
+                                             then the date. The state is also in words for screen readers and the tooltip -->
+                                        <StackPanel x:Name="StatusLine" DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,88,8"
+                                                    Background="Transparent"
+                                                    ToolTip="{Binding Path=(controls:WidgetCard.Status).Spoken, RelativeSource={RelativeSource TemplatedParent}}"
+                                                    AutomationProperties.Name="{Binding Path=(controls:WidgetCard.Status).Spoken, RelativeSource={RelativeSource TemplatedParent}}"
+                                                    AutomationProperties.LiveSetting="Polite">
+                                            <Ellipse x:Name="StatusDot" Width="{StaticResource Space8}" Height="{StaticResource Space8}"
+                                                     Margin="0,0,8,0" VerticalAlignment="Center" Fill="{StaticResource BorderControlBrush}" />
+                                            <TextBlock Text="{Binding Path=(controls:WidgetCard.Status).Date, RelativeSource={RelativeSource TemplatedParent}}"
+                                                       FontSize="{StaticResource FontSizeBody}" LineHeight="{StaticResource LineHeightBody}"
+                                                       LineStackingStrategy="BlockLineHeight" Foreground="{StaticResource TextPrimaryBrush}"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <ContentPresenter />
+                                    </DockPanel>
+                                </ScrollViewer>
+
+                                <!-- Foot: the bottom buttons, pinned under the middle -->
+                                <Grid x:Name="FootArea" Grid.Row="2">
+                                    <Border x:Name="FootLine" Height="{DynamicResource Hairline}" VerticalAlignment="Top"
+                                            Background="{StaticResource BorderSubtleBrush}" Visibility="Collapsed" />
+                                    <ContentPresenter Margin="{TemplateBinding FootPadding}" Content="{TemplateBinding Foot}" />
+                                </Grid>
+
+                                <!-- The top 24px moves the window -->
+                                <Border x:Name="PART_DragArea" Grid.RowSpan="3" Height="{StaticResource Space24}" VerticalAlignment="Top"
+                                    Background="Transparent" />
+
                                 <!-- Grip: 32 x 4, centred, 8 from the top -->
-                                <Border x:Name="PART_Grip" Grid.RowSpan="2" Width="{StaticResource Space32}" Height="{StaticResource Space4}"
+                                <Border x:Name="PART_Grip" Grid.RowSpan="3" Width="{StaticResource Space32}" Height="{StaticResource Space4}"
                                     Margin="0,8,0,0" CornerRadius="{StaticResource RadiusGrip}" Background="{TemplateBinding GripBrush}"
                                     HorizontalAlignment="Center" VerticalAlignment="Top" Cursor="SizeAll" ToolTip="Drag to move" />
-                                
-                                <!-- Corner button: 16 from the top, 8 from the right -->
-                                <ContentPresenter Grid.RowSpan="2" Content="{TemplateBinding CornerContent}" Margin="0,16,8,0"
-                                              HorizontalAlignment="Right" VerticalAlignment="Top" />
+
+                                <!-- Corner button: 16 from the top, 8 from the right. In large view its word sits under the icon -->
+                                <ContentPresenter Grid.RowSpan="3" Content="{TemplateBinding CornerContent}" Margin="0,16,8,0"
+                                              HorizontalAlignment="Right" VerticalAlignment="Top" controls:LargeView.WordBelow="True" />
                             </Grid>
                         </Border>
                     </Grid>
@@ -127,6 +154,15 @@
                         </Trigger>
                         <Trigger Property="CornerContent" Value="{x:Null}">
                             <Setter TargetName="StatusLine" Property="Margin" Value="0,0,0,8" />
+                        </Trigger>
+                        <Trigger Property="Foot" Value="{x:Null}">
+                            <Setter TargetName="FootArea" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="FootDivider" Value="True">
+                            <Setter TargetName="FootLine" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger SourceName="PART_Scroll" Property="ComputedVerticalScrollBarVisibility" Value="Visible">
+                            <Setter TargetName="FootLine" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <DataTrigger Binding="{Binding Path=(controls:WidgetCard.Status).Live, RelativeSource={RelativeSource Self}}" Value="True">
                             <Setter TargetName="StatusDot" Property="Fill" Value="{StaticResource LiveBrush}" />

@@ -16,7 +16,7 @@ public partial class ExitView : UserControl
         _exit = exit;
         _cancel = cancel;
         Explanation.Text = flow.Scheduler.IsRunning
-            ? $"Your day stays open. You can log it later. We won't check in while Time Planner is closed. You can log the time since {Format.Clock(flow.GetLogPeriod().Start)} when you open it again."
+            ? "Your day stays open. Check-ins pause until you open Time Planner again."
             : "We won't check in while Time Planner is closed. You can open it again from the Start menu.";
     }
 

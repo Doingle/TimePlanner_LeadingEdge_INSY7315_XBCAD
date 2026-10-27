@@ -15,7 +15,9 @@
                     <TextBlock x:Name="Subtitle" Style="{StaticResource Text.Subtitle}" Text="Log what you did since 3:05 PM." />
                 </StackPanel>
             </DockPanel>
+        </StackPanel>
 
+        <controls:WidgetCard.Foot>
             <StackPanel Margin="{StaticResource GapSection}">
                 <Button Style="{StaticResource Button.Primary}" Content="Log time" Click="LogTime_Click" />
                 <!-- One click: the period goes to the last entry's project and activity, named under the label -->
@@ -46,7 +48,7 @@
                 <!-- first-use tip -->
                 <DockPanel x:Name="FirstUseTipPanel" Margin="0,4,0,0" Visibility="Collapsed">
                     <Button x:Name="DismissTipButton" DockPanel.Dock="Right" Style="{StaticResource Button.Icon}"
-                            ToolTip="Don't show again" AutomationProperties.Name="Don't show again"
+                            ToolTip="Don't show again" AutomationProperties.Name="Don't show again" controls:LargeView.Word="Close"
                             Click="DismissTip_Click" VerticalAlignment="Center">
                         <controls:Icon Kind="Close" Size="{StaticResource SizeIconSm}" />
                     </Button>
@@ -56,6 +58,6 @@
                             Click="TipLink_Click" />
                 </DockPanel>
             </StackPanel>
-        </StackPanel>
+        </controls:WidgetCard.Foot>
     </controls:WidgetCard>
 </UserControl>

@@ -721,12 +721,21 @@ namespace TimePlanner.Widget
             return Scheduler.RefreshAsync();
         }
 
-        /// <summary>The "Larger text and buttons" switch. Saved, but it doesn't change the widget yet.</summary>
+        /// <summary>The "Larger text and buttons" switch: saved, and the widget changes size straight away.</summary>
         public void ChangeLargerText(bool on)
         {
             Session.Preferences.LargerText = on;
             SavePreferences();
+            LargerTextChanged?.Invoke(this, EventArgs.Empty);
+
+            if (_view == null)
+                return;
+            LargeView.SetIsOn(_view, on);
+            _host.Present(_view, activate: false);
         }
+
+        /// <summary>Large view switched on or off, for windows outside the widget such as the wide Timesheet.</summary>
+        public event EventHandler? LargerTextChanged;
 
         /// <summary>
         /// Changes Windows startup straight away. The choice is saved only when Windows accepted it, so the
@@ -748,6 +757,8 @@ namespace TimePlanner.Widget
             _screen = screen;
             _view = view;
             WidgetCard.SetStatus(view, ShowsStatus(screen) ? Status : null);
+            // Every screen, including ones added later, gets large view here; the host scales the window from it
+            LargeView.SetIsOn(view, Session.Preferences.LargerText);
             _host.Present(view, activate);
         }
     }

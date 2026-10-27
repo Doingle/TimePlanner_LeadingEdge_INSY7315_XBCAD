@@ -4,14 +4,25 @@
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
              PreviewKeyDown="View_KeyDown">
     <controls:WidgetCard AutomationProperties.Name="Exit Time Planner?">
-        <StackPanel>
-            <TextBlock Style="{StaticResource Text.Title}" Text="Exit Time Planner?" />
-            <TextBlock x:Name="Explanation" Style="{StaticResource Text.Subtitle}" />
+        <!-- Close goes back, like Cancel -->
+        <controls:WidgetCard.CornerContent>
+            <Button x:Name="CloseButton" Style="{StaticResource Button.Icon}" ToolTip="Close" AutomationProperties.Name="Close, don't exit"
+                    controls:LargeView.Word="Close" Click="Cancel_Click">
+                <controls:Icon Kind="Close" />
+            </Button>
+        </controls:WidgetCard.CornerContent>
+
+        <controls:WidgetCard.Foot>
             <StackPanel Margin="{StaticResource GapSection}">
                 <Button x:Name="ExitButton" Style="{StaticResource Button.Primary}" Content="Exit" Click="Exit_Click" />
                 <Button x:Name="CancelButton" Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}"
                         Content="Cancel" Click="Cancel_Click" />
             </StackPanel>
+        </controls:WidgetCard.Foot>
+
+        <StackPanel>
+            <TextBlock Style="{StaticResource Text.Title}" Text="Exit Time Planner?" />
+            <TextBlock x:Name="Explanation" Style="{StaticResource Text.Subtitle}" />
         </StackPanel>
     </controls:WidgetCard>
 </UserControl>

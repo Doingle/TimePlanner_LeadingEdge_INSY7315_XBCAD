@@ -4,6 +4,13 @@
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
     
     <controls:WidgetCard AutomationProperties.Name="Entry saved">
+        <controls:WidgetCard.Foot>
+            <StackPanel Margin="{StaticResource GapSection}">
+                <Button Style="{StaticResource Button.Primary}" Content="Keep tracking" Click="KeepTracking_Click" />
+                <Button Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}" Content="End day" Click="EndDay_Click" />
+            </StackPanel>
+        </controls:WidgetCard.Foot>
+
         <StackPanel>
             <DockPanel>
                 <Border Style="{StaticResource Badge}" Margin="0,0,16,0">
@@ -17,11 +24,6 @@
                     <TextBlock x:Name="Subtitle" Style="{StaticResource Text.Subtitle}" Text="Next check-in at 6:05 PM." />
                 </StackPanel>
             </DockPanel>
-
-            <StackPanel Margin="{StaticResource GapSection}">
-                <Button Style="{StaticResource Button.Primary}" Content="Keep tracking" Click="KeepTracking_Click" />
-                <Button Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}" Content="End day" Click="EndDay_Click" />
-            </StackPanel>
         </StackPanel>
     </controls:WidgetCard>
 </UserControl>

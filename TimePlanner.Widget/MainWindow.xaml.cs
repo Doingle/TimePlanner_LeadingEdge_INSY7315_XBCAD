@@ -43,6 +43,15 @@ namespace TimePlanner.Widget
         private bool _positioning;
         private Slot? _shown;
 
+        // Large view: 1.5 while the screen shown asks for it, so the shadow room and the room under the top grow with it
+        private double _scale = 1;
+
+        private Thickness Shadow => new(
+            ShadowMargin.Left * _scale,
+            ShadowMargin.Top * _scale,
+            ShadowMargin.Right * _scale,
+            ShadowMargin.Bottom * _scale);
+
         // Widget positioning and desktop visibility
         private bool _idle;
         private bool _presenting;
@@ -182,6 +191,7 @@ namespace TimePlanner.Widget
             _idle = screen is IdleView;
 
             LoadPosition();
+            Scale(LargeView.GetIsOn(screen));
 
             Host.Content = screen;
 
@@ -191,6 +201,7 @@ namespace TimePlanner.Widget
             if (!IsVisible)
                 Show();
 
+            FitToWorkArea();
             UpdateLayout();
             Reposition();
 
@@ -239,7 +250,7 @@ namespace TimePlanner.Widget
         {
             base.OnSourceInitialized(e);
 
-            DeviceLines.Apply(VisualTreeHelper.GetDpi(this));
+            DeviceLines.Apply(VisualTreeHelper.GetDpi(this), _scale);
 
             HwndSource.FromHwnd(
                 new WindowInteropHelper(this).Handle
@@ -256,7 +267,29 @@ namespace TimePlanner.Widget
         {
             base.OnDpiChanged(oldDpi, newDpi);
 
-            DeviceLines.Apply(newDpi);
+            DeviceLines.Apply(newDpi, _scale);
+            Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, FitToWorkArea);
+        }
+
+        // Large view on or off for the screen being shown: the whole window scales, pop-ups and tooltips with it
+        private void Scale(bool on)
+        {
+            var scale = LargeView.ScaleOf(on);
+            if (scale == _scale)
+                return;
+
+            _scale = scale;
+            LargeView.Apply(Scaled, on);
+
+            if (PresentationSource.FromVisual(this) != null)
+                DeviceLines.Apply(VisualTreeHelper.GetDpi(this), _scale);
+        }
+
+        // The card is never taller than the screen above the taskbar; a taller screen scrolls in the middle
+        // and keeps its bottom buttons in view
+        private void FitToWorkArea()
+        {
+            Host.MaxHeight = Math.Max(0, WorkArea().Height / _scale);
         }
 
         private void Reposition()
@@ -265,7 +298,7 @@ namespace TimePlanner.Widget
                 return;
 
             var area = WorkArea();
-            var m = ShadowMargin;
+            var m = Shadow;
 
             // The idle shape starts in the top corner; the main card hangs from its top, low enough on the right
             // to sit near the taskbar yet with room below it for the tallest screen
@@ -273,7 +306,7 @@ namespace TimePlanner.Widget
                 area.Right - ScreenInset,
                 _idle
                     ? area.Top + ScreenInset
-                    : Math.Max(area.Top + ScreenInset, area.Bottom - ScreenInset - MainRoom));
+                    : Math.Max(area.Top + ScreenInset, area.Bottom - ScreenInset - MainRoom * _scale));
 
             var anchor = _anchor.Value;
 
@@ -307,7 +340,7 @@ namespace TimePlanner.Widget
             }
 
             var area = WorkArea();
-            var m = ShadowMargin;
+            var m = Shadow;
 
             var card = new Rect(
                 Left + m.Left,
@@ -418,16 +451,23 @@ namespace TimePlanner.Widget
             IntPtr lParam,
             ref bool handled)
         {
-            // WM_EXITSIZEMOVE: main card's left drag ended.
+            // WM_EXITSIZEMOVE: main card's left drag ended, perhaps on another monitor.
             if (message == 0x0232)
+            {
                 SavePosition();
+                FitToWorkArea();
+            }
 
-            // WM_DISPLAYCHANGE: a monitor may have gone away.
+            // WM_DISPLAYCHANGE: a monitor may have gone away, or the taskbar moved.
             if (message == 0x007E)
             {
                 Dispatcher.BeginInvoke(
                     DispatcherPriority.ApplicationIdle,
-                    Reposition);
+                    () =>
+                    {
+                        FitToWorkArea();
+                        Reposition();
+                    });
             }
 
             return IntPtr.Zero;

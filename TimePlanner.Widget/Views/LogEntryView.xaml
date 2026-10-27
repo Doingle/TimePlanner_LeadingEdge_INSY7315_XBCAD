@@ -7,7 +7,7 @@
     <controls:WidgetCard x:Name="Card">
         <controls:WidgetCard.CornerContent>
             <Button x:Name="CancelButton" Style="{StaticResource Button.Icon}" ToolTip="Cancel"
-                    AutomationProperties.Name="Cancel" Visibility="Collapsed" Click="Cancel_Click">
+                    AutomationProperties.Name="Cancel" controls:LargeView.Word="Close" Visibility="Collapsed" Click="Cancel_Click">
                 <controls:Icon Kind="Close" />
             </Button>
         </controls:WidgetCard.CornerContent>
@@ -36,7 +36,9 @@
                          MaxLength="{x:Static models:InputLimits.Note}"
                          AutomationProperties.LabeledBy="{Binding ElementName=NoteLabel}" />
             </StackPanel>
+        </StackPanel>
 
+        <controls:WidgetCard.Foot>
             <StackPanel Margin="{StaticResource GapSection}">
                 <Button x:Name="SaveButton" Style="{StaticResource Button.Primary}" Content="Save entry" Click="Save_Click" />
                 <Grid x:Name="SnoozeRow" Style="{StaticResource FootRow}" Visibility="Collapsed">
@@ -48,6 +50,6 @@
                     </StackPanel>
                 </Grid>
             </StackPanel>
-        </StackPanel>
+        </controls:WidgetCard.Foot>
     </controls:WidgetCard>
 </UserControl>

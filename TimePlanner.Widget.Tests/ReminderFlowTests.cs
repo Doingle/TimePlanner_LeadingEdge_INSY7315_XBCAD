@@ -5,6 +5,8 @@ using System.Net.Http.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -245,9 +247,15 @@ public class ReminderFlowTests
         Render(timer, "timer-feedback");
         ((Button)timer.FindName("ExitButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         var confirmation = Assert.IsType<ExitView>(host.Window.Screen);
-        Assert.Contains("Your day stays open. You can log it later.", ((TextBlock)confirmation.FindName("Explanation")).Text);
+        Assert.Equal("Your day stays open. Check-ins pause until you open Time Planner again.",
+            ((TextBlock)confirmation.FindName("Explanation")).Text);
         Render(confirmation, "exit-feedback");
         ((Button)confirmation.FindName("CancelButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Same(timer, host.Window.Screen);
+
+        // Close (X) goes back too
+        host.Flow.AskExit();
+        ((Button)Assert.IsType<ExitView>(host.Window.Screen).FindName("CloseButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Assert.Same(timer, host.Window.Screen);
 
         var exited = false;
@@ -961,6 +969,101 @@ public class ReminderFlowTests
         Assert.Equal(TimeSpan.FromMinutes(20), host.Flow.Scheduler.TimeLeft);
         Assert.Equal(started.Date.AddHours(10.5), host.Flow.Scheduler.NextCheckIn(TimeSpan.FromMinutes(60)));
     });
+
+    [Fact]
+    public Task SetupScreen_ClockTimesLiveInTheIntervalDropDown() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var setup = host.Flow.ShowSetup();
+        var interval = (ComboBox)setup.FindName("IntervalSelect");
+        var halfHour = (CheckBox)setup.FindName("HalfHourBox");
+        var help = (TextBlock)setup.FindName("IntervalHelp");
+
+        // The date and state sit in the banner, not in a status line on the card
+        Assert.Equal(Visibility.Collapsed, ((StackPanel)setup.FindName("TimingSection")).Visibility);
+        Assert.Null(WidgetCard.GetStatus((WidgetCard)setup.FindName("Card")));
+        Render(setup, "setup");
+        Assert.Equal(host.Flow.Status, ((Grid)setup.FindName("BannerStatus")).DataContext);
+
+        // Ticking the box leaves the interval for clock times, from the next half hour
+        halfHour.IsChecked = true;
+        await WaitUntil(() => host.Flow.Session.Preferences.CheckInTiming == CheckInTiming.OnTheHalfHour);
+        Assert.Equal(-1, interval.SelectedIndex);
+        Assert.Equal("First check-in at 10:30 AM", help.Text);
+
+        // Picking an interval goes back to it
+        interval.SelectedItem = "20m";
+        await WaitUntil(() => host.Flow.Session.Preferences.CheckInTiming == CheckInTiming.FromLastCheckIn);
+        Assert.False(halfHour.IsChecked);
+        Assert.Equal(20, host.Flow.Session.Settings.CheckInIntervalMinutes);
+        Assert.Equal(["15m", "20m", "30m", "45m", "1h", "1h 30m", "2h", "3h"], interval.Items.Cast<string>());
+
+        // Settings keeps its own Interval / Clock times choice, so its drop-down is just the intervals
+        host.Flow.ShowSettings();
+        var settings = Assert.IsType<SettingsView>(host.Window.Screen);
+        Assert.Null(((ComboBox)settings.FindName("IntervalSelect")).Tag);
+        Assert.Equal(Visibility.Visible, ((StackPanel)settings.FindName("TimingSection")).Visibility);
+    });
+
+    [Fact]
+    public Task SetupScreen_DropDownOpensWithTheTickBoxAboveTheIntervals() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var setup = host.Flow.ShowSetup();
+        var window = new Window { Content = setup, SizeToContent = SizeToContent.WidthAndHeight, WindowStyle = WindowStyle.None, ShowInTaskbar = false };
+        window.Show();
+        window.Activate();
+        try
+        {
+            var interval = (ComboBox)setup.FindName("IntervalSelect");
+            var halfHour = (CheckBox)setup.FindName("HalfHourBox");
+            interval.Focus();
+            interval.IsDropDownOpen = true;
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+
+            // The example marks are the next two half hours: 10:30 and 11:00 at 10:00
+            Assert.Equal(" (10:30 & 11:00)", ((Run)setup.FindName("HalfHourMarks")).Text);
+
+            // Up from the first interval reaches the tick box, Down goes back
+            var first = (ComboBoxItem)interval.ItemContainerGenerator.ContainerFromIndex(0);
+            first.Focus();
+            PressKey(first, Key.Up);
+            Assert.True(halfHour.IsKeyboardFocused);
+            Assert.True(interval.IsDropDownOpen);
+            PressKey(halfHour, Key.Down);
+            Assert.True(first.IsKeyboardFocused);
+
+            // The popup's root holds the panel with its shadow room around it
+            var popup = (Popup)interval.Template.FindName("PART_Popup", interval);
+            RenderElement((FrameworkElement)VisualTreeHelper.GetParent(popup.Child), "setup-interval-dropdown");
+            interval.IsDropDownOpen = false;
+        }
+        finally
+        {
+            window.Close();
+        }
+    });
+
+    private static void PressKey(UIElement target, Key key) =>
+        target.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(target)!, 0, key)
+        {
+            RoutedEvent = Keyboard.PreviewKeyDownEvent,
+        });
+
+    // Saves an element already laid out on screen, such as an open drop-down, when previews are asked for
+    private static void RenderElement(FrameworkElement element, string name)
+    {
+        var folder = Environment.GetEnvironmentVariable("TIMEPLANNER_REMINDER_PREVIEW_DIR");
+        if (string.IsNullOrWhiteSpace(folder))
+            return;
+        Directory.CreateDirectory(folder);
+        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(element);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var file = File.Create(Path.Combine(folder, name + ".png"));
+        encoder.Save(file);
+    }
 
     // A day with one entry logged to Acme › Portal, Coding at 10:30, and the next check-in shown at 12:00
     private static async Task<CheckInAlertView> CheckInAfterAnEntryAsync(TestHost host)

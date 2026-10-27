@@ -7,7 +7,7 @@
     <controls:WidgetCard x:Name="Card">
         <controls:WidgetCard.CornerContent>
             <Button Style="{StaticResource Button.Icon}" ToolTip="Cancel"
-                    AutomationProperties.Name="Cancel" Click="Cancel_Click">
+                    AutomationProperties.Name="Cancel" controls:LargeView.Word="Close" Click="Cancel_Click">
                 <controls:Icon Kind="Close" />
             </Button>
         </controls:WidgetCard.CornerContent>
@@ -72,11 +72,13 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+        </StackPanel>
 
+        <controls:WidgetCard.Foot>
             <StackPanel Margin="{StaticResource GapSection}">
                 <Button x:Name="SaveButton" Style="{StaticResource Button.Primary}" Content="Save" Click="Save_Click" />
                 <Button Style="{StaticResource Button.Text}" Content="Cancel" Margin="0,4,0,0" Click="Cancel_Click" />
             </StackPanel>
-        </StackPanel>
+        </controls:WidgetCard.Foot>
     </controls:WidgetCard>
 </UserControl>

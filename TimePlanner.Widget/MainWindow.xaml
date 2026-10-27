@@ -17,8 +17,11 @@
         FontFamily="{StaticResource FontFamily}"
         FontSize="{StaticResource FontSizeBody}"
         Foreground="{StaticResource TextPrimaryBrush}">
-    <Grid Margin="{x:Static local:MainWindow.ShadowMargin}">
-        <ContentControl x:Name="Host" Focusable="False" IsTabStop="False" />
-        <views:UpdateAvailableView x:Name="UpdateNotice" Visibility="Collapsed" />
+    <!-- Large view scales everything in here by 1.5, the room for the shadow included -->
+    <Grid x:Name="Scaled">
+        <Grid Margin="{x:Static local:MainWindow.ShadowMargin}">
+            <ContentControl x:Name="Host" Focusable="False" IsTabStop="False" />
+            <views:UpdateAvailableView x:Name="UpdateNotice" Visibility="Collapsed" />
+        </Grid>
     </Grid>
 </Window>

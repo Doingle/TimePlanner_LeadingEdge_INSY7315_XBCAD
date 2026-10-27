@@ -6,7 +6,8 @@
 
     <controls:WidgetCard x:Name="Card" Padding="{StaticResource ShellPaddingWithFoot}" AutomationProperties.Name="Day ended">
         <controls:WidgetCard.CornerContent>
-            <Button Style="{StaticResource Button.Icon}" ToolTip="Close" AutomationProperties.Name="Close" Click="Close_Click">
+            <Button Style="{StaticResource Button.Icon}" ToolTip="Close" AutomationProperties.Name="Close" controls:LargeView.Word="Close"
+                    Click="Close_Click">
                 <controls:Icon Kind="Close" />
             </Button>
         </controls:WidgetCard.CornerContent>
@@ -58,43 +59,47 @@
             <!-- Today's day: "Timesheet not sent yet". An earlier day: "Yesterday isn't sent yet" with Send now -->
             <views:UnsentDayReminderView x:Name="ReminderNotice" />
             <views:UnsentEarlierDayView x:Name="EarlierNotice" />
-
-            <!-- Ended today, with entries -->
-            <StackPanel x:Name="ExportActions" Margin="{StaticResource GapSection}">
-                <Button x:Name="BuildMyDayExportButton" Style="{StaticResource Button.Primary}" Visibility="Collapsed"
-                        Margin="0,0,0,8" Click="BuildMyDay_Click" />
-                <Button x:Name="ExportButton" Style="{StaticResource Button.Primary}" AutomationProperties.Name="Export CSV" Click="Export_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <controls:Icon Kind="Download" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Export CSV" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-                <!-- Hidden while the not-sent row above shows, which opens the timesheet itself -->
-                <Button x:Name="OpenTimesheetButton" Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}"
-                        Content="Open timesheet" Click="OpenTimesheet_Click" />
-                <Grid Style="{StaticResource FootRow}">
-                    <Button x:Name="ResumeButton" Style="{StaticResource Button.Text}" Content="Resume day" Click="Resume_Click" />
-                </Grid>
-            </StackPanel>
-
-            <!-- Ended today, nothing logged -->
-            <StackPanel x:Name="EmptyActions" Margin="{StaticResource GapSection}" Visibility="Collapsed">
-                <Button x:Name="BuildMyDayEmptyButton" Style="{StaticResource Button.Primary}" Visibility="Collapsed"
-                        Margin="0,0,0,8" Click="BuildMyDay_Click" />
-                <Button x:Name="ResumeDayEmptyButton" Style="{StaticResource Button.Primary}" Content="Resume day" Click="Resume_Click" />
-                <Button x:Name="OpenTimesheetEmptyButton" Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}" Content="Open timesheet"
-                        Click="OpenTimesheet_Click" />
-            </StackPanel>
-
-            <!-- The date has changed: today starts fresh, and the ended day is one click away -->
-            <StackPanel x:Name="EarlierActions" Margin="{StaticResource GapSection}" Visibility="Collapsed">
-                <Button x:Name="StartTodayButton" Style="{StaticResource Button.Primary}" Content="Start today" Click="StartToday_Click" />
-                <Button x:Name="EarlierTimesheetButton" Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}"
-                        Content="Open timesheet" Click="OpenTimesheet_Click" />
-                <Grid x:Name="EarlierExportRow" Style="{StaticResource FootRow}">
-                    <Button Style="{StaticResource Button.Text}" Content="Export CSV" Click="Export_Click" />
-                </Grid>
-            </StackPanel>
         </StackPanel>
+
+        <controls:WidgetCard.Foot>
+            <StackPanel>
+                <!-- Ended today, with entries -->
+                <StackPanel x:Name="ExportActions" Margin="{StaticResource GapSection}">
+                    <Button x:Name="BuildMyDayExportButton" Style="{StaticResource Button.Primary}" Visibility="Collapsed"
+                            Margin="0,0,0,8" Click="BuildMyDay_Click" />
+                    <Button x:Name="ExportButton" Style="{StaticResource Button.Primary}" AutomationProperties.Name="Export CSV" Click="Export_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:Icon Kind="Download" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Export CSV" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <!-- Hidden while the not-sent row above shows, which opens the timesheet itself -->
+                    <Button x:Name="OpenTimesheetButton" Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}"
+                            Content="Open timesheet" Click="OpenTimesheet_Click" />
+                    <Grid Style="{StaticResource FootRow}">
+                        <Button x:Name="ResumeButton" Style="{StaticResource Button.Text}" Content="Resume day" Click="Resume_Click" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Ended today, nothing logged -->
+                <StackPanel x:Name="EmptyActions" Margin="{StaticResource GapSection}" Visibility="Collapsed">
+                    <Button x:Name="BuildMyDayEmptyButton" Style="{StaticResource Button.Primary}" Visibility="Collapsed"
+                            Margin="0,0,0,8" Click="BuildMyDay_Click" />
+                    <Button x:Name="ResumeDayEmptyButton" Style="{StaticResource Button.Primary}" Content="Resume day" Click="Resume_Click" />
+                    <Button x:Name="OpenTimesheetEmptyButton" Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}" Content="Open timesheet"
+                            Click="OpenTimesheet_Click" />
+                </StackPanel>
+
+                <!-- The date has changed: today starts fresh, and the ended day is one click away -->
+                <StackPanel x:Name="EarlierActions" Margin="{StaticResource GapSection}" Visibility="Collapsed">
+                    <Button x:Name="StartTodayButton" Style="{StaticResource Button.Primary}" Content="Start today" Click="StartToday_Click" />
+                    <Button x:Name="EarlierTimesheetButton" Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}"
+                            Content="Open timesheet" Click="OpenTimesheet_Click" />
+                    <Grid x:Name="EarlierExportRow" Style="{StaticResource FootRow}">
+                        <Button Style="{StaticResource Button.Text}" Content="Export CSV" Click="Export_Click" />
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </controls:WidgetCard.Foot>
     </controls:WidgetCard>
     </UserControl>

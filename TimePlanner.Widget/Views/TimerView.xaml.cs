@@ -63,6 +63,7 @@ namespace TimePlanner.Widget.Views
             var action = paused != null ? "Resume the timer" : "Pause the timer";
             PauseButton.ToolTip = action;
             AutomationProperties.SetName(PauseButton, action);
+            LargeView.SetWord(PauseButton, paused != null ? "Resume" : "Pause");
 
             TimerText.Foreground = (Brush)FindResource(paused != null ? "TextTertiaryBrush" : "TextPrimaryBrush");
 

@@ -7,9 +7,10 @@ namespace TimePlanner.Widget.Controls
 {
     public static class DeviceLines
     {
-        public static void Apply(DpiScale dpi)
+        // In large view a line is still a whole number of screen pixels, not 1.5 of them, so it stays sharp
+        public static void Apply(DpiScale dpi, double viewScale = 1)
         {
-            var scale = dpi.PixelsPerDip;
+            var scale = dpi.PixelsPerDip * viewScale;
             if (scale <= 0 || Application.Current == null)
                 return;
 
