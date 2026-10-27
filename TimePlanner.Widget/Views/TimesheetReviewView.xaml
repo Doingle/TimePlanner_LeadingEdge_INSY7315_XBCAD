@@ -6,7 +6,7 @@
     <controls:WidgetCard AutomationProperties.Name="Timesheet">
         <StackPanel>
             <DockPanel Margin="-8,0,0,0">
-                <Button Style="{StaticResource Button.Icon}" ToolTip="Back" AutomationProperties.Name="Back"
+                <Button Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back" AutomationProperties.Name="Back"
                         Click="Back_Click">
                     <controls:Icon Kind="ChevronLeft" />
                 </Button>
@@ -15,11 +15,11 @@
                     <Button x:Name="TodayButton" Style="{StaticResource Button.Secondary}" Height="{StaticResource Space32}" Padding="12,0"
                             Margin="0,0,4,0" Content="Today" Visibility="Collapsed" AutomationProperties.Name="Go to today"
                             Click="Today_Click" />
-                    <Button x:Name="PrevDayButton" Style="{StaticResource Button.Icon}" ToolTip="Previous day"
+                    <Button x:Name="PrevDayButton" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Previous" BorderThickness="0" ToolTip="Previous day"
                             AutomationProperties.Name="Previous day" Click="PrevDay_Click">
                         <controls:Icon Kind="ChevronLeft" />
                     </Button>
-                    <Button x:Name="NextDayButton" Style="{StaticResource Button.Icon}" ToolTip="Next day"
+                    <Button x:Name="NextDayButton" Style="{StaticResource Button.WordIconSide}" controls:WidgetCard.Word="Next" BorderThickness="0" ToolTip="Next day"
                             AutomationProperties.Name="Next day" Click="NextDay_Click">
                         <controls:Icon Kind="ChevronRight" />
                     </Button>

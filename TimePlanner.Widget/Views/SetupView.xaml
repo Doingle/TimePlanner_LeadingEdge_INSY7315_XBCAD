@@ -134,18 +134,21 @@
                             <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False" PopupAnimation="None"
                                    IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                                    PlacementTarget="{Binding ElementName=Root}" controls:PopupPlacement.Kind="Dropdown">
-                                <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}" Width="{Binding ActualWidth, ElementName=Root}"
-                                      TextElement.FontWeight="{StaticResource FontWeightRegular}">
-                                    <Border Style="{StaticResource Menu.Shadow}" />
-                                    <Border Style="{StaticResource Menu.Panel}">
-                                        <DockPanel>
-                                            <ContentPresenter DockPanel.Dock="Top" Content="{TemplateBinding Tag}" />
-                                            <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}" VerticalScrollBarVisibility="Auto"
-                                                          HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
-                                            </ScrollViewer>
-                                        </DockPanel>
-                                    </Border>
+                                <!-- Large view: the list grows with the widget, shadow room and all (PopupScale) -->
+                                <Grid LayoutTransform="{DynamicResource PopupScale}">
+                                    <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}" Width="{Binding ActualWidth, ElementName=Root}"
+                                          TextElement.FontWeight="{StaticResource FontWeightRegular}">
+                                        <Border Style="{StaticResource Menu.Shadow}" />
+                                        <Border Style="{StaticResource Menu.Panel}">
+                                            <DockPanel>
+                                                <ContentPresenter DockPanel.Dock="Top" Content="{TemplateBinding Tag}" />
+                                                <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}" VerticalScrollBarVisibility="Auto"
+                                                              HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                                                </ScrollViewer>
+                                            </DockPanel>
+                                        </Border>
+                                    </Grid>
                                 </Grid>
                             </Popup>
                         </Grid>
@@ -233,7 +236,7 @@
                             <TextBlock Text="Help" Margin="8,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource Button.Icon}" ToolTip="Back" AutomationProperties.Name="Back to the timer"
+                    <Button Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back" AutomationProperties.Name="Back to the timer"
                             Click="BackToTimer_Click">
                         <controls:Icon Kind="ChevronLeft" />
                     </Button>
@@ -359,7 +362,7 @@
 
             <StackPanel x:Name="AdvancedView" Visibility="Collapsed">
                 <DockPanel Margin="-8,0,0,0">
-                    <Button x:Name="AdvancedBack" Style="{StaticResource Button.Icon}" ToolTip="Back"
+                    <Button x:Name="AdvancedBack" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back"
                             AutomationProperties.Name="Back to setup" Click="CloseAdvanced_Click">
                         <controls:Icon Kind="ChevronLeft" />
                     </Button>

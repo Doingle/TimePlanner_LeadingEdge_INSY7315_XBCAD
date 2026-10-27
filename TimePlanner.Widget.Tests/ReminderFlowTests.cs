@@ -270,6 +270,192 @@ public class ReminderFlowTests
     });
 
     [Fact]
+    public Task LargerText_IsSavedAndAppliedStraightAway() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        Assert.False(host.Flow.Session.Preferences.LargerText);
+
+        host.Flow.ChangeLargerText(true);
+        Assert.True(host.Flow.Session.Preferences.LargerText);
+        Assert.Equal(1, host.Window.SizeApplied);
+
+        host.Flow.ChangeLargerText(false);
+        Assert.False(host.Flow.Session.Preferences.LargerText);
+        Assert.Equal(2, host.Window.SizeApplied);
+    });
+
+    [Fact]
+    public Task LargeTimer_ShowsAWordUnderEachIconButton_AndKeepsItsWording() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        host.Flow.ShowTimer();
+        var timer = Assert.IsType<TimerView>(host.Window.Screen);
+        var card = (WidgetCard)timer.FindName("Card");
+        var pause = (Button)timer.FindName("PauseButton");
+
+        // Laid out as the window does it: the root carries large view and the 1.5 times scale
+        var root = new Grid();
+        root.Children.Add(timer);
+        var page = new Border { Child = root };
+        LayOut(page);
+        var words = Descendants<TextBlock>(timer).Where(t => t.Name == "Word").ToList();
+        var state = (TextBlock)card.Template.FindName("StatusState", card);
+        // Voice is off here, so the speak button stays hidden
+        Assert.Equal(new[] { "Exit", "Pause", "Settings" }, words.Select(w => w.Text).Order());
+        Assert.All(words, w => Assert.Equal(Visibility.Collapsed, w.Visibility));
+        Assert.Equal(Visibility.Collapsed, state.Visibility);
+        Assert.Equal(40, pause.ActualHeight);
+        await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        RenderElement(page, "timer-normal");
+
+        WidgetCard.SetIsLarge(root, true);
+        root.LayoutTransform = new ScaleTransform(WidgetCard.LargeScale, WidgetCard.LargeScale);
+        LayOut(page);
+        await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        Assert.All(words, w => Assert.Equal(Visibility.Visible, w.Visibility));
+        Assert.Equal(Visibility.Visible, state.Visibility);
+        Assert.Equal(" · Tracking", string.Concat(state.Inlines.OfType<Run>().Select(r => r.Text)));
+        Assert.Equal("until next check-in", ((TextBlock)timer.FindName("StatusText")).Text);
+        Assert.Equal("Pause the timer", pause.ToolTip);
+        Assert.Equal(WidgetCard.LargeScale * card.ActualWidth, page.ActualWidth, precision: 0);
+        // The timer stays on one line with the pause circle, as at the normal size; the word hangs under the circle
+        var timerText = (TextBlock)timer.FindName("TimerText");
+        var circleCentre = pause.TranslatePoint(new Point(0, (double)Application.Current.FindResource("SizeControl") / 2), page).Y;
+        var timerCentre = timerText.TranslatePoint(new Point(0, timerText.ActualHeight / 2), page).Y;
+        Assert.InRange(timerCentre - circleCentre, -2, 2);
+        // A fresh layout for the picture, so nothing from the normal size is left in it
+        page.Child = null;
+        page.Child = root;
+        LayOut(page);
+        RenderElement(page, "timer-large");
+
+        // Paused, the same button says Resume and keeps its place
+        var circleLeft = pause.TranslatePoint(new Point(), page).X;
+        Click(pause);
+        await WaitUntil(() => WidgetCard.GetWord(pause) == "Resume");
+        LayOut(page);
+        await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        Assert.Equal(circleLeft, pause.TranslatePoint(new Point(), page).X);
+        Assert.Equal("Resume the timer", pause.ToolTip);
+        RenderElement(page, "timer-paused-large");
+    });
+
+    [Fact]
+    public Task LargeView_EveryIconButtonShowsItsWord_OnlyInLargeView() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        var today = DateOnly.FromDateTime(host.Clock.LocalNow());
+
+        // The screens with icon buttons; Day ended last, as it ends the day
+        var screens = new (string Name, Func<Task> Show)[]
+        {
+            ("settings", () => { host.Flow.ShowSettings(); return Task.CompletedTask; }),
+            ("more-options", () => { host.Flow.ShowMoreOptions(fromSettings: true); return Task.CompletedTask; }),
+            ("working-days", () => { host.Flow.ShowWorkingDays(() => { }); return Task.CompletedTask; }),
+            ("help", () => { host.Flow.ShowHelp(); return Task.CompletedTask; }),
+            ("manage-lists", () => host.Flow.ShowManageListsAsync()),
+            ("check-in", () => { host.Flow.CheckIn(); return Task.CompletedTask; }),
+            ("log-entry", () => host.Flow.LogTimeAsync(LogEntryMode.CheckIn)),
+            ("end-day", () => { host.Flow.AskEndDay(); return Task.CompletedTask; }),
+            ("sign-in", () => { host.Flow.ShowSignIn(() => Task.CompletedTask, () => { }); return Task.CompletedTask; }),
+            ("timesheet", () => host.Flow.ShowTimesheetAsync(today, () => { })),
+            ("entry-edit", () => host.Flow.ShowEntryEditorAsync(today, null, host.Clock.LocalNow().AddMinutes(-20), host.Clock.LocalNow(), () => { })),
+            ("day-ended", () => host.Flow.EndDayAsync()),
+        };
+
+        var seen = new List<string>();
+        foreach (var (name, show) in screens)
+        {
+            await show();
+            var screen = host.Window.Screen!;
+            var root = new Grid();
+            root.Children.Add(screen);
+            var page = new Border { Child = root };
+            LayOut(page);
+            Assert.All(Descendants<TextBlock>(page).Where(t => t.Name == "Word"), w => Assert.Equal(Visibility.Collapsed, w.Visibility));
+
+            WidgetCard.SetIsLarge(root, true);
+            root.LayoutTransform = new ScaleTransform(WidgetCard.LargeScale, WidgetCard.LargeScale);
+            LayOut(page);
+
+            // Every icon-only button on show says what it does, in a word beside or under its icon
+            var iconButtons = Descendants<Button>(page).Where(b => b.Content is Icon && Shown(b, page)).ToList();
+            seen.Add($"{name}: {string.Join(", ", iconButtons.Select(WidgetCard.GetWord))}");
+            Assert.All(iconButtons, b =>
+            {
+                Assert.False(string.IsNullOrWhiteSpace(WidgetCard.GetWord(b)), $"{name}: {b.ToolTip} has no word");
+                var word = Assert.Single(Descendants<TextBlock>(b), t => t.Name == "Word");
+                Assert.Equal(Visibility.Visible, word.Visibility);
+                Assert.Equal(WidgetCard.GetWord(b), word.Text);
+            });
+
+            page.Child = null;
+            root.Children.Clear();
+            page.Child = new Grid { LayoutTransform = root.LayoutTransform, Children = { screen } };
+            WidgetCard.SetIsLarge(page.Child, true);
+            LayOut(page);
+            RenderElement(page, $"large-{name}");
+            ((Grid)page.Child).Children.Clear();
+        }
+
+        // Answering a check-in, Log entry has no close button to show
+        Assert.Equal(
+            "settings: Back | more-options: Back | working-days: Back | help: Back | manage-lists: Back, Add, Edit, Add, Edit"
+            + " | check-in: Close | log-entry:  | end-day: Close | sign-in: Close | timesheet: Back, Previous, Next, Delete"
+            + " | entry-edit: Close | day-ended: Close",
+            string.Join(" | ", seen));
+    });
+
+    [Fact]
+    public Task LargeView_DropdownsAndMenusTakeThePopupScale() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+
+        // What the window does when large view comes on (screens in the window hear of the change; these are built after it)
+        Application.Current.Resources["PopupScale"] = new ScaleTransform(WidgetCard.LargeScale, WidgetCard.LargeScale);
+        try
+        {
+            host.Flow.ShowSettings();
+            var settings = Assert.IsType<SettingsView>(host.Window.Screen);
+            Render(settings, "settings-popup-scale");
+            var interval = (ComboBox)settings.FindName("IntervalSelect");
+            var popup = (Popup)interval.Template.FindName("PART_Popup", interval);
+            var menu = new ContextMenu { Style = (Style)Application.Current.FindResource("Menu.Dropdown") };
+            Assert.Equal(WidgetCard.LargeScale, Assert.IsType<ScaleTransform>(((FrameworkElement)popup.Child).LayoutTransform).ScaleX);
+            Assert.Equal(WidgetCard.LargeScale, Assert.IsType<ScaleTransform>(menu.LayoutTransform).ScaleX);
+        }
+        finally
+        {
+            Application.Current.Resources.Remove("PopupScale");
+        }
+
+        // Normal size: the theme's own PopupScale, no change at all
+        var plain = new ContextMenu { Style = (Style)Application.Current.FindResource("Menu.Dropdown") };
+        Assert.Equal(1, Assert.IsType<ScaleTransform>(plain.LayoutTransform).ScaleX);
+    });
+
+    // Shown on the page: it and everything above it up to the page are visible
+    private static bool Shown(FrameworkElement element, DependencyObject page)
+    {
+        for (DependencyObject? at = element; at != null && at != page; at = VisualTreeHelper.GetParent(at))
+            if (at is UIElement { Visibility: not Visibility.Visible })
+                return false;
+        return true;
+    }
+
+    // Measures and arranges an element at its own size, with room for large view
+    private static void LayOut(FrameworkElement element)
+    {
+        element.Measure(new Size(800, double.PositiveInfinity));
+        element.Arrange(new Rect(element.DesiredSize));
+        element.UpdateLayout();
+    }
+
+    [Fact]
     public Task LogRangeRefreshesAfterEntry_AndTrayUsesExistingLogScreen() => OnUi(async () =>
     {
         using var host = await TestHost.CreateAsync();
@@ -1185,6 +1371,8 @@ public class ReminderFlowTests
         }
         public int Hides { get; private set; }
         public void HideWidget() => Hides++;
+        public int SizeApplied { get; private set; }
+        public void ApplySize() => SizeApplied++;
     }
 
     private sealed class FakeDashboard : HttpMessageHandler
