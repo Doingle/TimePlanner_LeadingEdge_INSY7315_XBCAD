@@ -12,5 +12,8 @@ namespace TimePlanner.Widget
         void HideWidget();
 
         void ConfigurePositions(Models.WidgetPreferences preferences, Action save) { }
+
+        // Applies the "Larger text and buttons" preference straight away, to the screen that is showing
+        void ApplySize() { }
     }
 }

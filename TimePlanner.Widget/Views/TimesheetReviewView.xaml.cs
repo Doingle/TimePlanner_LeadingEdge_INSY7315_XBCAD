@@ -328,10 +328,11 @@ namespace TimePlanner.Widget.Views
             var topRow = new DockPanel();
             var deleteBtn = new Button
             {
-                Style = (Style)FindResource("Button.Icon"),
+                Style = (Style)FindResource("Button.IconWordSide"),
                 ToolTip = "Delete entry",
                 Content = new Icon { Kind = IconKind.Close, Size = (double)FindResource("SizeIconSm") }
             };
+            WidgetCard.SetWord(deleteBtn, "Delete");
             DockPanel.SetDock(deleteBtn, Dock.Right);
 
             //deletes entry when close button is clicked

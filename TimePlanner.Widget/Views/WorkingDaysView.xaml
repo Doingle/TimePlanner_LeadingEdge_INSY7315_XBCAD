@@ -45,7 +45,7 @@
     <controls:WidgetCard AutomationProperties.Name="Working days">
         <StackPanel>
             <DockPanel Margin="-8,0,0,0">
-                <Button x:Name="BackButton" Style="{StaticResource Button.Icon}" ToolTip="Back"
+                <Button x:Name="BackButton" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back"
                         AutomationProperties.Name="Back to more options" Click="Back_Click">
                     <controls:Icon Kind="ChevronLeft" />
                 </Button>

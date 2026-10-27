@@ -26,7 +26,7 @@
                 BorderThickness="1" CornerRadius="{StaticResource RadiusControl}" Effect="{StaticResource ShadowMenu}">
             <StackPanel>
                 <DockPanel>
-                    <Button x:Name="CloseButton" DockPanel.Dock="Right" Style="{StaticResource Button.Icon}"
+                    <Button x:Name="CloseButton" DockPanel.Dock="Right" Style="{StaticResource Button.IconWord}" controls:WidgetCard.Word="Close"
                             ToolTip="Dismiss" AutomationProperties.Name="Dismiss update notice" Click="Dismiss_Click">
                         <controls:Icon Kind="Close" />
                     </Button>
