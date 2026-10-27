@@ -35,6 +35,28 @@ namespace TimePlanner.Widget.Controls
 
         public static void SetStatus(DependencyObject d, CardStatus? value) => d.SetValue(StatusProperty, value);
 
+        /// <summary>How much bigger everything is in large view, the "Larger text and buttons" setting.</summary>
+        public const double LargeScale = 1.5;
+
+        /// <summary>
+        /// Large view: set once on the window and inherited by every screen, so icon buttons show their word and a
+        /// screen can make room for it. The 1.5 times itself comes from the window's scale.
+        /// </summary>
+        public static readonly DependencyProperty IsLargeProperty = DependencyProperty.RegisterAttached(
+            "IsLarge", typeof(bool), typeof(WidgetCard), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.Inherits));
+
+        public static bool GetIsLarge(DependencyObject d) => (bool)d.GetValue(IsLargeProperty);
+
+        public static void SetIsLarge(DependencyObject d, bool value) => d.SetValue(IsLargeProperty, value);
+
+        /// <summary>The short word an icon-only button shows under its icon in large view ("Settings", "Exit"); its tooltip stays.</summary>
+        public static readonly DependencyProperty WordProperty = DependencyProperty.RegisterAttached(
+            "Word", typeof(string), typeof(WidgetCard), new PropertyMetadata(null));
+
+        public static string? GetWord(DependencyObject d) => (string?)d.GetValue(WordProperty);
+
+        public static void SetWord(DependencyObject d, string? value) => d.SetValue(WordProperty, value);
+
 
         public bool IsRaised
         {

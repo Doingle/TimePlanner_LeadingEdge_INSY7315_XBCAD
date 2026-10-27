@@ -721,11 +721,12 @@ namespace TimePlanner.Widget
             return Scheduler.RefreshAsync();
         }
 
-        /// <summary>The "Larger text and buttons" switch. Saved, but it doesn't change the widget yet.</summary>
+        /// <summary>The "Larger text and buttons" switch: large view, every screen 1.5 times the size, straight away. Saved in the preferences file.</summary>
         public void ChangeLargerText(bool on)
         {
             Session.Preferences.LargerText = on;
             SavePreferences();
+            _host.ApplySize();
         }
 
         /// <summary>
