@@ -1,4 +1,6 @@
-# tests then deploys the dashboard to azure
+# tests and publishes the dashboard once, then deploys that package.
+# Run it by hand from the Actions tab to deploy any branch to staging. A push to main deploys to the demo site.
+# The Leading Edge pilot site is deployed from its own private mirror repository, never from here
 name: Deploy Dashboard
 
 on:
@@ -6,14 +8,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-concurrency:
-  group: deploy-dashboard
-  cancel-in-progress: false
-
 jobs:
-  deploy:
+  build:
+    name: Test and publish
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,20 +30,33 @@ jobs:
       - name: Publish dashboard
         run: dotnet publish TimePlanner.Dashboard/TimePlanner.Dashboard.csproj --configuration Release --output publish/dashboard
 
-      - name: Deploy to Azure
-        uses: azure/webapps-deploy@v3
+      - name: Keep the package for the deploy jobs
+        uses: actions/upload-artifact@v4
         with:
-          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: publish/dashboard
+          name: dashboard
+          path: publish/dashboard
+          retention-days: 7
+          if-no-files-found: error
 
-      - name: Check the site is healthy
-        run: |
-          for i in $(seq 1 20); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.AZURE_WEBAPP_URL }}/health")
-            if [ "$code" = "200" ]; then echo "healthy"; exit 0; fi
-            echo "attempt $i returned $code"
-            sleep 15
-          done
-          echo "site did not become healthy"
-          exit 1
+  staging:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    uses: ./.github/workflows/deploy-site.yml
+    with:
+      site: Staging
+      app-name: ${{ vars.STAGING_WEBAPP_NAME }}
+      url: ${{ vars.STAGING_WEBAPP_URL }}
+    secrets:
+      publish-profile: ${{ secrets.STAGING_WEBAPP_PUBLISH_PROFILE }}
+
+  # the demo site keeps the original variable names, so nothing already set up changes
+  demo:
+    if: github.event_name == 'push'
+    needs: build
+    uses: ./.github/workflows/deploy-site.yml
+    with:
+      site: Demo
+      app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+      url: ${{ vars.AZURE_WEBAPP_URL }}
+    secrets:
+      publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
