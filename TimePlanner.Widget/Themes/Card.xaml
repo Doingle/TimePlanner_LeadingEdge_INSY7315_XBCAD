@@ -94,10 +94,16 @@
                                                 AutomationProperties.LiveSetting="Polite">
                                         <Ellipse x:Name="StatusDot" Width="{StaticResource Space8}" Height="{StaticResource Space8}"
                                                  Margin="0,0,8,0" VerticalAlignment="Center" Fill="{StaticResource BorderControlBrush}" />
-                                        <TextBlock Text="{Binding Path=(controls:WidgetCard.Status).Date, RelativeSource={RelativeSource TemplatedParent}}"
+                                        <TextBlock x:Name="StatusDate" Text="{Binding Path=(controls:WidgetCard.Status).Date, RelativeSource={RelativeSource TemplatedParent}}"
                                                    FontSize="{StaticResource FontSizeBody}" LineHeight="{StaticResource LineHeightBody}"
                                                    LineStackingStrategy="BlockLineHeight" Foreground="{StaticResource TextPrimaryBrush}"
                                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                        <!-- Large view adds the state in words after the date: "Friday 23 Oct · Tracking" -->
+                                        <TextBlock x:Name="StatusState" Visibility="Collapsed" FontSize="{StaticResource FontSizeBody}"
+                                                   LineHeight="{StaticResource LineHeightBody}" LineStackingStrategy="BlockLineHeight"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"><Run Text=" · " /><Run
+                                                   Text="{Binding Path=(controls:WidgetCard.Status).State, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                                                   FontWeight="{StaticResource FontWeightSemibold}" Foreground="{StaticResource TextPrimaryBrush}" /></TextBlock>
                                     </StackPanel>
                                     <ContentPresenter />
                                 </DockPanel>
@@ -131,6 +137,10 @@
                         <DataTrigger Binding="{Binding Path=(controls:WidgetCard.Status).Live, RelativeSource={RelativeSource Self}}" Value="True">
                             <Setter TargetName="StatusDot" Property="Fill" Value="{StaticResource LiveBrush}" />
                         </DataTrigger>
+                        <Trigger Property="controls:WidgetCard.IsLarge" Value="True">
+                            <Setter TargetName="StatusDate" Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+                            <Setter TargetName="StatusState" Property="Visibility" Value="Visible" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
                 
@@ -158,6 +168,15 @@
     <!-- Text-button row: one 40px row; a lone text button centres in it -->
     <Style x:Key="FootRow" TargetType="Grid">
         <Setter Property="MinHeight" Value="{StaticResource SizeControl}" />
+    </Style>
+
+    <!-- Tooltips, dropdowns and menus open in pop-ups of their own, outside the window's scale, so they take their size
+         from PopupScale: the window makes it 1.5 times in large view. The tray menu doesn't use it, so it stays the normal size -->
+    <ScaleTransform x:Key="PopupScale" ScaleX="1" ScaleY="1" />
+
+    <!-- Only the size changes; the look stays the system's -->
+    <Style TargetType="ToolTip">
+        <Setter Property="LayoutTransform" Value="{DynamicResource PopupScale}" />
     </Style>
 
 </ResourceDictionary>
