@@ -1,4 +1,4 @@
-﻿@{
+@{
     //the text size, bold and italic picked under Accessibility, for the pages still on this layout
     var text = TextPreferences.From(Context.Request);
 }
@@ -12,8 +12,10 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/TimePlanner.Dashboard.styles.css" asp-append-version="true" />
+    <partial name="_EnvironmentHead" />
 </head>
 <body>
+    <partial name="_EnvironmentBanner" />
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
