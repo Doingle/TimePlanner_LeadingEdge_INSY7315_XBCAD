@@ -346,7 +346,7 @@ namespace TimePlanner.Widget.Views
             }
             else
             {
-                var edit = IconButton(IconKind.Edit, "Rename or hide", $"Rename or hide {name}", () => OpenRename(kind, id, name));
+                var edit = IconButton(IconKind.Edit, "Edit", "Rename or hide", $"Rename or hide {name}", () => OpenRename(kind, id, name));
                 edit.Tag = (kind, id);
                 DockPanel.SetDock(edit, Dock.Right);
                 row.Children.Add(edit);
@@ -354,7 +354,7 @@ namespace TimePlanner.Widget.Views
 
             if (addLabel != null)
             {
-                var add = IconButton(IconKind.Plus, addLabel, addLabel, () =>
+                var add = IconButton(IconKind.Plus, "Add", addLabel, addLabel, () =>
                 {
                     _editor = new Editor(EditMode.AddChild, kind, id, name);
                     Render();
@@ -428,16 +428,16 @@ namespace TimePlanner.Widget.Views
             return row;
         }
 
-        private Button IconButton(IconKind kind, string tip, string spoken, Action click)
+        // The word shows beside the icon in large view
+        private Button IconButton(IconKind kind, string word, string tip, string spoken, Action click)
         {
             var button = new Button
             {
-                Style = Res<Style>("Button.Icon"),
-                Width = Res<double>("Space32"),
-                Height = Res<double>("Space32"),
+                Style = Res<Style>("RowIconButton"),
                 ToolTip = tip,
                 Content = new Icon { Kind = kind, Size = Res<double>("SizeIconSm") },
             };
+            WidgetCard.SetWord(button, word);
             AutomationProperties.SetName(button, spoken);
             button.Click += (_, _) => click();
             return button;
