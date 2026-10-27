@@ -1,0 +1,7 @@
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
+@using Microsoft.Extensions.Hosting
+@* prevents search engines from indexing the staging site *@
+@if (Env.IsStaging())
+{
+    <meta name="robots" content="noindex" />
+}

@@ -1,0 +1,7 @@
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
+@using Microsoft.Extensions.Hosting
+@* shown only on the staging site so nobody mistakes it for the live dashboard *@
+@if (Env.IsStaging())
+{
+    <div class="env-banner" role="note">Staging site: test data only. Nothing here reaches the live dashboard.</div>
+}

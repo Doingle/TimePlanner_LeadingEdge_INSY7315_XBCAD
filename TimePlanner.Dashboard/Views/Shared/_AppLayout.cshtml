@@ -27,9 +27,11 @@
     <link rel="stylesheet" href="~/css/fonts-lora.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    <partial name="_EnvironmentHead" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="app-body">
+    <partial name="_EnvironmentBanner" />
     <a class="app-skip" href="#main">Skip to content</a>
 
     <header class="app-header">
