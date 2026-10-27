@@ -28,7 +28,7 @@
         <Style x:Key="TickBox" TargetType="CheckBox">
             <Setter Property="OverridesDefaultStyle" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-            <Setter Property="Height" Value="{StaticResource SizeControl}" />
+            <Setter Property="MinHeight" Value="{StaticResource SizeControl}" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             <Setter Property="FontFamily" Value="{StaticResource FontFamily}" />
             <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
@@ -52,6 +52,10 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
                                 <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
+                            </Trigger>
+                            <!-- Reached with the arrow keys: highlighted like the interval rows under it -->
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Box" Property="Background" Value="{StaticResource ActionBrush}" />
@@ -273,16 +277,17 @@
                     <ComboBox x:Name="IntervalSelect" Style="{StaticResource IntervalSelect}"
                               AutomationProperties.LabeledBy="{Binding ElementName=IntervalLabel}"
                               controls:Field.Placeholder="On the half hour and hour"
-                              SelectionChanged="Interval_SelectionChanged" DropDownOpened="IntervalSelect_DropDownOpened">
+                              SelectionChanged="Interval_SelectionChanged" DropDownOpened="IntervalSelect_DropDownOpened"
+                              PreviewKeyDown="IntervalSelect_PreviewKeyDown">
                         <!-- Setup only, above the intervals in the drop-down: clock times instead of an interval.
-                             Not a tab stop there; Settings has its own Interval / Clock times choice -->
+                             Up from the first interval reaches it, Space ticks it; Settings has its own Interval / Clock times choice -->
                         <ComboBox.Tag>
                             <StackPanel>
-                                <CheckBox x:Name="HalfHourBox" Style="{StaticResource TickBox}" Focusable="False"
+                                <CheckBox x:Name="HalfHourBox" Style="{StaticResource TickBox}"
                                           AutomationProperties.Name="On the half hour and hour"
                                           Checked="HalfHourBox_Changed" Unchecked="HalfHourBox_Changed">
-                                    <TextBlock TextTrimming="CharacterEllipsis">
-                                        <Run Text="On the half hour and hour" /><Run x:Name="HalfHourMarks" Text=" (9:30 &amp; 10:00)"
+                                    <TextBlock TextWrapping="Wrap" Margin="0,8">
+                                        <Run Text="On the half hour and hour" /><Run x:Name="HalfHourMarks" Text=" (9:30&#160;&amp;&#160;10:00)"
                                             FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextTertiaryBrush}" />
                                     </TextBlock>
                                 </CheckBox>

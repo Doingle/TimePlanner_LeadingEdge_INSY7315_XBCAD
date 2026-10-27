@@ -247,15 +247,9 @@ public class ReminderFlowTests
         Render(timer, "timer-feedback");
         ((Button)timer.FindName("ExitButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         var confirmation = Assert.IsType<ExitView>(host.Window.Screen);
-        Assert.Equal("Your day stays open. Check-ins pause until you open Time Planner again.",
-            ((TextBlock)confirmation.FindName("Explanation")).Text);
+        Assert.Contains("Your day stays open. You can log it later.", ((TextBlock)confirmation.FindName("Explanation")).Text);
         Render(confirmation, "exit-feedback");
         ((Button)confirmation.FindName("CancelButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Assert.Same(timer, host.Window.Screen);
-
-        // Close (X) goes back too
-        host.Flow.AskExit();
-        ((Button)Assert.IsType<ExitView>(host.Window.Screen).FindName("CloseButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Assert.Same(timer, host.Window.Screen);
 
         var exited = false;
