@@ -28,7 +28,7 @@ namespace TimePlanner.Widget
 
         private const double ScreenInset = 16;
 
-        // Space under the main card's top for its tallest screen, so going from screen to screen never moves the top
+        // Space under the main card's top for its tallest screen, so going from screen to screen never moves the top (1.5 times in large view)
         public const double MainRoom = 680;
 
         private enum Corner
@@ -145,6 +145,7 @@ namespace TimePlanner.Widget
 
             _shown = (Slot)slot;
             LoadPosition();
+            ApplySize();
         }
 
         private sealed class Slot(MainWindow window) : IWidgetHost
@@ -174,6 +175,43 @@ namespace TimePlanner.Widget
                 if (window._shown == this)
                     window.HideWidget();
             }
+
+            public void ApplySize()
+            {
+                if (window._shown == this)
+                    window.ApplySize();
+            }
+        }
+
+        // Large view: one 1.5 times scale at the root (a layout transform, so click areas grow too), and the room kept
+        // for the tallest screen grows with it. Off, the root has no transform at all
+        private bool Large => WidgetCard.GetIsLarge(Root);
+
+        private double Scale => Large ? WidgetCard.LargeScale : 1;
+
+        private void ApplySize()
+        {
+            var large = _shown?.Preferences?.LargerText == true;
+            if (large == Large)
+                return;
+
+            WidgetCard.SetIsLarge(Root, large);
+            if (large)
+                Root.LayoutTransform = new ScaleTransform(WidgetCard.LargeScale, WidgetCard.LargeScale);
+            else
+                Root.ClearValue(LayoutTransformProperty);
+
+            // Tooltips, dropdowns and menus open in pop-ups of their own, outside the root's scale (PopupScale in Card.xaml)
+            if (Application.Current != null)
+                Application.Current.Resources["PopupScale"] = large
+                    ? new ScaleTransform(WidgetCard.LargeScale, WidgetCard.LargeScale)
+                    : Transform.Identity;
+
+            if (IsVisible)
+            {
+                UpdateLayout();
+                Reposition();
+            }
         }
 
         private void Present(FrameworkElement screen, bool activate)
@@ -189,6 +227,7 @@ namespace TimePlanner.Widget
             _idle = screen is IdleView;
 
             LoadPosition();
+            ApplySize();
 
             Host.Content = screen;
 
@@ -280,7 +319,7 @@ namespace TimePlanner.Widget
                 area.Right - ScreenInset,
                 _idle
                     ? area.Top + ScreenInset
-                    : Math.Max(area.Top + ScreenInset, area.Bottom - ScreenInset - MainRoom));
+                    : Math.Max(area.Top + ScreenInset, area.Bottom - ScreenInset - MainRoom * Scale));
 
             var anchor = _anchor.Value;
 
