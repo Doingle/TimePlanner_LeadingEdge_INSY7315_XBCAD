@@ -157,43 +157,34 @@ This section is for testing **the released software exactly as a Leading Edge de
 
 - A good order to test is to  test the **widget with the Demo Developer** first, then sign in to the Dashboard as the **Demo Admin** and see that developer's submitted day in the Team tab under Submissions and Exports.
 
-### Downloading The Widget: 
+### Installing the Widget
 
-### 1. Download the widget
-1. Open the **[latest release](https://github.com/Doingle/TimePlanner_LeadingEdge_INSY7315_XBCAD/releases/latest)**.
-2. Under **Assets**, download `TimePlanner-Widget-<version>-win-x64.zip`. Ignore the "Source code" downloads.
-3. Optional: check the download against the `.sha256` file in powershell:
-   Get-FileHash .\TimePlanner-Widget-<version>-win-x64.zip -Algorithm SHA256
+#### Option 1: Install with Setup (recommended)
+1. Download `TimePlanner-Setup-<version>.exe` from the **[latest release](https://github.com/Doingle/TimePlanner_LeadingEdge_INSY7315_XBCAD/releases/latest)**.
+2. If Windows SmartScreen shows **"Windows protected your PC"**, select **More info → Run anyway** (the installer is currently unsigned as this is a student project).
+3. Click through the installer. It installs per-user into `%LOCALAPPDATA%\Programs\TimePlanner` without requiring administrator privileges, creating Start menu and desktop shortcuts.
+4. Time Planner opens automatically when setup finishes.
 
+#### Option 2: Portable (no install)
+1. Under **Assets** on the latest release, download `TimePlanner-Widget-<version>-win-x64.zip`.
+2. Right-click the zip, select **Properties**, check **Unblock** if shown, and click **OK**.
+3. Extract to a preferred folder (e.g. `C:\TimePlanner`).
+4. Run `TimePlanner.Widget.exe`.
 
-### 2. Extract it
-1. Right click the zip, click **Properties**, tick **Unblock** if it's shown, click  **OK**. This can stop Windows treating every extracted file as downloaded from the internet.
-2. Right click the zip, then click **Extract All…**, then choose a folder you'll keep, for example `C:\TimePlanner`.
+### Updating the Widget
+- **One-click update:** When a new release is available, the widget displays a notice: select **Update now**, then click **Update and restart**. Time Planner downloads the update with live progress, verifies its SHA-256 checksum, updates in place, and reopens.
+- **Manual update:** Download and run the newer `TimePlanner-Setup-<version>.exe` over the old one. Timesheets and preferences are kept untouched.
 
-The folder contains `TimePlanner.Widget.exe` and a `SampleData` folder. Nothing needs installing: the widget is self contained and includes .NET.
+### Uninstalling the Widget
+Open **Windows Settings › Apps › Installed apps › Time Planner › Uninstall**.
+The uninstaller safely closes the running widget and asks two questions:
+1. *"Also remove Time Planner's voice AI?"* (defaults to **Yes** to free disk space by removing models and Ollama if managed by Time Planner; your own independent Ollama is never removed).
+2. *"Delete your Time Planner data on this PC too?"* (defaults to **No** so your local timesheets and database are kept safe).
 
-### 3. Create a shortcut (optional, recommended)
-1. Right click `TimePlanner.Widget.exe`, then **Show more options**, then **Send to**, then **Desktop (create shortcut)**.
-2. For a second shortcut that loads an example finished day: copy the shortcut, open its **Properties**, and add ` --sample-day` (with a space before it) at the end of **Target**. For example:
-   `"C:\TimePlanner\TimePlanner.Widget.exe" --sample-day`
-
-### 4. Get past Windows SmartScreen
-The MVP isn't code signed yet. So on first start Windows shows **"Windows protected your PC"**:
-1. Click **More info**.
-2. Click **Run anyway**.
-
-This is only needed once per downloaded version.
-
-### 5. Run it
-1. Start the widget (shortcut or exe). It appears in the **bottom right corner** of the screen, and its icon sits in the system tray (click **^** next to the clock if it's hidden).
-2. **First run:** choose a check in interval, then click **Start tracking**.
-3. **Fastest test:** start it with `--sample-day`. It loads a finished example day (9 entries, a lunch break and a short gap) onto the most recent weekday, then:
-   1. tray icon, click **Timesheet**, then press **‹** until you reach the sample day (or leave as current day for any self added logging).
-   2. review it, optionally **Fill** the sample data gap, then click **Send day**, then sign in as the **Demo Developer or Admin**
-   3. open the Dashboard as the Demo Developer or admin: **My Timesheet** and **My Reports** show the day
-   4. sign in as the **Demo Admin**: the day appears in **Team, Submissions** and **Exports**.
-
-Only one widget runs at a time. If nothing happens when you start it, it's already running in the tray: right click its purple clock face icon, then click **Exit** and then start it again.
+### Getting Help
+Open **Help** from the widget (or right-click the tray icon and select Help).
+Click **Copy details for support**, then paste the copied lines into your message to the Time Planner team.
+The output contains sanitized diagnostics (app version, install type, OS, dashboard host, AI status, hardware, and microphone device) with no email addresses, passwords, tokens, or personal paths.
 
 ### Optional: Fill the Dashboard With a Sample Day (to see a populated dashboard day, this step is not required though):
 
@@ -1120,9 +1111,11 @@ The **Release Widget** workflow runs when a version tag is created (we create it
 
 1. runs the Core tests;
 2. publishes the widget as a **self contained single file** for Windows x64, with the version taken from the tag;
-3. zips it, writes a **SHA-256** checksum and attaches both to the release.
+   - The optional repository variable `WIDGET_DASHBOARD_URL` sets the dashboard address built into the release executable (falling back to the hosted default if not set).
+3. compiles the Inno Setup installer (`TimePlanner-Setup-<version>.exe`);
+4. zips the standalone widget, writes a **SHA-256** checksum for every file in `dist/`, and attaches the zip, installer, and checksums to the release.
 
-It can also be run by hand from the Actions tab to get a test zip without making a release.
+It can also be run by hand from the Actions tab (`workflow_dispatch`) to get a test installer and zip without making a release.
 
 ### Supply chain and secrets
 - **Dependabot** opens weekly update pull requests for NuGet packages and GitHub Actions against `development`. Major version updates are paused until after marking, because they can break the build.

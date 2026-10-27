@@ -26,10 +26,14 @@ namespace TimePlanner.Widget.Views
         private DispatcherTimer? _testTimer;
         private CancellationTokenSource? _speedCheckCts;
         private readonly MicrophoneCatalog _micCatalog = new();
+        private readonly AiRemovalService _removalService;
         private AiSettings? Settings => _flow?.Session.Preferences.Ai;
 
-        public AiAdvancedPanel()
+        public AiAdvancedPanel() : this(new AiRemovalService()) { }
+
+        public AiAdvancedPanel(AiRemovalService removalService)
         {
+            _removalService = removalService;
             InitializeComponent();
         }
 
@@ -261,57 +265,22 @@ namespace TimePlanner.Widget.Views
         //executes removal of engine and models per d6
         private async void RemoveConfirmYes_Click(object sender, RoutedEventArgs e)
         {
+            //guard against null settings or flow
             if (Settings == null || _flow == null) return;
             StopMicrophoneTest();
             RemoveConfirmPanel.Visibility = Visibility.Collapsed;
 
-            //1. stop ollama host
-            _flow.AiHost?.Stop();
-
-            //2. if managed by widget, run uninstaller and purge ollama models
-            if (Settings.OllamaManagedByWidget)
-            {
-                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                var uninstaller = Path.Combine(localAppData, "Programs", "Ollama", "unins000.exe");
-                if (File.Exists(uninstaller))
-                {
-                    try
-                    {
-                        var psi = new ProcessStartInfo(uninstaller, "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART") { UseShellExecute = false, CreateNoWindow = true };
-                        using var proc = Process.Start(psi);
-                        if (proc != null) await proc.WaitForExitAsync();
-                    }
-                    catch { }
-                }
-
-                var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                var ollamaModels = Path.Combine(userProfile, ".ollama", "models");
-                if (Directory.Exists(ollamaModels)) { try { Directory.Delete(ollamaModels, recursive: true); } catch { } }
-            }
-            else
+            //remove engine and model files via removal service
+            var result = await _removalService.RemoveAsync(Settings, _flow.ModelManager.ModelsFolder, _flow.AiHost, CancellationToken.None);
+            //show notice if user installed ollama independently
+            if (result.OwnOllamaKept)
             {
                 OwnOllamaNotice.Text = "Your own Ollama was left installed.";
                 OwnOllamaNotice.Visibility = Visibility.Visible;
             }
 
-            //3. delete whisper files in %localappdata%\timeplanner\models
-            try
-            {
-                var whisperFolder = _flow.ModelManager.ModelsFolder;
-                if (Directory.Exists(whisperFolder))
-                {
-                    foreach (var file in Directory.GetFiles(whisperFolder)) { try { File.Delete(file); } catch { } }
-                }
-            }
-            catch { }
-
-            //4. set setup flags and save
-            Settings.SetupCompleted = false;
-            Settings.VoiceEnabled = false;
-            Settings.OllamaManagedByWidget = false;
+            //save preferences and request reset
             _flow.SavePreferences();
-
-            //5. notify parent to reset card
             ResetRequested?.Invoke();
         }
 
