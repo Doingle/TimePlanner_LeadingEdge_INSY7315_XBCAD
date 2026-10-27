@@ -153,6 +153,8 @@ namespace TimePlanner.Widget.Controls
                 _level = [];
 
             _menu = new ContextMenu { Style = Res<Style>("Menu.Dropdown"), PlacementTarget = PickerButton };
+            //the menu opens outside the window's tree, so it takes large view from the picker
+            WidgetCard.SetIsLarge(_menu, WidgetCard.GetIsLarge(this));
             AutomationProperties.SetName(_menu, FieldName);
             foreach (var item in BuildLevel(_level))
                 _menu.Items.Add(item);
@@ -374,13 +376,12 @@ namespace TimePlanner.Widget.Controls
         {
             var button = new Button
             {
-                Style = Res<Style>("Button.Icon"),
-                Width = Res<double>("Space24"),
-                Height = Res<double>("Space24"),
+                Style = Res<Style>("Picker.RowAction"),
                 Focusable = false,
                 ToolTip = tip,
                 Content = new Icon { Kind = kind, Size = Res<double>("SizeIconSm") },
             };
+            WidgetCard.SetWord(button, tip);
             AutomationProperties.SetName(button, spoken);
             button.Click += (_, e) =>
             {
