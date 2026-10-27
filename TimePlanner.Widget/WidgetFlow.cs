@@ -124,15 +124,14 @@ namespace TimePlanner.Widget
         {
             get
             {
-                var date = Format.Date(DateOnly.FromDateTime(Scheduler.Now));
                 var state = Scheduler.State switch
                 {
-                    DayState.Tracking => "tracking",
-                    DayState.Paused => "paused",
-                    DayState.Ended => "day ended",
-                    _ => "not started",
+                    DayState.Tracking => "Tracking",
+                    DayState.Paused => "Paused",
+                    DayState.Ended => "Day ended",
+                    _ => "Not started",
                 };
-                return new CardStatus(date, Scheduler.State == DayState.Tracking, $"{date}, {state}");
+                return new CardStatus(Format.Date(DateOnly.FromDateTime(Scheduler.Now)), state, Scheduler.State == DayState.Tracking);
             }
         }
 
@@ -468,7 +467,48 @@ namespace TimePlanner.Widget
                 ShowTimer(activate: true);
         }
 
-        public async Task SaveEntryAsync(LogEntryMode mode, LogPeriod period, IReadOnlyList<string> projectPath, IReadOnlyList<string> activity, string? note)
+        /// <summary>
+        /// The project and activity of the last entry, for "Still on the same task" at a check-in. Null when there
+        /// is none, or when either has been hidden or removed since, so the button never brings one back.
+        /// </summary>
+        public async Task<SameTask?> GetSameTaskAsync()
+        {
+            var (projectId, activity) = await _log.GetLastChoiceAsync(Session.User.UserId);
+            if (projectId is not { } id || activity.Count == 0)
+                return null;
+
+            // Only active projects come back, so a hidden one is not offered
+            var project = (await _log.GetProjectsAsync()).FirstOrDefault(p => p.ProjectID == id);
+            if (project?.Company is not { } company)
+                return null;
+
+            // A hidden activity is not found by its path
+            if (await _log.FindListItemAsync(activity: true, activity) == null)
+                return null;
+
+            return new SameTask([company.Name, project.Name], activity);
+        }
+
+        /// <summary>
+        /// "Still on the same task": logs the period since the last check-in to the last entry's project and
+        /// activity, the same way Log time would, then says what it logged. If they are no longer offered,
+        /// the Log time form opens instead.
+        /// </summary>
+        public async Task LogSameTaskAsync()
+        {
+            if (await GetSameTaskAsync() is not { } same)
+            {
+                await LogTimeAsync(LogEntryMode.CheckIn);
+                return;
+            }
+
+            // Non-breaking spaces keep "Project · Activity" together if the line wraps
+            await SaveEntryAsync(LogEntryMode.CheckIn, GetLogPeriod(), same.ProjectPath, same.Activity, note: null,
+                saved: $"Logged to {same.Short.Replace(" · ", " · ")}.");
+        }
+
+        public async Task SaveEntryAsync(LogEntryMode mode, LogPeriod period, IReadOnlyList<string> projectPath, IReadOnlyList<string> activity, string? note,
+            string? saved = null)
         {
             var end = Scheduler.Now;
             var method = mode == LogEntryMode.CheckIn ? EntryMethod.AutoPrompted : EntryMethod.Manual;
@@ -482,7 +522,7 @@ namespace TimePlanner.Widget
             if (mode == LogEntryMode.EndOfDay)
                 await EndDayAsync();
             else
-                Present(Screen.EntrySaved, new EntrySavedView(this));
+                Present(Screen.EntrySaved, new EntrySavedView(this, saved));
         }
 
         //-----------------------------

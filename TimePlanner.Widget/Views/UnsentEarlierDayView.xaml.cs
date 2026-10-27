@@ -38,7 +38,8 @@ public partial class UnsentEarlierDayView : UserControl
         _day = day;
         var today = DateOnly.FromDateTime(flow.Scheduler.Now);
         TitleText.Text = $"{Format.RelativeDay(day.Day, today)} isn't sent yet";
-        DetailText.Text = $"{Format.Date(day.Day)} · {Format.Duration(day.Logged)} logged";
+        // The title already names the day, so the date stays short
+        DetailText.Text = $"{day.Day.ToString("d MMM", System.Globalization.CultureInfo.InvariantCulture)} · {Format.Duration(day.Logged)} logged";
         AutomationProperties.SetName(SendButton, $"Send {Format.Date(day.Day)} now");
         Visibility = Visibility.Visible;
     }

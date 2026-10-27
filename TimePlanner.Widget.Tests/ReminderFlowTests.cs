@@ -5,6 +5,8 @@ using System.Net.Http.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -15,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using TimePlanner.Core.Ai;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
+using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Core.Services;
 using TimePlanner.Core.Services.Models;
@@ -244,9 +247,15 @@ public class ReminderFlowTests
         Render(timer, "timer-feedback");
         ((Button)timer.FindName("ExitButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         var confirmation = Assert.IsType<ExitView>(host.Window.Screen);
-        Assert.Contains("Your day stays open. You can log it later.", ((TextBlock)confirmation.FindName("Explanation")).Text);
+        Assert.Equal("Your day stays open. Check-ins pause until you open Time Planner again.",
+            ((TextBlock)confirmation.FindName("Explanation")).Text);
         Render(confirmation, "exit-feedback");
         ((Button)confirmation.FindName("CancelButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Same(timer, host.Window.Screen);
+
+        // Close (X) goes back too
+        host.Flow.AskExit();
+        ((Button)Assert.IsType<ExitView>(host.Window.Screen).FindName("CloseButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Assert.Same(timer, host.Window.Screen);
 
         var exited = false;
@@ -700,7 +709,7 @@ public class ReminderFlowTests
         await host.SeedEntryAsync();
         host.Clock.UtcNow += TimeSpan.FromMinutes(30);
         await host.Flow.EndDayAsync();
-        Assert.Equal(new CardStatus("Friday 23 Oct", false, "Friday 23 Oct, day ended"), host.Flow.Status);
+        Assert.Equal(new CardStatus("Friday 23 Oct", "Day ended", false), host.Flow.Status);
 
         // The PC date moves on, and the widget is opened again
         host.Clock.UtcNow += TimeSpan.FromDays(1);
@@ -711,7 +720,7 @@ public class ReminderFlowTests
             flow.ShowStart();
             var setup = Assert.IsType<SetupView>(host.Window.Screen);
             Assert.Equal("Start today", ((Button)setup.FindName("PrimaryButton")).Content);
-            Assert.Equal(new CardStatus("Saturday 24 Oct", false, "Saturday 24 Oct, not started"), flow.Status);
+            Assert.Equal(new CardStatus("Saturday 24 Oct", "Not started", false), flow.Status);
             Assert.Equal(flow.Status, WidgetCard.GetStatus(setup));
 
             var notice = (UnsentEarlierDayView)setup.FindName("EarlierNotice");
@@ -721,7 +730,7 @@ public class ReminderFlowTests
 
             // Resume can't reopen yesterday: today starts as a day of its own
             await flow.ResumeDayAsync();
-            Assert.Equal(new CardStatus("Saturday 24 Oct", true, "Saturday 24 Oct, tracking"), flow.Status);
+            Assert.Equal(new CardStatus("Saturday 24 Oct", "Tracking", true), flow.Status);
             flow.ShowTimer();
             var timer = Assert.IsType<TimerView>(host.Window.Screen);
             Assert.True(WidgetCard.GetStatus(timer)!.Live);
@@ -959,6 +968,177 @@ public class ReminderFlowTests
         Assert.Equal(started.Date.AddHours(10.5), host.Flow.Scheduler.PromptAt);
         Assert.Equal(TimeSpan.FromMinutes(20), host.Flow.Scheduler.TimeLeft);
         Assert.Equal(started.Date.AddHours(10.5), host.Flow.Scheduler.NextCheckIn(TimeSpan.FromMinutes(60)));
+    });
+
+    [Fact]
+    public Task SetupScreen_ClockTimesLiveInTheIntervalDropDown() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var setup = host.Flow.ShowSetup();
+        var interval = (ComboBox)setup.FindName("IntervalSelect");
+        var halfHour = (CheckBox)setup.FindName("HalfHourBox");
+        var help = (TextBlock)setup.FindName("IntervalHelp");
+
+        // The date and state sit in the banner, not in a status line on the card
+        Assert.Equal(Visibility.Collapsed, ((StackPanel)setup.FindName("TimingSection")).Visibility);
+        Assert.Null(WidgetCard.GetStatus((WidgetCard)setup.FindName("Card")));
+        Render(setup, "setup");
+        Assert.Equal(host.Flow.Status, ((Grid)setup.FindName("BannerStatus")).DataContext);
+
+        // Ticking the box leaves the interval for clock times, from the next half hour
+        halfHour.IsChecked = true;
+        await WaitUntil(() => host.Flow.Session.Preferences.CheckInTiming == CheckInTiming.OnTheHalfHour);
+        Assert.Equal(-1, interval.SelectedIndex);
+        Assert.Equal("First check-in at 10:30 AM", help.Text);
+
+        // Picking an interval goes back to it
+        interval.SelectedItem = "20m";
+        await WaitUntil(() => host.Flow.Session.Preferences.CheckInTiming == CheckInTiming.FromLastCheckIn);
+        Assert.False(halfHour.IsChecked);
+        Assert.Equal(20, host.Flow.Session.Settings.CheckInIntervalMinutes);
+        Assert.Equal(["15m", "20m", "30m", "45m", "1h", "1h 30m", "2h", "3h"], interval.Items.Cast<string>());
+
+        // Settings keeps its own Interval / Clock times choice, so its drop-down is just the intervals
+        host.Flow.ShowSettings();
+        var settings = Assert.IsType<SettingsView>(host.Window.Screen);
+        Assert.Null(((ComboBox)settings.FindName("IntervalSelect")).Tag);
+        Assert.Equal(Visibility.Visible, ((StackPanel)settings.FindName("TimingSection")).Visibility);
+    });
+
+    [Fact]
+    public Task SetupScreen_DropDownOpensWithTheTickBoxAboveTheIntervals() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var setup = host.Flow.ShowSetup();
+        var window = new Window { Content = setup, SizeToContent = SizeToContent.WidthAndHeight, WindowStyle = WindowStyle.None, ShowInTaskbar = false };
+        window.Show();
+        window.Activate();
+        try
+        {
+            var interval = (ComboBox)setup.FindName("IntervalSelect");
+            var halfHour = (CheckBox)setup.FindName("HalfHourBox");
+            interval.Focus();
+            interval.IsDropDownOpen = true;
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+
+            // The example marks are the next two half hours: 10:30 and 11:00 at 10:00
+            Assert.Equal(" (10:30 & 11:00)", ((Run)setup.FindName("HalfHourMarks")).Text);
+
+            // Up from the first interval reaches the tick box, Down goes back
+            var first = (ComboBoxItem)interval.ItemContainerGenerator.ContainerFromIndex(0);
+            first.Focus();
+            PressKey(first, Key.Up);
+            Assert.True(halfHour.IsKeyboardFocused);
+            Assert.True(interval.IsDropDownOpen);
+            PressKey(halfHour, Key.Down);
+            Assert.True(first.IsKeyboardFocused);
+
+            // The popup's root holds the panel with its shadow room around it
+            var popup = (Popup)interval.Template.FindName("PART_Popup", interval);
+            RenderElement((FrameworkElement)VisualTreeHelper.GetParent(popup.Child), "setup-interval-dropdown");
+            interval.IsDropDownOpen = false;
+        }
+        finally
+        {
+            window.Close();
+        }
+    });
+
+    private static void PressKey(UIElement target, Key key) =>
+        target.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(target)!, 0, key)
+        {
+            RoutedEvent = Keyboard.PreviewKeyDownEvent,
+        });
+
+    // Saves an element already laid out on screen, such as an open drop-down, when previews are asked for
+    private static void RenderElement(FrameworkElement element, string name)
+    {
+        var folder = Environment.GetEnvironmentVariable("TIMEPLANNER_REMINDER_PREVIEW_DIR");
+        if (string.IsNullOrWhiteSpace(folder))
+            return;
+        Directory.CreateDirectory(folder);
+        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(element);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var file = File.Create(Path.Combine(folder, name + ".png"));
+        encoder.Save(file);
+    }
+
+    // A day with one entry logged to Acme › Portal, Coding at 10:30, and the next check-in shown at 12:00
+    private static async Task<CheckInAlertView> CheckInAfterAnEntryAsync(TestHost host)
+    {
+        await host.Flow.StartTrackingAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.SaveEntryAsync(LogEntryMode.LogNow, host.Flow.GetLogPeriod(), ["Acme", "Portal"], ["Coding"], note: null);
+        host.Clock.UtcNow += TimeSpan.FromMinutes(host.Flow.Session.Settings.CheckInIntervalMinutes);
+        await host.Flow.Scheduler.RefreshAsync();
+        host.Flow.CheckIn();
+        return Assert.IsType<CheckInAlertView>(host.Window.Screen);
+    }
+
+    [Fact]
+    public Task StillOnTheSameTask_LogsThePeriodWithTheLastChoice() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var checkIn = await CheckInAfterAnEntryAsync(host);
+        var since = host.Flow.GetLogPeriod().Start;
+        var now = host.Clock.LocalNow();
+        Assert.True(host.Flow.Scheduler.IsDue);
+
+        // The button names what it will log
+        var button = (Button)checkIn.FindName("SameTaskButton");
+        await WaitUntil(() => ((TextBlock)checkIn.FindName("SameTaskText")).Text == "Portal · Coding");
+        Assert.Equal(Visibility.Visible, button.Visibility);
+        Assert.Equal("Acme › Portal · Coding", button.ToolTip);
+        Render(checkIn, "check-in-same-task");
+
+        Click(button);
+        await WaitUntil(() => host.Window.Screen is EntrySavedView);
+        var saved = (EntrySavedView)host.Window.Screen!;
+        Assert.Equal("Logged to Portal · Coding.", ((TextBlock)saved.FindName("SavedText")).Text);
+        Render(saved, "entry-saved-same-task");
+
+        // The period since the check-in went to the same project and activity, as a check-in answer
+        var day = await host.Services.GetRequiredService<TimeLogService>().GetDayAsync(host.Flow.Session.User.UserId, now);
+        var latest = day.Entries.OrderBy(e => e.StartTime).Last();
+        Assert.Equal(2, day.Entries.Count);
+        Assert.Equal((since, now), (latest.StartTime, latest.EndTime));
+        Assert.Equal("Portal", latest.Task!.Project!.Name);
+        Assert.Equal("Coding", latest.Task.Category!.Name);
+        Assert.Equal(EntryMethod.AutoPrompted, latest.Method);
+        Assert.False(host.Flow.Scheduler.IsDue);
+    });
+
+    [Fact]
+    public Task StillOnTheSameTask_NotOfferedOnceTheLastChoiceIsHidden() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.SaveEntryAsync(LogEntryMode.LogNow, host.Flow.GetLogPeriod(), ["Acme", "Portal"], ["Coding"], note: null);
+        var portal = await host.Flow.FindListItemAsync(activity: false, ["Acme", "Portal"]);
+        Assert.True((await host.Flow.SetListItemHiddenAsync(ListKind.Project, portal!.Value.Id, hidden: true)).Ok);
+
+        host.Flow.CheckIn();
+        var checkIn = Assert.IsType<CheckInAlertView>(host.Window.Screen);
+        await WaitUntil(() => ((Button)checkIn.FindName("SameTaskButton")).Visibility == Visibility.Collapsed);
+
+        // Asked anyway, it opens the form rather than bringing the hidden project back
+        await host.Flow.LogSameTaskAsync();
+        Assert.IsType<LogEntryView>(host.Window.Screen);
+        Assert.Null(await host.Flow.GetSameTaskAsync());
+    });
+
+    [Fact]
+    public Task StillOnTheSameTask_NotOfferedBeforeTheFirstEntry() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        host.Flow.CheckIn();
+        var checkIn = Assert.IsType<CheckInAlertView>(host.Window.Screen);
+        Assert.Equal(Visibility.Collapsed, ((Button)checkIn.FindName("SameTaskButton")).Visibility);
+        Assert.Null(await host.Flow.GetSameTaskAsync());
     });
 
     // A new scheduler and flow over the same in-memory database, as when the widget is opened again

@@ -21,10 +21,17 @@ namespace TimePlanner.Widget.Views
     {
         private readonly WidgetFlow _flow;
 
-        public EntrySavedView(WidgetFlow flow)
+        /// <param name="saved">What was logged, when the user didn't fill in the form themselves ("Still on the same task").</param>
+        public EntrySavedView(WidgetFlow flow, string? saved = null)
         {
             InitializeComponent();
             _flow = flow;
+
+            if (saved != null)
+            {
+                SavedText.Text = saved;
+                SavedText.Visibility = Visibility.Visible;
+            }
 
             var scheduler = flow.Scheduler;
             Subtitle.Text = scheduler.PromptAt switch

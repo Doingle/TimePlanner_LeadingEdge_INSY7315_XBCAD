@@ -11,6 +11,9 @@
                 </Border>
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.Title}" Text="Entry saved" />
+                    <!-- Still on the same task: what was logged, since the user didn't see the form -->
+                    <TextBlock x:Name="SavedText" Style="{StaticResource Text.Subtitle}" Visibility="Collapsed"
+                               Text="Logged to Project X · Bug fix." />
                     <TextBlock x:Name="Subtitle" Style="{StaticResource Text.Subtitle}" Text="Next check-in at 6:05 PM." />
                 </StackPanel>
             </DockPanel>
