@@ -112,6 +112,10 @@
                                               ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                               ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                               ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
+                            <!-- With no interval chosen (clock times), the field names the choice instead -->
+                            <TextBlock x:Name="NoIntervalText" Margin="17,0,45,0" IsHitTestVisible="False" VerticalAlignment="Center"
+                                       Visibility="Collapsed" TextTrimming="CharacterEllipsis"
+                                       Text="{Binding Path=(controls:Field.Placeholder), RelativeSource={RelativeSource TemplatedParent}}" />
                             <controls:Icon x:Name="Chevron" Kind="ChevronDown" Size="{StaticResource SizeIcon}" Margin="0,0,17,0" IsHitTestVisible="False"
                                            HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}"
                                            RenderTransformOrigin="0.5,0.5" />
@@ -142,6 +146,9 @@
                             </Popup>
                         </Grid>
                         <ControlTemplate.Triggers>
+                            <Trigger Property="SelectedIndex" Value="-1">
+                                <Setter TargetName="NoIntervalText" Property="Visibility" Value="Visible" />
+                            </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
                             </Trigger>
@@ -265,8 +272,10 @@
                     <TextBlock x:Name="IntervalLabel" Style="{StaticResource Text.Label}" Text="Check in every" />
                     <ComboBox x:Name="IntervalSelect" Style="{StaticResource IntervalSelect}"
                               AutomationProperties.LabeledBy="{Binding ElementName=IntervalLabel}"
+                              controls:Field.Placeholder="On the half hour and hour"
                               SelectionChanged="Interval_SelectionChanged" DropDownOpened="IntervalSelect_DropDownOpened">
-                        <!-- Shown above the intervals in the drop-down. Not a tab stop there: More options has the same switch -->
+                        <!-- Setup only, above the intervals in the drop-down: clock times instead of an interval.
+                             Not a tab stop there; Settings has its own Interval / Clock times choice -->
                         <ComboBox.Tag>
                             <StackPanel>
                                 <CheckBox x:Name="HalfHourBox" Style="{StaticResource TickBox}" Focusable="False"

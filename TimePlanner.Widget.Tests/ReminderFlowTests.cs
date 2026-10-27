@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using TimePlanner.Core.Ai;
 using TimePlanner.Core.Data;
 using TimePlanner.Core.Domain.Entities;
+using TimePlanner.Core.Domain.Enums;
 using TimePlanner.Core.Extensions;
 using TimePlanner.Core.Services;
 using TimePlanner.Core.Services.Models;
@@ -700,7 +701,7 @@ public class ReminderFlowTests
         await host.SeedEntryAsync();
         host.Clock.UtcNow += TimeSpan.FromMinutes(30);
         await host.Flow.EndDayAsync();
-        Assert.Equal(new CardStatus("Friday 23 Oct", false, "Friday 23 Oct, day ended"), host.Flow.Status);
+        Assert.Equal(new CardStatus("Friday 23 Oct", "Day ended", false), host.Flow.Status);
 
         // The PC date moves on, and the widget is opened again
         host.Clock.UtcNow += TimeSpan.FromDays(1);
@@ -711,7 +712,7 @@ public class ReminderFlowTests
             flow.ShowStart();
             var setup = Assert.IsType<SetupView>(host.Window.Screen);
             Assert.Equal("Start today", ((Button)setup.FindName("PrimaryButton")).Content);
-            Assert.Equal(new CardStatus("Saturday 24 Oct", false, "Saturday 24 Oct, not started"), flow.Status);
+            Assert.Equal(new CardStatus("Saturday 24 Oct", "Not started", false), flow.Status);
             Assert.Equal(flow.Status, WidgetCard.GetStatus(setup));
 
             var notice = (UnsentEarlierDayView)setup.FindName("EarlierNotice");
@@ -721,7 +722,7 @@ public class ReminderFlowTests
 
             // Resume can't reopen yesterday: today starts as a day of its own
             await flow.ResumeDayAsync();
-            Assert.Equal(new CardStatus("Saturday 24 Oct", true, "Saturday 24 Oct, tracking"), flow.Status);
+            Assert.Equal(new CardStatus("Saturday 24 Oct", "Tracking", true), flow.Status);
             flow.ShowTimer();
             var timer = Assert.IsType<TimerView>(host.Window.Screen);
             Assert.True(WidgetCard.GetStatus(timer)!.Live);
@@ -959,6 +960,82 @@ public class ReminderFlowTests
         Assert.Equal(started.Date.AddHours(10.5), host.Flow.Scheduler.PromptAt);
         Assert.Equal(TimeSpan.FromMinutes(20), host.Flow.Scheduler.TimeLeft);
         Assert.Equal(started.Date.AddHours(10.5), host.Flow.Scheduler.NextCheckIn(TimeSpan.FromMinutes(60)));
+    });
+
+    // A day with one entry logged to Acme › Portal, Coding at 10:30, and the next check-in shown at 12:00
+    private static async Task<CheckInAlertView> CheckInAfterAnEntryAsync(TestHost host)
+    {
+        await host.Flow.StartTrackingAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.SaveEntryAsync(LogEntryMode.LogNow, host.Flow.GetLogPeriod(), ["Acme", "Portal"], ["Coding"], note: null);
+        host.Clock.UtcNow += TimeSpan.FromMinutes(host.Flow.Session.Settings.CheckInIntervalMinutes);
+        await host.Flow.Scheduler.RefreshAsync();
+        host.Flow.CheckIn();
+        return Assert.IsType<CheckInAlertView>(host.Window.Screen);
+    }
+
+    [Fact]
+    public Task StillOnTheSameTask_LogsThePeriodWithTheLastChoice() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var checkIn = await CheckInAfterAnEntryAsync(host);
+        var since = host.Flow.GetLogPeriod().Start;
+        var now = host.Clock.LocalNow();
+        Assert.True(host.Flow.Scheduler.IsDue);
+
+        // The button names what it will log
+        var button = (Button)checkIn.FindName("SameTaskButton");
+        await WaitUntil(() => ((TextBlock)checkIn.FindName("SameTaskText")).Text == "Portal · Coding");
+        Assert.Equal(Visibility.Visible, button.Visibility);
+        Assert.Equal("Acme › Portal · Coding", button.ToolTip);
+        Render(checkIn, "check-in-same-task");
+
+        Click(button);
+        await WaitUntil(() => host.Window.Screen is EntrySavedView);
+        var saved = (EntrySavedView)host.Window.Screen!;
+        Assert.Equal("Logged to Portal · Coding.", ((TextBlock)saved.FindName("SavedText")).Text);
+        Render(saved, "entry-saved-same-task");
+
+        // The period since the check-in went to the same project and activity, as a check-in answer
+        var day = await host.Services.GetRequiredService<TimeLogService>().GetDayAsync(host.Flow.Session.User.UserId, now);
+        var latest = day.Entries.OrderBy(e => e.StartTime).Last();
+        Assert.Equal(2, day.Entries.Count);
+        Assert.Equal((since, now), (latest.StartTime, latest.EndTime));
+        Assert.Equal("Portal", latest.Task!.Project!.Name);
+        Assert.Equal("Coding", latest.Task.Category!.Name);
+        Assert.Equal(EntryMethod.AutoPrompted, latest.Method);
+        Assert.False(host.Flow.Scheduler.IsDue);
+    });
+
+    [Fact]
+    public Task StillOnTheSameTask_NotOfferedOnceTheLastChoiceIsHidden() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        await host.Flow.SaveEntryAsync(LogEntryMode.LogNow, host.Flow.GetLogPeriod(), ["Acme", "Portal"], ["Coding"], note: null);
+        var portal = await host.Flow.FindListItemAsync(activity: false, ["Acme", "Portal"]);
+        Assert.True((await host.Flow.SetListItemHiddenAsync(ListKind.Project, portal!.Value.Id, hidden: true)).Ok);
+
+        host.Flow.CheckIn();
+        var checkIn = Assert.IsType<CheckInAlertView>(host.Window.Screen);
+        await WaitUntil(() => ((Button)checkIn.FindName("SameTaskButton")).Visibility == Visibility.Collapsed);
+
+        // Asked anyway, it opens the form rather than bringing the hidden project back
+        await host.Flow.LogSameTaskAsync();
+        Assert.IsType<LogEntryView>(host.Window.Screen);
+        Assert.Null(await host.Flow.GetSameTaskAsync());
+    });
+
+    [Fact]
+    public Task StillOnTheSameTask_NotOfferedBeforeTheFirstEntry() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        host.Flow.CheckIn();
+        var checkIn = Assert.IsType<CheckInAlertView>(host.Window.Screen);
+        Assert.Equal(Visibility.Collapsed, ((Button)checkIn.FindName("SameTaskButton")).Visibility);
+        Assert.Null(await host.Flow.GetSameTaskAsync());
     });
 
     // A new scheduler and flow over the same in-memory database, as when the widget is opened again
