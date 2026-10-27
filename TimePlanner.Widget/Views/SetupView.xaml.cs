@@ -13,6 +13,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Windows.Automation;
 using TimePlanner.Core.Services.Models;
+using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
 using TimePlanner.Core.Ai;
 
@@ -67,6 +68,9 @@ namespace TimePlanner.Widget.Views
             }
             else
             {
+                // The banner's pill carries the date and state here, so the card's own status line stays off
+                WidgetCard.SetStatus(Card, null);
+
                 // After an earlier day the button starts today; the very first run just starts tracking
                 if (flow.Scheduler.LastEnded != null)
                     PrimaryButton.Content = "Start today";

@@ -44,6 +44,10 @@
     <Color x:Key="DataTrackColor">#E4E4E7</Color>
     <!-- Status dot: green while the day is tracking -->
     <Color x:Key="LiveColor">#2E8B57</Color>
+    <!-- Warning notice ("Sunday isn't sent yet"): warm fill and outline, dark amber text (6.5:1 on the fill) -->
+    <Color x:Key="WarningFillColor">#FFF4E5</Color>
+    <Color x:Key="WarningBorderColor">#F2C98F</Color>
+    <Color x:Key="WarningTextColor">#8A4A0B</Color>
     <Color x:Key="FocusColor">#6247AA</Color>
     <Color x:Key="ScrimColor">#7A18181B</Color>
     <Color x:Key="ShadowColor">#18181B</Color>
@@ -79,6 +83,9 @@
     <SolidColorBrush x:Key="DataBrush" Color="{StaticResource DataColor}" />
     <SolidColorBrush x:Key="DataTrackBrush" Color="{StaticResource DataTrackColor}" />
     <SolidColorBrush x:Key="LiveBrush" Color="{StaticResource LiveColor}" />
+    <SolidColorBrush x:Key="WarningFillBrush" Color="{StaticResource WarningFillColor}" />
+    <SolidColorBrush x:Key="WarningBorderBrush" Color="{StaticResource WarningBorderColor}" />
+    <SolidColorBrush x:Key="WarningTextBrush" Color="{StaticResource WarningTextColor}" />
     <SolidColorBrush x:Key="FocusBrush" Color="{StaticResource FocusColor}" />
     <SolidColorBrush x:Key="ScrimBrush" Color="{StaticResource ScrimColor}" />
     

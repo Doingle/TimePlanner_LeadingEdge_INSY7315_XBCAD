@@ -23,6 +23,146 @@
 
         <!-- The close rows of More options sit 4 apart -->
         <Thickness x:Key="Space4Top">0,4,0,0</Thickness>
+
+        <!-- A tick box: filled in the action colour with a white tick while ticked, then its label -->
+        <Style x:Key="TickBox" TargetType="CheckBox">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Height" Value="{StaticResource SizeControl}" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="FontFamily" Value="{StaticResource FontFamily}" />
+            <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="{StaticResource RadiusRow}" Padding="8,0">
+                            <DockPanel>
+                                <Grid DockPanel.Dock="Left" Width="{StaticResource SizeIcon}" Height="{StaticResource SizeIcon}" VerticalAlignment="Center">
+                                    <Border x:Name="Box" CornerRadius="{StaticResource RadiusRow}" Background="{StaticResource SurfaceBrush}"
+                                            BorderBrush="{StaticResource BorderControlBrush}" BorderThickness="{DynamicResource BorderWidthSelected}" />
+                                    <controls:Icon x:Name="Tick" Kind="Check" Size="{StaticResource SizeIconSm}" Visibility="Collapsed"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource TextOnActionBrush}" />
+                                </Grid>
+                                <ContentPresenter Margin="12,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="False" />
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="{StaticResource ActionBrush}" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource ActionBrush}" />
+                                <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- One interval: its name, and a tick on the right while chosen -->
+        <Style x:Key="IntervalItem" TargetType="ComboBoxItem">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Height" Value="{StaticResource SizeControl}" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="{StaticResource RadiusRow}" Padding="{TemplateBinding Padding}">
+                            <DockPanel VerticalAlignment="Center">
+                                <controls:Icon x:Name="Tick" Kind="Check" Size="{StaticResource SizeIconSm}" Visibility="Hidden"
+                                               DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{StaticResource TextAccentBrush}" />
+                                <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="False" />
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Check in every: the theme's select, with whatever is in Tag (the half-hour tick box) above the intervals -->
+        <Style x:Key="IntervalSelect" TargetType="ComboBox" BasedOn="{StaticResource Select}">
+            <Setter Property="ItemContainerStyle" Value="{StaticResource IntervalItem}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid x:Name="Root">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource RadiusControl}" />
+                            <Border x:Name="Ring" Visibility="Collapsed" CornerRadius="{StaticResource RadiusControl}"
+                                    UseLayoutRounding="False" BorderThickness="{DynamicResource BorderWidthSelected}" BorderBrush="{StaticResource BorderSelectedBrush}" />
+                            <ContentPresenter x:Name="ContentSite" Margin="17,0,45,0" IsHitTestVisible="False"
+                                              HorizontalAlignment="Left" VerticalAlignment="Center"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
+                            <controls:Icon x:Name="Chevron" Kind="ChevronDown" Size="{StaticResource SizeIcon}" Margin="0,0,17,0" IsHitTestVisible="False"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}"
+                                           RenderTransformOrigin="0.5,0.5" />
+                            <ToggleButton x:Name="Toggle" Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent" />
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False" PopupAnimation="None"
+                                   IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                   PlacementTarget="{Binding ElementName=Root}" controls:PopupPlacement.Kind="Dropdown">
+                                <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}" Width="{Binding ActualWidth, ElementName=Root}"
+                                      TextElement.FontWeight="{StaticResource FontWeightRegular}">
+                                    <Border Style="{StaticResource Menu.Shadow}" />
+                                    <Border Style="{StaticResource Menu.Panel}">
+                                        <DockPanel>
+                                            <ContentPresenter DockPanel.Dock="Top" Content="{TemplateBinding Tag}" />
+                                            <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}" VerticalScrollBarVisibility="Auto"
+                                                          HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                                            </ScrollViewer>
+                                        </DockPanel>
+                                    </Border>
+                                </Grid>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderSelectedBrush}" />
+                                <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="Chevron" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="180" />
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextDisabledBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
     <controls:WidgetCard x:Name="Card">
         <controls:WidgetCard.Banner>
@@ -41,6 +181,32 @@
                                Foreground="{StaticResource TextOnActionBrush}" />
                     <TextBlock Style="{StaticResource Text.Subtitle}" Text="Runs until you end your day." TextAlignment="Center"
                                Foreground="{StaticResource TextOnActionSecondaryBrush}" />
+
+                    <!-- Today's date and state in a soft pill, standing in for the card's own status line on this screen -->
+                    <Grid x:Name="BannerStatus" HorizontalAlignment="Center" Margin="0,12,0,0"
+                          DataContext="{Binding Path=(controls:WidgetCard.Status), RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          AutomationProperties.Name="{Binding Spoken}">
+                        <Border CornerRadius="{StaticResource RadiusFull}" Background="{StaticResource TextOnActionBrush}" Opacity="0.18" />
+                        <StackPanel Orientation="Horizontal" Margin="10,4,12,4">
+                            <Ellipse Width="{StaticResource Space8}" Height="{StaticResource Space8}" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource TextOnActionSecondaryBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Live}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource LiveBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock FontSize="{StaticResource FontSizeCaption}" LineHeight="{StaticResource LineHeightCaption}"
+                                       LineStackingStrategy="BlockLineHeight" VerticalAlignment="Center" Foreground="{StaticResource TextOnActionBrush}">
+                                <Run Text="{Binding Date, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding State, Mode=OneWay}"
+                                                                                                  FontWeight="{StaticResource FontWeightSemibold}" />
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
             </Border>
         </controls:WidgetCard.Banner>
@@ -97,9 +263,24 @@
                 </StackPanel>
                 <StackPanel x:Name="IntervalField" Margin="{StaticResource GapFieldToField}">
                     <TextBlock x:Name="IntervalLabel" Style="{StaticResource Text.Label}" Text="Check in every" />
-                    <ComboBox x:Name="IntervalSelect" Style="{StaticResource Select}"
+                    <ComboBox x:Name="IntervalSelect" Style="{StaticResource IntervalSelect}"
                               AutomationProperties.LabeledBy="{Binding ElementName=IntervalLabel}"
-                              SelectionChanged="Interval_SelectionChanged" />
+                              SelectionChanged="Interval_SelectionChanged" DropDownOpened="IntervalSelect_DropDownOpened">
+                        <!-- Shown above the intervals in the drop-down. Not a tab stop there: More options has the same switch -->
+                        <ComboBox.Tag>
+                            <StackPanel>
+                                <CheckBox x:Name="HalfHourBox" Style="{StaticResource TickBox}" Focusable="False"
+                                          AutomationProperties.Name="On the half hour and hour"
+                                          Checked="HalfHourBox_Changed" Unchecked="HalfHourBox_Changed">
+                                    <TextBlock TextTrimming="CharacterEllipsis">
+                                        <Run Text="On the half hour and hour" /><Run x:Name="HalfHourMarks" Text=" (9:30 &amp; 10:00)"
+                                            FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextTertiaryBrush}" />
+                                    </TextBlock>
+                                </CheckBox>
+                                <Separator Style="{StaticResource Menu.Separator}" />
+                            </StackPanel>
+                        </ComboBox.Tag>
+                    </ComboBox>
                     <TextBlock x:Name="IntervalHelp" Style="{StaticResource Text.Help}" Text="First check-in at 10:00 AM" />
                 </StackPanel>
 
