@@ -2,28 +2,40 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
-    
+    <UserControl.Resources>
+        <!-- One logged entry: a white card, with its Edit and Delete under it -->
+        <Style x:Key="EntryCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource BorderWidth}" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+
+        <!-- Edit and Delete on an entry: 32 square, and in large view an outlined "✎ Edit" / "Delete" -->
+        <Style x:Key="EntryAction" TargetType="Button" BasedOn="{StaticResource Button.IconWordSide}">
+            <Setter Property="Width" Value="{StaticResource Space32}" />
+            <Setter Property="Height" Value="{StaticResource Space32}" />
+        </Style>
+    </UserControl.Resources>
+
     <controls:WidgetCard AutomationProperties.Name="Timesheet">
         <StackPanel>
+            <!-- Back, the title, and the wide window -->
             <DockPanel Margin="-8,0,0,0">
                 <Button Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back" AutomationProperties.Name="Back"
                         Click="Back_Click">
                     <controls:Icon Kind="ChevronLeft" />
                 </Button>
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                    <!-- Back to today from an earlier day -->
-                    <Button x:Name="TodayButton" Style="{StaticResource Button.Secondary}" Height="{StaticResource Space32}" Padding="12,0"
-                            Margin="0,0,4,0" Content="Today" Visibility="Collapsed" AutomationProperties.Name="Go to today"
-                            Click="Today_Click" />
-                    <Button x:Name="PrevDayButton" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Previous" BorderThickness="0" ToolTip="Previous day"
-                            AutomationProperties.Name="Previous day" Click="PrevDay_Click">
-                        <controls:Icon Kind="ChevronLeft" />
-                    </Button>
-                    <Button x:Name="NextDayButton" Style="{StaticResource Button.WordIconSide}" controls:WidgetCard.Word="Next" BorderThickness="0" ToolTip="Next day"
-                            AutomationProperties.Name="Next day" Click="NextDay_Click">
-                        <controls:Icon Kind="ChevronRight" />
-                    </Button>
-                </StackPanel>
+                <Button x:Name="MaximiseButton" DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}" Height="{StaticResource Space32}"
+                        Padding="12,0" VerticalAlignment="Center" ToolTip="Open the timesheet in a wide window"
+                        AutomationProperties.Name="Maximise: open the timesheet in a wide window" Click="Maximise_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <controls:Icon Kind="Maximise" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Maximise" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
                 <TextBlock Style="{StaticResource Text.Title}" Text="Timesheet" Margin="4,0,0,0" VerticalAlignment="Center" />
             </DockPanel>
 
@@ -37,13 +49,42 @@
                 </Border>
             </Grid>
 
-            <!-- The day shown, as a picker over the last two weeks with what was logged and sent on each -->
-            <Button x:Name="DayButton" Style="{StaticResource SelectButton}" Margin="0,12,0,0" Click="DayButton_Click">
-                <TextBlock x:Name="Subtitle" Text="Tuesday 1 Aug · 6h 5m" TextTrimming="CharacterEllipsis" />
-            </Button>
-            <TextBlock x:Name="StatusText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,8,0,0" />
+            <!-- The day: previous and next either side of the day's button, which lists the last two weeks with what was logged and sent -->
+            <StackPanel Orientation="Horizontal" Margin="-8,12,0,0">
+                <Button x:Name="PrevDayButton" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Previous" BorderThickness="0" ToolTip="Previous day"
+                        AutomationProperties.Name="Previous day" Click="PrevDay_Click">
+                    <controls:Icon Kind="ChevronLeft" />
+                </Button>
+                <Button x:Name="DayButton" Style="{StaticResource Button.Secondary}" Height="{StaticResource Space32}" Padding="12,0" Margin="4,0"
+                        VerticalAlignment="Center" Click="DayButton_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <controls:Icon Kind="Calendar" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="DayText" Text="Tue 1 Aug" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="NextDayButton" Style="{StaticResource Button.WordIconSide}" controls:WidgetCard.Word="Next" BorderThickness="0" ToolTip="Next day"
+                        AutomationProperties.Name="Next day" Click="NextDay_Click">
+                    <controls:Icon Kind="ChevronRight" />
+                </Button>
+            </StackPanel>
+
+            <!-- The day's total, whether it went to the dashboard, and the way back to today from an earlier day -->
+            <DockPanel Margin="0,12,0,0">
+                <Button x:Name="TodayButton" DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}" Height="{StaticResource Space32}" Padding="16,0"
+                        VerticalAlignment="Center" Content="Today" Visibility="Collapsed" AutomationProperties.Name="Go to today" Click="Today_Click" />
+                <TextBlock x:Name="TotalText" Style="{StaticResource Text.Body}" Foreground="{StaticResource TextSecondaryBrush}" Text="6h 5m"
+                           VerticalAlignment="Center" />
+                <Border x:Name="SendBadge" Style="{StaticResource Pill.Warning}" Margin="8,0,8,0" HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal">
+                        <controls:Icon x:Name="BadgeIcon" Kind="Send" Size="{StaticResource SizeIconSm}" Margin="0,0,4,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="BadgeText" Text="Not sent yet" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+            </DockPanel>
+            <TextBlock x:Name="StatusText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,8,0,0"
+                       Visibility="Collapsed" />
             <TextBlock x:Name="PastDayHelp" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}"
-                       Margin="0,2,0,0" Text="You can still edit this day." Visibility="Collapsed" />
+                       Margin="0,8,0,0" Text="You can still edit this day." Visibility="Collapsed" />
             <StackPanel x:Name="AccountRow" Orientation="Horizontal" Visibility="Collapsed" Margin="0,2,0,0">
                 <TextBlock x:Name="AccountText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
                 <Button x:Name="SignOutButton" Style="{StaticResource Button.Text}" Content="Sign out" Margin="4,0,0,0" Click="SignOut_Click" />
@@ -58,15 +99,22 @@
                 </DockPanel>
             </Border>
 
-            <ScrollViewer x:Name="EntryScroller" Margin="{StaticResource GapSection}" MaxHeight="300"
+            <!-- The entries scroll; what comes after them stays in view -->
+            <ScrollViewer x:Name="EntryScroller" Margin="0,12,0,0" MaxHeight="300"
                           VerticalScrollBarVisibility="Auto" Focusable="False">
                 <StackPanel x:Name="SlotContainer" />
             </ScrollViewer>
 
-            <Button x:Name="AddTimeButton" Style="{StaticResource Button.Text}" Content="+ Add time"
-                    HorizontalAlignment="Left" Margin="0,0,0,8" Click="AddTime_Click" />
+            <Border Height="{DynamicResource Hairline}" Background="{StaticResource BorderSubtleBrush}" Margin="-16,4,-16,0" />
+            <Button x:Name="AddTimeButton" Style="{StaticResource Button.Icon}" Width="NaN" Padding="8,0" HorizontalAlignment="Left"
+                    Margin="-8,8,0,0" Foreground="{StaticResource TextPrimaryBrush}" AutomationProperties.Name="Add time" Click="AddTime_Click">
+                <StackPanel Orientation="Horizontal">
+                    <controls:Icon Kind="Plus" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Add time" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
 
-            <StackPanel Margin="{StaticResource GapSection}">
+            <StackPanel Margin="0,8,0,0">
                 <Button x:Name="SendButton" Style="{StaticResource Button.Primary}" Content="Send day" Click="Send_Click" />
                 <Button x:Name="ExportButton" Style="{StaticResource Button.Text}" Content="Export CSV" Margin="0,4,0,0" Click="Export_Click" />
             </StackPanel>
