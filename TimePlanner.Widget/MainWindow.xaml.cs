@@ -7,6 +7,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
@@ -189,12 +190,70 @@ namespace TimePlanner.Widget
 
         private double Scale => Large ? WidgetCard.LargeScale : 1;
 
+        private static readonly Duration FadeOut = TimeSpan.FromMilliseconds(90);
+        private static readonly Duration FadeIn = TimeSpan.FromMilliseconds(140);
+        private static readonly Duration Shrink = TimeSpan.FromMilliseconds(160);
+        private static readonly Duration Settle = TimeSpan.FromMilliseconds(60);
+        private bool _fading;
+
+        // The window can't change size and place in one step, so a card on screen would jump between the two. Growing, it
+        // fades out, takes its new size and place unseen, and fades back in. Shrinking, the big card first draws itself smaller
+        // towards the corner it holds, into the small card's place, and the small card takes over in a short fade.
+        // A change made meanwhile is picked up at the end
         private void ApplySize()
         {
             var large = _shown?.Preferences?.LargerText == true;
-            if (large == Large)
+            if (_fading || large == Large)
                 return;
 
+            if (!IsVisible)
+            {
+                Resize(large);
+                return;
+            }
+
+            _fading = true;
+            if (large)
+            {
+                var hide = new DoubleAnimation(0, FadeOut) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn } };
+                hide.Completed += (_, _) => ShowResized(FadeIn);
+                Root.BeginAnimation(OpacityProperty, hide);
+                return;
+            }
+
+            // A render transform only draws the card smaller; the layout and the window stay as they are until the swap
+            var scale = new ScaleTransform(1, 1);
+            Root.RenderTransformOrigin = new Point(
+                _corner is Corner.TopRight or Corner.BottomRight ? 1 : 0,
+                _corner is Corner.BottomLeft or Corner.BottomRight ? 1 : 0);
+            Root.RenderTransform = scale;
+            var shrink = new DoubleAnimation(1 / WidgetCard.LargeScale, Shrink) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut } };
+            shrink.Completed += (_, _) =>
+            {
+                Root.ClearValue(RenderTransformProperty);
+                ShowResized(Settle, from: 0.3);
+            };
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, shrink);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, shrink);
+        }
+
+        // The new size and place with the card faint, so the moment the window resizes doesn't show, then the card fades in there
+        private void ShowResized(Duration fadeIn, double from = 0)
+        {
+            Resize(_shown?.Preferences?.LargerText == true);
+            var show = new DoubleAnimation(from, 1, fadeIn) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
+            show.Completed += (_, _) =>
+            {
+                Root.BeginAnimation(OpacityProperty, null);
+                Root.Opacity = 1;
+                _fading = false;
+                ApplySize();
+            };
+            Root.BeginAnimation(OpacityProperty, show);
+        }
+
+        private void Resize(bool large)
+        {
             WidgetCard.SetIsLarge(Root, large);
             if (large)
                 Root.LayoutTransform = new ScaleTransform(WidgetCard.LargeScale, WidgetCard.LargeScale);
