@@ -34,20 +34,38 @@ namespace TimePlanner.Widget.Services.Ai
                 throw new AiUnavailableException("The voice model isn't downloaded yet. Open Settings › Voice and AI.");
             }
 
-            EnsureRuntimeConfigured();
-
             WhisperFactory factory;
-            lock (_lock)
+            //initialize runtime and cached whisper factory
+            try
             {
-                //reload factory if model selection changed
-                if (_factory == null || _cachedModelPath != modelPath)
-                {
-                    _factory?.Dispose();
-                    _factory = WhisperFactory.FromPath(modelPath);
-                    _cachedModelPath = modelPath;
-                }
+                EnsureRuntimeConfigured();
 
-                factory = _factory;
+                lock (_lock)
+                {
+                    //reload factory if model selection changed
+                    if (_factory == null || _cachedModelPath != modelPath)
+                    {
+                        _factory?.Dispose();
+                        _factory = WhisperFactory.FromPath(modelPath);
+                        _cachedModelPath = modelPath;
+                    }
+
+                    factory = _factory;
+                }
+            }
+            catch (AiUnavailableException)
+            {
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            //handle missing native whisper engine
+            catch (Exception ex)
+            {
+                Trace.TraceWarning(ex.Message);
+                throw new AiUnavailableException("The voice engine is missing. Reinstall TimePlanner from the latest installer.");
             }
 
             //check if speech was detected in wav file
@@ -123,17 +141,37 @@ namespace TimePlanner.Widget.Services.Ai
         }
 
         //-----------------------------
-        //tests model file presence on disk
+        //tests model file presence on disk and runtime engine readiness
         public Task<string?> TestAsync(CancellationToken ct)
         {
             var modelPath = Path.Combine(_manager.ModelsFolder, _settings.WhisperModel);
-            //return null when model exists
-            if (File.Exists(modelPath))
+            //return plain language error if model missing
+            if (!File.Exists(modelPath))
             {
-                return Task.FromResult<string?>(null);
+                return Task.FromResult<string?>("The voice model isn't downloaded yet. Open Settings › Voice and AI.");
             }
 
-            return Task.FromResult<string?>("The voice model isn't downloaded yet. Open Settings › Voice and AI.");
+            //verify native whisper engine loads successfully
+            try
+            {
+                EnsureRuntimeConfigured();
+                using var factory = WhisperFactory.FromPath(modelPath);
+                return Task.FromResult<string?>(null);
+            }
+            catch (AiUnavailableException ex)
+            {
+                return Task.FromResult<string?>(ex.Message);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            //handle missing native whisper engine
+            catch (Exception ex)
+            {
+                Trace.TraceWarning(ex.Message);
+                return Task.FromResult<string?>("The voice engine is missing. Reinstall TimePlanner from the latest installer.");
+            }
         }
 
         private static bool _runtimeConfigured;
