@@ -5,7 +5,7 @@
     
     <controls:WidgetCard AutomationProperties.Name="End your day?">
         <controls:WidgetCard.CornerContent>
-            <Button Style="{StaticResource Button.Icon}" IsCancel="True" ToolTip="Cancel" AutomationProperties.Name="Cancel"
+            <Button Style="{StaticResource Button.IconWord}" controls:WidgetCard.Word="Close" IsCancel="True" ToolTip="Cancel" AutomationProperties.Name="Cancel"
                     Click="Cancel_Click">
                 <controls:Icon Kind="Close" />
             </Button>

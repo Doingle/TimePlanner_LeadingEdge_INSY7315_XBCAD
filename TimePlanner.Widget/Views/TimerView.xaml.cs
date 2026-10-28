@@ -60,6 +60,7 @@ namespace TimePlanner.Widget.Views
             LogButton.Content = $"Log time since {Format.Clock(_flow.GetLogPeriod().Start)}";
             var paused = scheduler.PausedAt;
             PauseIcon.Kind = paused != null ? IconKind.Play : IconKind.Pause;
+            WidgetCard.SetWord(PauseButton, paused != null ? "Resume" : "Pause");
             var action = paused != null ? "Resume the timer" : "Pause the timer";
             PauseButton.ToolTip = action;
             AutomationProperties.SetName(PauseButton, action);

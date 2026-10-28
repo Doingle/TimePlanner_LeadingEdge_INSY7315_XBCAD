@@ -16,7 +16,9 @@
         <Setter Property="FontFamily" Value="{StaticResource FontFamily}" />
         <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
         <Setter Property="FontWeight" Value="{StaticResource FontWeightRegular}" />
-        
+        <!-- Large view: the panel grows with the widget, shadow room and all (PopupScale) -->
+        <Setter Property="LayoutTransform" Value="{DynamicResource PopupScale}" />
+
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContextMenu">
@@ -58,11 +60,14 @@
                         <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False" PopupAnimation="None"
                            IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
                            PlacementTarget="{Binding ElementName=Root}" controls:PopupPlacement.Kind="Submenu">
-                            <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}" TextElement.FontWeight="{StaticResource FontWeightRegular}">
-                                <Border Style="{StaticResource Menu.Shadow}" />
-                                <Border Style="{StaticResource Menu.Panel}" MinWidth="176" MaxWidth="220">
-                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" KeyboardNavigation.TabNavigation="Cycle" />
-                                </Border>
+                            <!-- Large view: the submenu grows with the widget, shadow room and all (PopupScale) -->
+                            <Grid LayoutTransform="{DynamicResource PopupScale}">
+                                <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}" TextElement.FontWeight="{StaticResource FontWeightRegular}">
+                                    <Border Style="{StaticResource Menu.Shadow}" />
+                                    <Border Style="{StaticResource Menu.Panel}" MinWidth="176" MaxWidth="220">
+                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" KeyboardNavigation.TabNavigation="Cycle" />
+                                    </Border>
+                                </Grid>
                             </Grid>
                         </Popup>
                     </Grid>

@@ -77,6 +77,12 @@ namespace TimePlanner.Widget.Services
                 if (TryGetBool(root, "LargerText", out var largerText))
                     prefs.LargerText = largerText;
 
+                if (TryGetBool(root, "TimesheetWide", out var timesheetWide))
+                    prefs.TimesheetWide = timesheetWide;
+
+                if (ReadWindowPlace(root, "TimesheetWindow", Options, out var timesheetWindow))
+                    prefs.TimesheetWindow = timesheetWindow;
+
                 if (root.TryGetProperty("WorkingDays", out var days) && days.ValueKind == JsonValueKind.Array)
                 {
                     var parsedDays = new List<DayOfWeek>();
@@ -374,6 +380,40 @@ namespace TimePlanner.Widget.Services
                     catch (Exception)
                     {
                         //invalid position keeps default
+                        return false;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        //-----------------------------
+        //parses a window's saved place from json element; one that couldn't be a window keeps the default
+        private static bool ReadWindowPlace(JsonElement parent, string propName, JsonSerializerOptions options, out WindowPlace? place)
+        {
+            place = null;
+            //check property presence
+            if (parent.TryGetProperty(propName, out var prop))
+            {
+                //null kind returns null place
+                if (prop.ValueKind == JsonValueKind.Null)
+                {
+                    return true;
+                }
+
+                //object kind deserializes place
+                if (prop.ValueKind == JsonValueKind.Object)
+                {
+                    try
+                    {
+                        place = JsonSerializer.Deserialize<WindowPlace>(prop.GetRawText(), options);
+                        return place?.IsValid == true;
+                    }
+                    catch (Exception)
+                    {
+                        //invalid place keeps default
+                        place = null;
                         return false;
                     }
                 }

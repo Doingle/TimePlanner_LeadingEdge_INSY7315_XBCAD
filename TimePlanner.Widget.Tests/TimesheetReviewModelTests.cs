@@ -69,6 +69,28 @@ public class TimesheetReviewModelTests
     }
 
     [Fact]
+    public void BadgeWarnsUntilTheDayIsOnTheDashboardUnchanged()
+    {
+        static (string, bool) Badge(TimesheetReviewModel model) => (model.Badge, model.BadgeWarns);
+        Assert.Equal(("Not sent yet", true), Badge(Create()));
+        Assert.Equal(("Waiting to send", true), Badge(Create(pending: new(Day, SentAt, 1, SentAt, false, null))));
+        Assert.Equal(("Not sent", true), Badge(Create(pending: new(Day, SentAt, 1, SentAt, true, "Invalid project"))));
+        Assert.Equal(("Changed since sent", true), Badge(Create(sent: new(Day, SentAt, 1, 1, SentAt.AddMinutes(1)))));
+        Assert.Equal(("Sent 12:00 PM", false), Badge(Create(sent: new(Day, SentAt, 1, 1))));
+    }
+
+    [Fact]
+    public void DateBarShowsTheDayAndTheTotalOfEntriesOnly_AndMoreOnlyForASendOnItsWay()
+    {
+        var model = Create([Slot(9), Slot(10, SlotKind.Gap), Slot(11)]);
+        Assert.Equal("Mon 26 Oct", model.DayText);
+        Assert.Equal("Monday 26 Oct", model.LongDayText);
+        Assert.Equal("2h", model.Total);
+        Assert.False(model.ShowsStatus);
+        Assert.True(Create(pending: new(Day, SentAt, 1, SentAt, false, null)).ShowsStatus);
+    }
+
+    [Fact]
     public void FailedNotesWinOverTranscribingUnbuiltAndAiEntries()
     {
         var failed = Note(VoiceNoteStatus.Failed);

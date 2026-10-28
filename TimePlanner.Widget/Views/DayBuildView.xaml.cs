@@ -153,10 +153,11 @@ namespace TimePlanner.Widget.Views
                 var topRow = new DockPanel();
                 var removeBtn = new Button
                 {
-                    Style = (Style)FindResource("Button.Icon"),
+                    Style = (Style)FindResource("Button.IconWordSide"),
                     ToolTip = "Don't add this",
                     Content = new Icon { Kind = IconKind.Close, Size = (double)FindResource("SizeIconSm") }
                 };
+                WidgetCard.SetWord(removeBtn, "Remove");
                 System.Windows.Automation.AutomationProperties.SetName(removeBtn, "Don't add this");
                 DockPanel.SetDock(removeBtn, Dock.Right);
 
@@ -212,7 +213,8 @@ namespace TimePlanner.Widget.Views
                     if (!isMatched)
                     {
                         var noteRow = new DockPanel { Margin = new Thickness(0, 4, 0, 0) };
-                        var copyBtn = new Button { Style = (Style)FindResource("Button.Icon"), ToolTip = "Copy note", Content = new Icon { Kind = IconKind.Copy, Size = (double)FindResource("SizeIconSm") }, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(4, 0, 0, 0) };
+                        var copyBtn = new Button { Style = (Style)FindResource("Button.IconWordSide"), ToolTip = "Copy note", Content = new Icon { Kind = IconKind.Copy, Size = (double)FindResource("SizeIconSm") }, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(4, 0, 0, 0) };
+                        WidgetCard.SetWord(copyBtn, "Copy");
                         System.Windows.Automation.AutomationProperties.SetName(copyBtn, "Copy note");
                         DockPanel.SetDock(copyBtn, Dock.Right);
 

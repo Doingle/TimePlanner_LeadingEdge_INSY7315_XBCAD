@@ -134,18 +134,21 @@
                             <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False" PopupAnimation="None"
                                    IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                                    PlacementTarget="{Binding ElementName=Root}" controls:PopupPlacement.Kind="Dropdown">
-                                <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}" Width="{Binding ActualWidth, ElementName=Root}"
-                                      TextElement.FontWeight="{StaticResource FontWeightRegular}">
-                                    <Border Style="{StaticResource Menu.Shadow}" />
-                                    <Border Style="{StaticResource Menu.Panel}">
-                                        <DockPanel>
-                                            <ContentPresenter DockPanel.Dock="Top" Content="{TemplateBinding Tag}" />
-                                            <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}" VerticalScrollBarVisibility="Auto"
-                                                          HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
-                                            </ScrollViewer>
-                                        </DockPanel>
-                                    </Border>
+                                <!-- Large view: the list grows with the widget, shadow room and all (PopupScale) -->
+                                <Grid LayoutTransform="{DynamicResource PopupScale}">
+                                    <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}" Width="{Binding ActualWidth, ElementName=Root}"
+                                          TextElement.FontWeight="{StaticResource FontWeightRegular}">
+                                        <Border Style="{StaticResource Menu.Shadow}" />
+                                        <Border Style="{StaticResource Menu.Panel}">
+                                            <DockPanel>
+                                                <ContentPresenter DockPanel.Dock="Top" Content="{TemplateBinding Tag}" />
+                                                <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}" VerticalScrollBarVisibility="Auto"
+                                                              HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                                                </ScrollViewer>
+                                            </DockPanel>
+                                        </Border>
+                                    </Grid>
                                 </Grid>
                             </Popup>
                         </Grid>
@@ -197,7 +200,8 @@
                     <Grid x:Name="BannerStatus" HorizontalAlignment="Center" Margin="0,12,0,0"
                           DataContext="{Binding Path=(controls:WidgetCard.Status), RelativeSource={RelativeSource AncestorType=UserControl}}"
                           AutomationProperties.Name="{Binding Spoken}">
-                        <Border CornerRadius="{StaticResource RadiusFull}" Background="{StaticResource TextOnActionBrush}" Opacity="0.18" />
+                        <!-- Round ends on straight sides: half its 24 height. A larger radius would draw an oval -->
+                        <Border CornerRadius="{StaticResource RadiusSwitch}" Background="{StaticResource TextOnActionBrush}" Opacity="0.18" />
                         <StackPanel Orientation="Horizontal" Margin="10,4,12,4">
                             <Ellipse Width="{StaticResource Space8}" Height="{StaticResource Space8}" Margin="0,0,8,0" VerticalAlignment="Center">
                                 <Ellipse.Style>
@@ -233,54 +237,22 @@
                             <TextBlock Text="Help" Margin="8,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource Button.Icon}" ToolTip="Back" AutomationProperties.Name="Back to the timer"
+                    <Button Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back" AutomationProperties.Name="Back to the timer"
                             Click="BackToTimer_Click">
                         <controls:Icon Kind="ChevronLeft" />
                     </Button>
                     <TextBlock Style="{StaticResource Text.Title}" Text="Settings" Margin="4,0,0,0" VerticalAlignment="Center" />
                 </DockPanel>
 
-                <StackPanel x:Name="TimingSection">
-                    <TextBlock Style="{StaticResource Text.Label}" Text="Check-in timing" />
-                    <Border Background="{StaticResource SurfaceSubtleBrush}" CornerRadius="{StaticResource RadiusControl}" Padding="4">
-                        <UniformGrid x:Name="TimingOptions" Columns="2">
-                            <UniformGrid.Resources>
-                                <Style TargetType="RadioButton" BasedOn="{StaticResource Option}">
-                                    <Setter Property="Height" Value="{StaticResource Space32}" />
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="RadioButton">
-                                                <Border x:Name="Selection" Background="Transparent" CornerRadius="{StaticResource RadiusRow}">
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsChecked" Value="True">
-                                                        <Setter TargetName="Selection" Property="Background" Value="{StaticResource SurfaceBrush}" />
-                                                        <Setter Property="Foreground" Value="{StaticResource TextAccentBrush}" />
-                                                        <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
-                                                    </Trigger>
-                                                    <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5" /></Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </UniformGrid.Resources>
-                            <RadioButton x:Name="IntervalOption" GroupName="Timing" Content="Interval" Checked="Timing_Checked" />
-                            <RadioButton x:Name="ClockOption" GroupName="Timing" Content="Clock times" Checked="Timing_Checked" />
-                        </UniformGrid>
-                    </Border>
-                    <TextBlock x:Name="ClockTimingHelp" Style="{StaticResource Text.Help}" Text="On the hour and half-hour" Visibility="Collapsed" />
-                </StackPanel>
-                <StackPanel x:Name="IntervalField" Margin="{StaticResource GapFieldToField}">
+                <StackPanel x:Name="IntervalField">
                     <TextBlock x:Name="IntervalLabel" Style="{StaticResource Text.Label}" Text="Check in every" />
                     <ComboBox x:Name="IntervalSelect" Style="{StaticResource IntervalSelect}"
                               AutomationProperties.LabeledBy="{Binding ElementName=IntervalLabel}"
                               controls:Field.Placeholder="On the half hour and hour"
                               SelectionChanged="Interval_SelectionChanged" DropDownOpened="IntervalSelect_DropDownOpened"
                               PreviewKeyDown="IntervalSelect_PreviewKeyDown">
-                        <!-- Setup only, above the intervals in the drop-down: clock times instead of an interval.
-                             Up from the first interval reaches it, Space ticks it; Settings has its own Interval / Clock times choice -->
+                        <!-- Above the intervals in the drop-down, on Setup and in Settings: clock times instead of an interval.
+                             Up from the first interval reaches it, Space ticks it -->
                         <ComboBox.Tag>
                             <StackPanel>
                                 <CheckBox x:Name="HalfHourBox" Style="{StaticResource TickBox}"
@@ -298,9 +270,9 @@
                     <TextBlock x:Name="IntervalHelp" Style="{StaticResource Text.Help}" Text="First check-in at 10:00 AM" />
                 </StackPanel>
 
-                <!-- Settings only, an outlined row with its switch. Saved, but it doesn't change the widget yet -->
+                <!-- Large view, an outlined row with its switch, above More options on Setup and in Settings -->
                 <Border x:Name="LargerTextRow" Margin="{StaticResource GapFieldToField}" Height="{StaticResource SizeControl}"
-                        Padding="16,0,8,0" CornerRadius="{StaticResource RadiusControl}" Visibility="Collapsed"
+                        Padding="16,0,8,0" CornerRadius="{StaticResource RadiusControl}"
                         Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderControlBrush}"
                         BorderThickness="{DynamicResource BorderWidth}">
                     <DockPanel>
@@ -311,7 +283,7 @@
                     </DockPanel>
                 </Border>
 
-                <Button x:Name="AdvancedRow" Style="{StaticResource NavRow}" Margin="{StaticResource GapFieldToField}"
+                <Button x:Name="AdvancedRow" Style="{StaticResource NavRow}" Margin="{StaticResource GapStacked}"
                         Click="OpenAdvanced_Click">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -359,7 +331,7 @@
 
             <StackPanel x:Name="AdvancedView" Visibility="Collapsed">
                 <DockPanel Margin="-8,0,0,0">
-                    <Button x:Name="AdvancedBack" Style="{StaticResource Button.Icon}" ToolTip="Back"
+                    <Button x:Name="AdvancedBack" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back"
                             AutomationProperties.Name="Back to setup" Click="CloseAdvanced_Click">
                         <controls:Icon Kind="ChevronLeft" />
                     </Button>

@@ -270,6 +270,192 @@ public class ReminderFlowTests
     });
 
     [Fact]
+    public Task LargerText_IsSavedAndAppliedStraightAway() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        Assert.False(host.Flow.Session.Preferences.LargerText);
+
+        host.Flow.ChangeLargerText(true);
+        Assert.True(host.Flow.Session.Preferences.LargerText);
+        Assert.Equal(1, host.Window.SizeApplied);
+
+        host.Flow.ChangeLargerText(false);
+        Assert.False(host.Flow.Session.Preferences.LargerText);
+        Assert.Equal(2, host.Window.SizeApplied);
+    });
+
+    [Fact]
+    public Task LargeTimer_ShowsAWordUnderEachIconButton_AndKeepsItsWording() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        host.Flow.ShowTimer();
+        var timer = Assert.IsType<TimerView>(host.Window.Screen);
+        var card = (WidgetCard)timer.FindName("Card");
+        var pause = (Button)timer.FindName("PauseButton");
+
+        // Laid out as the window does it: the root carries large view and the 1.5 times scale
+        var root = new Grid();
+        root.Children.Add(timer);
+        var page = new Border { Child = root };
+        LayOut(page);
+        var words = Descendants<TextBlock>(timer).Where(t => t.Name == "Word").ToList();
+        var state = (TextBlock)card.Template.FindName("StatusState", card);
+        // Voice is off here, so the speak button stays hidden
+        Assert.Equal(new[] { "Exit", "Pause", "Settings" }, words.Select(w => w.Text).Order());
+        Assert.All(words, w => Assert.Equal(Visibility.Collapsed, w.Visibility));
+        Assert.Equal(Visibility.Collapsed, state.Visibility);
+        Assert.Equal(40, pause.ActualHeight);
+        await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        RenderElement(page, "timer-normal");
+
+        WidgetCard.SetIsLarge(root, true);
+        root.LayoutTransform = new ScaleTransform(WidgetCard.LargeScale, WidgetCard.LargeScale);
+        LayOut(page);
+        await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        Assert.All(words, w => Assert.Equal(Visibility.Visible, w.Visibility));
+        Assert.Equal(Visibility.Visible, state.Visibility);
+        Assert.Equal(" · Tracking", string.Concat(state.Inlines.OfType<Run>().Select(r => r.Text)));
+        Assert.Equal("until next check-in", ((TextBlock)timer.FindName("StatusText")).Text);
+        Assert.Equal("Pause the timer", pause.ToolTip);
+        Assert.Equal(WidgetCard.LargeScale * card.ActualWidth, page.ActualWidth, precision: 0);
+        // The timer stays on one line with the pause circle, as at the normal size; the word hangs under the circle
+        var timerText = (TextBlock)timer.FindName("TimerText");
+        var circleCentre = pause.TranslatePoint(new Point(0, (double)Application.Current.FindResource("SizeControl") / 2), page).Y;
+        var timerCentre = timerText.TranslatePoint(new Point(0, timerText.ActualHeight / 2), page).Y;
+        Assert.InRange(timerCentre - circleCentre, -2, 2);
+        // A fresh layout for the picture, so nothing from the normal size is left in it
+        page.Child = null;
+        page.Child = root;
+        LayOut(page);
+        RenderElement(page, "timer-large");
+
+        // Paused, the same button says Resume and keeps its place
+        var circleLeft = pause.TranslatePoint(new Point(), page).X;
+        Click(pause);
+        await WaitUntil(() => WidgetCard.GetWord(pause) == "Resume");
+        LayOut(page);
+        await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        Assert.Equal(circleLeft, pause.TranslatePoint(new Point(), page).X);
+        Assert.Equal("Resume the timer", pause.ToolTip);
+        RenderElement(page, "timer-paused-large");
+    });
+
+    [Fact]
+    public Task LargeView_EveryIconButtonShowsItsWord_OnlyInLargeView() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        var today = DateOnly.FromDateTime(host.Clock.LocalNow());
+
+        // The screens with icon buttons; Day ended last, as it ends the day
+        var screens = new (string Name, Func<Task> Show)[]
+        {
+            ("settings", () => { host.Flow.ShowSettings(); return Task.CompletedTask; }),
+            ("more-options", () => { host.Flow.ShowMoreOptions(fromSettings: true); return Task.CompletedTask; }),
+            ("working-days", () => { host.Flow.ShowWorkingDays(() => { }); return Task.CompletedTask; }),
+            ("help", () => { host.Flow.ShowHelp(); return Task.CompletedTask; }),
+            ("manage-lists", () => host.Flow.ShowManageListsAsync()),
+            ("check-in", () => { host.Flow.CheckIn(); return Task.CompletedTask; }),
+            ("log-entry", () => host.Flow.LogTimeAsync(LogEntryMode.CheckIn)),
+            ("end-day", () => { host.Flow.AskEndDay(); return Task.CompletedTask; }),
+            ("sign-in", () => { host.Flow.ShowSignIn(() => Task.CompletedTask, () => { }); return Task.CompletedTask; }),
+            ("timesheet", () => host.Flow.ShowTimesheetAsync(today, () => { })),
+            ("entry-edit", () => host.Flow.ShowEntryEditorAsync(today, null, host.Clock.LocalNow().AddMinutes(-20), host.Clock.LocalNow(), () => { })),
+            ("day-ended", () => host.Flow.EndDayAsync()),
+        };
+
+        var seen = new List<string>();
+        foreach (var (name, show) in screens)
+        {
+            await show();
+            var screen = host.Window.Screen!;
+            var root = new Grid();
+            root.Children.Add(screen);
+            var page = new Border { Child = root };
+            LayOut(page);
+            Assert.All(Descendants<TextBlock>(page).Where(t => t.Name == "Word"), w => Assert.Equal(Visibility.Collapsed, w.Visibility));
+
+            WidgetCard.SetIsLarge(root, true);
+            root.LayoutTransform = new ScaleTransform(WidgetCard.LargeScale, WidgetCard.LargeScale);
+            LayOut(page);
+
+            // Every icon-only button on show says what it does, in a word beside or under its icon
+            var iconButtons = Descendants<Button>(page).Where(b => b.Content is Icon && Shown(b, page)).ToList();
+            seen.Add($"{name}: {string.Join(", ", iconButtons.Select(WidgetCard.GetWord))}");
+            Assert.All(iconButtons, b =>
+            {
+                Assert.False(string.IsNullOrWhiteSpace(WidgetCard.GetWord(b)), $"{name}: {b.ToolTip} has no word");
+                var word = Assert.Single(Descendants<TextBlock>(b), t => t.Name == "Word");
+                Assert.Equal(Visibility.Visible, word.Visibility);
+                Assert.Equal(WidgetCard.GetWord(b), word.Text);
+            });
+
+            page.Child = null;
+            root.Children.Clear();
+            page.Child = new Grid { LayoutTransform = root.LayoutTransform, Children = { screen } };
+            WidgetCard.SetIsLarge(page.Child, true);
+            LayOut(page);
+            RenderElement(page, $"large-{name}");
+            ((Grid)page.Child).Children.Clear();
+        }
+
+        // Answering a check-in, Log entry has no close button to show
+        Assert.Equal(
+            "settings: Back | more-options: Back | working-days: Back | help: Back | manage-lists: Back, Add, Edit, Add, Edit"
+            + " | check-in: Close | log-entry:  | end-day: Close | sign-in: Close | timesheet: Back, Previous, Next, Edit, Delete"
+            + " | entry-edit: Close | day-ended: Close",
+            string.Join(" | ", seen));
+    });
+
+    [Fact]
+    public Task LargeView_DropdownsAndMenusTakeThePopupScale() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+
+        // What the window does when large view comes on (screens in the window hear of the change; these are built after it)
+        Application.Current.Resources["PopupScale"] = new ScaleTransform(WidgetCard.LargeScale, WidgetCard.LargeScale);
+        try
+        {
+            host.Flow.ShowSettings();
+            var settings = Assert.IsType<SettingsView>(host.Window.Screen);
+            Render(settings, "settings-popup-scale");
+            var interval = (ComboBox)settings.FindName("IntervalSelect");
+            var popup = (Popup)interval.Template.FindName("PART_Popup", interval);
+            var menu = new ContextMenu { Style = (Style)Application.Current.FindResource("Menu.Dropdown") };
+            Assert.Equal(WidgetCard.LargeScale, Assert.IsType<ScaleTransform>(((FrameworkElement)popup.Child).LayoutTransform).ScaleX);
+            Assert.Equal(WidgetCard.LargeScale, Assert.IsType<ScaleTransform>(menu.LayoutTransform).ScaleX);
+        }
+        finally
+        {
+            Application.Current.Resources.Remove("PopupScale");
+        }
+
+        // Normal size: the theme's own PopupScale, no change at all
+        var plain = new ContextMenu { Style = (Style)Application.Current.FindResource("Menu.Dropdown") };
+        Assert.Equal(1, Assert.IsType<ScaleTransform>(plain.LayoutTransform).ScaleX);
+    });
+
+    // Shown on the page: it and everything above it up to the page are visible
+    private static bool Shown(FrameworkElement element, DependencyObject page)
+    {
+        for (DependencyObject? at = element; at != null && at != page; at = VisualTreeHelper.GetParent(at))
+            if (at is UIElement { Visibility: not Visibility.Visible })
+                return false;
+        return true;
+    }
+
+    // Measures and arranges an element at its own size, with room for large view
+    private static void LayOut(FrameworkElement element)
+    {
+        element.Measure(new Size(800, double.PositiveInfinity));
+        element.Arrange(new Rect(element.DesiredSize));
+        element.UpdateLayout();
+    }
+
+    [Fact]
     public Task LogRangeRefreshesAfterEntry_AndTrayUsesExistingLogScreen() => OnUi(async () =>
     {
         using var host = await TestHost.CreateAsync();
@@ -487,6 +673,127 @@ public class ReminderFlowTests
         await WaitFor(async () => await TimesOf(first) == (At(8, 0), At(9, 0)));
         Assert.Equal((At(9, 0), At(9, 30)), await TimesOf(second));
     });
+
+    [Fact]
+    public Task Timesheet_MaximiseOpensTheWideWindow_RestoreComesBack_AndTheChoiceIsRemembered() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var shown = new List<Window>();
+        host.Flow.ShowWindow = shown.Add;
+        await host.Flow.StartTrackingAsync();
+        await host.SeedEntryAsync();
+        host.Clock.UtcNow += TimeSpan.FromMinutes(30);
+        var today = DateOnly.FromDateTime(host.Clock.LocalNow());
+        var backs = 0;
+        void Back()
+        {
+            backs++;
+            host.Flow.ShowTimer();
+        }
+
+        // The small page carries the status line, and opens first
+        await host.Flow.ShowTimesheetAsync(today, Back);
+        var small = Assert.IsType<TimesheetReviewView>(host.Window.Screen);
+        Assert.Equal(host.Flow.Status, WidgetCard.GetStatus(small));
+        Assert.Equal("Not sent yet", ((TextBlock)small.FindName("BadgeText")).Text);
+
+        // Maximise opens the wide window on the same day; the widget goes back to where the timesheet was opened from
+        Click((Button)small.FindName("MaximiseButton"));
+        await WaitFor(() => shown.Count == 1);
+        var wide = Assert.IsType<TimesheetWindow>(shown[0]);
+        Assert.True(host.Flow.Session.Preferences.TimesheetWide);
+        Assert.Equal(1, backs);
+        Assert.IsType<TimerView>(host.Window.Screen);
+        Assert.Equal(Format.Date(today), ((TextBlock)wide.FindName("DayText")).Text);
+        Assert.Single(((StackPanel)wide.FindName("Rows")).Children);
+
+        // From anywhere else, such as the tray, it now opens wide too, and the widget stays as it is
+        await host.Flow.ShowTimesheetAsync(today, host.Flow.ShowFromTray);
+        Assert.Equal(2, shown.Count);
+        Assert.Same(wide, shown[1]);
+        Assert.IsType<TimerView>(host.Window.Screen);
+
+        // Restore: the small page in the widget again, on the same day, and that is how it opens from now on
+        Click((Button)wide.FindName("RestoreButton"));
+        await WaitFor(() => host.Window.Screen is TimesheetReviewView);
+        Assert.False(host.Flow.Session.Preferences.TimesheetWide);
+        await host.Flow.ShowTimesheetAsync(today, Back);
+        Assert.Equal(2, shown.Count);
+    });
+
+    [Fact]
+    public Task WideTimesheet_EditsInPlace_AsksBeforeChangingANeighbour_AndUndoPutsBothBack() => OnUi(async () =>
+    {
+        using var host = await TestHost.CreateAsync();
+        var shown = new List<Window>();
+        host.Flow.ShowWindow = shown.Add;
+        var userId = host.Flow.Session.User.UserId;
+        var day = DateOnly.FromDateTime(host.Clock.LocalNow());
+        DateTime At(int hour, int minute) => day.ToDateTime(new TimeOnly(hour, minute));
+        string[] project = ["Client A", "Project A"];
+        var first = (await host.Flow.AddEntryAsync(new EntryEdit(At(8, 0), At(9, 0), project, ["Coding"], "first"))).EntryId!.Value;
+        var second = (await host.Flow.AddEntryAsync(new EntryEdit(At(9, 0), At(9, 30), project, ["Coding"], null))).EntryId!.Value;
+        // The test clock reads 10:00, and time can't be logged ahead of it
+        Assert.True((await host.Flow.AddEntryAsync(new EntryEdit(At(9, 30), At(9, 50), project, ["Coding"], "Weekly plan"))).Ok);
+
+        async Task<(DateTime Start, DateTime End)> TimesOf(int id)
+        {
+            var slot = (await host.Flow.GetTimesheetAsync(userId, day)).Single(s => s.EntryId == id);
+            return (slot.Start, slot.End);
+        }
+
+        await host.Flow.ShowWideTimesheetAsync(day, () => { });
+        var wide = Assert.IsType<TimesheetWindow>(shown.Single());
+        var rows = (StackPanel)wide.FindName("Rows");
+        Assert.Equal(3, rows.Children.Count);
+        RenderWindow(wide, "wide-timesheet", large: false);
+        wide.ApplySize(true);
+        RenderWindow(wide, "wide-timesheet-large", large: true);
+
+        // Edit turns the row into its boxes and pickers, with Save and Cancel in place of Edit and Delete
+        Click(Descendants<Button>(rows.Children[0]).First(b => WidgetCard.GetWord(b) == "Edit"));
+        await WaitFor(() => FindButton(rows, "Save") != null);
+        var boxes = Descendants<TextBox>(rows).ToList();
+        Assert.Equal(["8:00 AM", "9:00 AM", "first"], boxes.Select(b => b.Text));
+        Assert.NotNull(FindButton(rows, "Cancel"));
+
+        // Saving an end that runs into the next entry asks first, and stores nothing yet
+        boxes[1].Text = "8:45 AM";
+        Click(FindButton(rows, "Save")!);
+        static string TextOf(TextBlock block) => new TextRange(block.ContentStart, block.ContentEnd).Text;
+        await WaitFor(() => Descendants<TextBlock>(rows).Any(t => TextOf(t).StartsWith("This changes ")));
+        var banner = TextOf(Descendants<TextBlock>(rows).First(t => TextOf(t).StartsWith("This changes ")));
+        Assert.EndsWith(" to 8:45 – 9:30 AM. Continue?", banner);
+        Assert.Equal((At(8, 0), At(9, 0)), await TimesOf(first));
+        var yes = FindButton(rows, "Yes")!;
+        RenderWindow(wide, "wide-timesheet-banner-large", large: true);
+
+        // Yes saves both together, and offers an undo that reverses both
+        Click(yes);
+        await WaitFor(async () => await TimesOf(first) == (At(8, 0), At(8, 45)));
+        Assert.Equal((At(8, 45), At(9, 30)), await TimesOf(second));
+        var undoBar = (Grid)wide.FindName("UndoBar");
+        await WaitFor(() => undoBar.Visibility == Visibility.Visible);
+        Assert.Equal("Entry updated · other entries changed", ((TextBlock)wide.FindName("UndoText")).Text);
+        Click(FindButton(undoBar, "Undo")!);
+        await WaitFor(async () => await TimesOf(first) == (At(8, 0), At(9, 0)));
+        Assert.Equal((At(9, 0), At(9, 30)), await TimesOf(second));
+    });
+
+    // Saves the wide window's content as it would show, at its default size for the scale, when previews are asked for
+    private static void RenderWindow(Window window, string name, bool large)
+    {
+        var root = (FrameworkElement)window.Content;
+        window.Content = null;
+        var scale = large ? WidgetCard.LargeScale : 1;
+        var page = new Border { Width = 920 * scale, Height = 560 * scale, Child = root, Background = Brushes.White };
+        page.Measure(new Size(page.Width, page.Height));
+        page.Arrange(new Rect(0, 0, page.Width, page.Height));
+        page.UpdateLayout();
+        RenderElement(page, name);
+        page.Child = null;
+        window.Content = root;
+    }
 
     [Fact]
     public Task SignIn_AsksForTheCodeOnlyWhenTheDashboardNeedsOne() => OnUi(async () =>
@@ -826,7 +1133,9 @@ public class ReminderFlowTests
         Assert.Equal(Visibility.Visible, ((TextBlock)sheet.FindName("PastDayHelp")).Visibility);
         Assert.Equal(Visibility.Visible, ((Button)sheet.FindName("TodayButton")).Visibility);
         Assert.Equal("Send day", ((Button)sheet.FindName("SendButton")).Content);
-        Assert.Equal("Yesterday, Friday 23 Oct · 30m", ((TextBlock)sheet.FindName("Subtitle")).Text);
+        Assert.Equal("Fri 23 Oct", ((TextBlock)sheet.FindName("DayText")).Text);
+        Assert.Equal("30m", ((TextBlock)sheet.FindName("TotalText")).Text);
+        Assert.Equal("Yesterday, Friday 23 Oct · 30m", ((Button)sheet.FindName("DayButton")).ToolTip);
         Render(sheet, "timesheet-yesterday");
 
         host.History.Days.Add(new SentDay(friday, host.Clock.LocalNow(), 1, 0.5));
@@ -910,15 +1219,18 @@ public class ReminderFlowTests
         Assert.Equal(Visibility.Visible, ((Border)settings.FindName("LargerTextRow")).Visibility);
         Render(settings, "settings");
 
-        // Timing is on the main screen; the existing working-days screen stays in More options.
+        // Timing is on the main screen, the same drop-down with the tick box as Setup; the working-days screen stays in More options.
         Assert.Equal(Visibility.Visible, ((StackPanel)settings.FindName("MainView")).Visibility);
-        ((RadioButton)settings.FindName("ClockOption")).IsChecked = true;
+        var interval = (ComboBox)settings.FindName("IntervalSelect");
+        Assert.NotNull(interval.Tag);
+        ((CheckBox)settings.FindName("HalfHourBox")).IsChecked = true;
         await WaitUntil(() => host.Flow.Session.Preferences.CheckInTiming == CheckInTiming.OnTheHalfHour);
-        await WaitUntil(() => ((StackPanel)settings.FindName("IntervalField")).Visibility == Visibility.Collapsed);
+        Assert.Equal(-1, interval.SelectedIndex);
+        Assert.Equal(Visibility.Visible, ((StackPanel)settings.FindName("IntervalField")).Visibility);
         Render(settings, "settings-clock-times");
-        ((RadioButton)settings.FindName("IntervalOption")).IsChecked = true;
+        interval.SelectedItem = "30m";
         await WaitUntil(() => host.Flow.Session.Preferences.CheckInTiming == CheckInTiming.FromLastCheckIn);
-        await WaitUntil(() => ((StackPanel)settings.FindName("IntervalField")).Visibility == Visibility.Visible);
+        Assert.False(((CheckBox)settings.FindName("HalfHourBox")).IsChecked);
         settings.ShowAdvanced();
         Assert.Equal("Mon – Fri", ((TextBlock)settings.FindName("WorkingDaysSummary")).Text);
         Render(settings, "more-options");
@@ -973,9 +1285,9 @@ public class ReminderFlowTests
         var halfHour = (CheckBox)setup.FindName("HalfHourBox");
         var help = (TextBlock)setup.FindName("IntervalHelp");
 
-        // The date and state sit in the banner, not in a status line on the card
-        Assert.Equal(Visibility.Collapsed, ((StackPanel)setup.FindName("TimingSection")).Visibility);
+        // The date and state sit in the banner, not in a status line on the card; Larger text and buttons sits above More options
         Assert.Null(WidgetCard.GetStatus((WidgetCard)setup.FindName("Card")));
+        Assert.Equal(Visibility.Visible, ((Border)setup.FindName("LargerTextRow")).Visibility);
         Render(setup, "setup");
         Assert.Equal(host.Flow.Status, ((Grid)setup.FindName("BannerStatus")).DataContext);
 
@@ -992,11 +1304,10 @@ public class ReminderFlowTests
         Assert.Equal(20, host.Flow.Session.Settings.CheckInIntervalMinutes);
         Assert.Equal(["15m", "20m", "30m", "45m", "1h", "1h 30m", "2h", "3h"], interval.Items.Cast<string>());
 
-        // Settings keeps its own Interval / Clock times choice, so its drop-down is just the intervals
+        // Settings has the same drop-down, with the tick box above the intervals
         host.Flow.ShowSettings();
         var settings = Assert.IsType<SettingsView>(host.Window.Screen);
-        Assert.Null(((ComboBox)settings.FindName("IntervalSelect")).Tag);
-        Assert.Equal(Visibility.Visible, ((StackPanel)settings.FindName("TimingSection")).Visibility);
+        Assert.NotNull(((ComboBox)settings.FindName("IntervalSelect")).Tag);
     });
 
     [Fact]
@@ -1185,6 +1496,8 @@ public class ReminderFlowTests
         }
         public int Hides { get; private set; }
         public void HideWidget() => Hides++;
+        public int SizeApplied { get; private set; }
+        public void ApplySize() => SizeApplied++;
     }
 
     private sealed class FakeDashboard : HttpMessageHandler

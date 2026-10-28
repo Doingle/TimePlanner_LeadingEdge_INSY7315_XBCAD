@@ -175,15 +175,18 @@
                         <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False" PopupAnimation="None"
                            IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                            PlacementTarget="{Binding ElementName=Root}" controls:PopupPlacement.Kind="Dropdown">
-                            <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}" Width="{Binding ActualWidth, ElementName=Root}"
-                              TextElement.FontWeight="{StaticResource FontWeightRegular}">
-                                <Border Style="{StaticResource Menu.Shadow}" />
-                                <Border Style="{StaticResource Menu.Panel}">
-                                    <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}" VerticalScrollBarVisibility="Auto"
-                                              HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
-                                    </ScrollViewer>
-                                </Border>
+                            <!-- Large view: the list grows with the widget, shadow room and all (PopupScale) -->
+                            <Grid LayoutTransform="{DynamicResource PopupScale}">
+                                <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}" Width="{Binding ActualWidth, ElementName=Root}"
+                                  TextElement.FontWeight="{StaticResource FontWeightRegular}">
+                                    <Border Style="{StaticResource Menu.Shadow}" />
+                                    <Border Style="{StaticResource Menu.Panel}">
+                                        <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}" VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                                        </ScrollViewer>
+                                    </Border>
+                                </Grid>
                             </Grid>
                         </Popup>
                     </Grid>

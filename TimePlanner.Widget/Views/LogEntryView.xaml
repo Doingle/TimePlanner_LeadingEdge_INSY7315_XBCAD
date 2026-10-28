@@ -6,7 +6,7 @@
     
     <controls:WidgetCard x:Name="Card">
         <controls:WidgetCard.CornerContent>
-            <Button x:Name="CancelButton" Style="{StaticResource Button.Icon}" ToolTip="Cancel"
+            <Button x:Name="CancelButton" Style="{StaticResource Button.IconWord}" controls:WidgetCard.Word="Close" ToolTip="Cancel"
                     AutomationProperties.Name="Cancel" Visibility="Collapsed" Click="Cancel_Click">
                 <controls:Icon Kind="Close" />
             </Button>

@@ -54,6 +54,12 @@
             </Setter>
         </Style>
 
+        <!-- Edit and + on a row: 32 square, and in large view an outlined "✎ Edit" / "+ Add" -->
+        <Style x:Key="RowIconButton" TargetType="Button" BasedOn="{StaticResource Button.IconWordSide}">
+            <Setter Property="Width" Value="{StaticResource Space32}" />
+            <Setter Property="Height" Value="{StaticResource Space32}" />
+        </Style>
+
         <!-- The thin scrollbar the Help screen uses -->
         <Style x:Key="ThinScrollBar" TargetType="ScrollBar">
             <Setter Property="Width" Value="{StaticResource Space8}" />
@@ -97,7 +103,7 @@
 
             <StackPanel Grid.Row="0">
                 <DockPanel Margin="-8,0,0,0">
-                    <Button x:Name="BackButton" Style="{StaticResource Button.Icon}" ToolTip="Back"
+                    <Button x:Name="BackButton" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back"
                             AutomationProperties.Name="Back to settings" Click="Back_Click">
                         <controls:Icon Kind="ChevronLeft" />
                     </Button>

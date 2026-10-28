@@ -35,6 +35,9 @@ namespace TimePlanner.Widget.Controls
         Copy,
         Help,
         Info,
+        Maximise, ArrowLeft,
+        Calendar,
+        Trash,
     }
 
     public sealed class Icon : FrameworkElement
@@ -193,6 +196,15 @@ namespace TimePlanner.Widget.Controls
                 new(Freeze(new RectangleGeometry(new Rect(8, 8, 12, 12), 2, 2))),
                 P("M16,8 V4 A2,2 0 0 0 14,2 H4 A2,2 0 0 0 2,4 V14 A2,2 0 0 0 4,16 H8"),
             ],
+            // The Timesheet's wide window: a square opens it, an arrow goes back to the small one
+            [IconKind.Maximise] = [new(Freeze(new RectangleGeometry(new Rect(5, 5, 14, 14), 2, 2)))],
+            [IconKind.ArrowLeft] = [P("M19,12 H5"), P("M11,18 L5,12 L11,6")],
+            [IconKind.Calendar] =
+            [
+                new(Freeze(new RectangleGeometry(new Rect(4, 5, 16, 16), 2, 2))),
+                P("M8,3 V7"), P("M16,3 V7"), P("M4,10 H20"),
+            ],
+            [IconKind.Trash] = [P("M4,6 H20"), P("M18,6 V20 A2,2 0 0 1 16,22 H8 A2,2 0 0 1 6,20 V6"), P("M9,6 V4 A2,2 0 0 1 11,2 H13 A2,2 0 0 1 15,4 V6")],
         };
     }
 }

@@ -9,11 +9,12 @@
             <StackPanel x:Name="MainView">
                 <!-- header -->
                 <DockPanel Margin="-8,0,0,0">
-                    <Button Style="{StaticResource Button.Icon}" ToolTip="Back to Settings" AutomationProperties.Name="Back to Settings" Click="Back_Click">
+                    <Button Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back to Settings" AutomationProperties.Name="Back to Settings" Click="Back_Click">
                         <controls:Icon Kind="ChevronLeft" />
                     </Button>
+                    <!-- 24 tall with round ends: the radius is half the height, as a larger one would draw an oval -->
                     <Border x:Name="DevBadge" DockPanel.Dock="Right" Background="{DynamicResource ActionBrush}"
-                            CornerRadius="{DynamicResource RadiusFull}" Padding="6,2" Margin="8,0,0,0" VerticalAlignment="Center" Visibility="Collapsed">
+                            CornerRadius="{DynamicResource RadiusSwitch}" Padding="6,4" Margin="8,0,0,0" VerticalAlignment="Center" Visibility="Collapsed">
                         <TextBlock Text="Dev" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource TextOnActionBrush}" />
                     </Border>
                     <TextBlock Style="{StaticResource Text.Title}" Text="Voice and AI" Margin="4,0,0,0" VerticalAlignment="Center" />

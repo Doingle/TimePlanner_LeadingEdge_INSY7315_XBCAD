@@ -146,6 +146,7 @@ namespace TimePlanner.Widget.Views
             CaptionText.Text = "Speak naturally. Mention the client, what you did, any problem and how you fixed it.";
             CaptionText.ClearValue(TextBlock.ForegroundProperty);
             RecordIcon.Kind = IconKind.Stop;
+            RecordWord.Text = "Stop";
             ActiveRecordingIndicator.Visibility = Visibility.Visible;
 
             //start pulsing dot animation if enabled in windows
@@ -191,6 +192,7 @@ namespace TimePlanner.Widget.Views
         private void OnRecorderStopped(string? path, TimeSpan length, string? error)
         {
             RecordIcon.Kind = IconKind.Mic;
+            RecordWord.Text = "Record";
             ActiveRecordingIndicator.Visibility = Visibility.Collapsed;
             PulsingDot.BeginAnimation(UIElement.OpacityProperty, null);
 

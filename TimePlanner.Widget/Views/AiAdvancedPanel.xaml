@@ -5,7 +5,7 @@
     <StackPanel>
         <!-- header -->
         <DockPanel Margin="-8,0,0,0">
-            <Button Style="{StaticResource Button.Icon}" ToolTip="Back to Voice and AI" AutomationProperties.Name="Back to Voice and AI" Click="Close_Click">
+            <Button Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back to Voice and AI" AutomationProperties.Name="Back to Voice and AI" Click="Close_Click">
                 <controls:Icon Kind="ChevronLeft" />
             </Button>
             <TextBlock Style="{StaticResource Text.Title}" Text="Advanced" Margin="4,0,0,0" VerticalAlignment="Center" />
@@ -104,7 +104,7 @@
                 <StackPanel Margin="0,8,0,0">
                     <TextBlock Style="{StaticResource Text.Label}" Text="Ollama model" />
                     <DockPanel>
-                        <Button x:Name="RefreshOllamaModelsButton" DockPanel.Dock="Right" Style="{StaticResource Button.Icon}"
+                        <Button x:Name="RefreshOllamaModelsButton" DockPanel.Dock="Right" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Refresh"
                                 Margin="8,0,0,0" ToolTip="Refresh the list" AutomationProperties.Name="Refresh the list"
                                 Click="RefreshOllamaModels_Click">
                             <controls:Icon Kind="Download" />

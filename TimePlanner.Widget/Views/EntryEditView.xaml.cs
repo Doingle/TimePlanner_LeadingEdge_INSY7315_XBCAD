@@ -270,8 +270,8 @@ namespace TimePlanner.Widget.Views
         }
 
         //-----------------------------
-        //builds project tree from project list
-        private static List<ActivityNode> BuildProjectTree(IReadOnlyList<Project> projects)
+        //builds project tree from project list (the wide timesheet's rows use it too)
+        internal static List<ActivityNode> BuildProjectTree(IReadOnlyList<Project> projects)
         {
             var result = new List<ActivityNode>();
             var grouped = projects

@@ -54,10 +54,29 @@ namespace TimePlanner.Widget.Models
 
             //a day sent before goes again, which replaces it on the dashboard
             SendLabel = sent != null ? "Send again" : "Send day";
+
+            //the date bar: the day on its button, the total, and the send state as a short badge that warns until the day is sent
+            DayText = day.ToString("ddd d MMM", System.Globalization.CultureInfo.InvariantCulture);
+            LongDayText = Format.Date(day);
+            Total = Format.Duration(TimeSpan.FromMinutes(totalLogged));
+            (Badge, BadgeWarns) = pending is { Rejected: false } ? ("Waiting to send", true)
+                : pending is { Rejected: true } ? ("Not sent", true)
+                : sent == null ? ("Not sent yet", true)
+                : sent.ChangedAt > sent.SentAt ? ("Changed since sent", true)
+                : (Status, false);
+            ShowsStatus = pending != null;
         }
+
+        // A send on its way or refused has more to say than its badge, so its full status shows under the date bar
+        public bool ShowsStatus { get; }
 
         public string Subtitle { get; }
         public string Status { get; }
+        public string DayText { get; }
+        public string LongDayText { get; }
+        public string Total { get; }
+        public string Badge { get; }
+        public bool BadgeWarns { get; }
         public string SendLabel { get; }
         public bool IsPastDay { get; }
         public bool CanSend => _preview.CanSend;

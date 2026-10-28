@@ -56,6 +56,22 @@
                             Style="{StaticResource Button.Primary}">
                         <controls:Icon x:Name="RecordIcon" Kind="Mic" Size="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Button>
+                    <!-- Large view: the button's word under it -->
+                    <TextBlock x:Name="RecordWord" Text="Record" HorizontalAlignment="Center" Margin="0,4,0,0"
+                               FontSize="{StaticResource FontSizeCaption}" LineHeight="{StaticResource LineHeightCaption}"
+                               LineStackingStrategy="BlockLineHeight" FontWeight="{StaticResource FontWeightSemibold}"
+                               Foreground="{StaticResource TextSecondaryBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <Trigger Property="controls:WidgetCard.IsLarge" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </StackPanel>
 
                 <!-- Active Recording Status -->

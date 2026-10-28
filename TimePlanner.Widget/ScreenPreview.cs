@@ -55,6 +55,15 @@ namespace TimePlanner.Widget
                 s.Flow.ShowTimer(activate: true);
             }, WithEntries: false),
 
+            new("timer-large", "Large view", "Timer, running", Large(async s => (await Afternoon(s, 15, 23)).ShowTimer(activate: true))),
+            new("timer-paused-large", "Large view", "Timer, paused", Large(async s =>
+            {
+                await s.StartDayAtAsync(9, 57);
+                await s.At(10, 15).Flow.Scheduler.PauseAsync();
+                await s.At(10, 20).Flow.Scheduler.RefreshAsync();
+                s.Flow.ShowTimer(activate: true);
+            }), WithEntries: false),
+
             new("log-entry", "Log entry", "Activity chosen", async s => await (await Afternoon(s, 16, 35)).LogTimeAsync(LogEntryMode.CheckIn)),
             new("log-now", "Log entry", "Opened early with Log now", async s =>
             {
@@ -94,6 +103,24 @@ namespace TimePlanner.Widget
                 flow.ShowTimesheet(await flow.EndDayAsync());
             }),
 
+            new("timesheet-wide", "Day ended", "Timesheet, wide window", async s =>
+            {
+                var flow = await Afternoon(s, 16, 35);
+                await flow.EndDayAsync();
+                await flow.ShowWideTimesheetAsync(DateOnly.FromDateTime(PreviewSession.Day), flow.ShowFromTray);
+            }),
+            new("timesheet-large", "Large view", "Timesheet", Large(async s =>
+            {
+                var flow = await Afternoon(s, 16, 35);
+                flow.ShowTimesheet(await flow.EndDayAsync());
+            })),
+            new("timesheet-wide-large", "Large view", "Timesheet, wide window", Large(async s =>
+            {
+                var flow = await Afternoon(s, 16, 35);
+                await flow.EndDayAsync();
+                await flow.ShowWideTimesheetAsync(DateOnly.FromDateTime(PreviewSession.Day), flow.ShowFromTray);
+            })),
+
             new("check-in", "Check-in alert", "Check-in alert", async s => (await Afternoon(s, 16, 35)).CheckIn()),
 
             new("ai-settings", "Voice and AI", "Voice and AI settings", async s =>
@@ -115,6 +142,13 @@ namespace TimePlanner.Widget
         {
             show(s);
             return Task.CompletedTask;
+        };
+
+        // The same figure with "Larger text and buttons" on
+        private static Func<PreviewSession, Task> Large(Func<PreviewSession, Task> show) => s =>
+        {
+            s.Flow.Session.Preferences.LargerText = true;
+            return show(s);
         };
 
         // The spec's afternoon: the day running since the 3:05 PM check-in, at the given time

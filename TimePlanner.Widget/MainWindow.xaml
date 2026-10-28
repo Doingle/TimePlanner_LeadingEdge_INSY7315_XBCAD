@@ -17,7 +17,8 @@
         FontFamily="{StaticResource FontFamily}"
         FontSize="{StaticResource FontSizeBody}"
         Foreground="{StaticResource TextPrimaryBrush}">
-    <Grid Margin="{x:Static local:MainWindow.ShadowMargin}">
+    <!-- Large view scales this, inside the shadow margin, so every screen and its click areas grow together -->
+    <Grid x:Name="Root" Margin="{x:Static local:MainWindow.ShadowMargin}">
         <ContentControl x:Name="Host" Focusable="False" IsTabStop="False" />
         <views:UpdateAvailableView x:Name="UpdateNotice" Visibility="Collapsed" />
     </Grid>
