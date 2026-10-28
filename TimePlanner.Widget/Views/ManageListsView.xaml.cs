@@ -249,10 +249,11 @@ namespace TimePlanner.Widget.Views
                 FontWeight = Res<FontWeight>("FontWeightSemibold"),
                 VerticalAlignment = VerticalAlignment.Center,
             });
+            // A circle for one digit and round ends for more: the radius is half its height, as a larger one would draw an oval
             label.Children.Add(new Border
             {
                 Background = Res<Brush>("SurfaceSubtleBrush"),
-                CornerRadius = Res<CornerRadius>("RadiusFull"),
+                CornerRadius = new CornerRadius(Res<double>("SizeIcon") / 2),
                 MinWidth = Res<double>("SizeIcon"),
                 Height = Res<double>("SizeIcon"),
                 Padding = new Thickness(6, 0, 6, 0),
