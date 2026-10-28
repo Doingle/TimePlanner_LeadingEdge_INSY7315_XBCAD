@@ -88,9 +88,10 @@ namespace TimePlanner.Widget
                     _ = Reminder.RefreshAsync(Scheduler.EndedToday);
                     _ = RetryPendingSendsAsync();
                 }
-                // Keeps the status line's date and tracking dot current on the screens that show it
+                // Keeps the status line's date and tracking dot current on the screens that show it, and on the wide timesheet
                 if (_view != null && ShowsStatus(_screen))
                     WidgetCard.SetStatus(_view, Status);
+                _wide?.ShowStatus(Status);
                 if (_screen is Screen.Idle or Screen.Timer && Scheduler.IsDue)
                     CheckIn(announce: true);
             };
@@ -135,10 +136,10 @@ namespace TimePlanner.Widget
             }
         }
 
-        // Only the screens about tracking time carry the status line; Settings, Help, Timesheet and the rest don't
+        // Only the screens about tracking time carry the status line, and the Timesheet; Settings, Help and the rest don't
         private static bool ShowsStatus(Screen screen) =>
             screen is Screen.Setup or Screen.Timer or Screen.CheckIn or Screen.LogEntry or Screen.EntrySaved
-                or Screen.EndDay or Screen.DayEnded;
+                or Screen.EndDay or Screen.DayEnded or Screen.Timesheet;
 
         // The ended day shows first: one ended today, or one the widget closed because it was left open overnight
         private bool ShowsEndedDay => _endedDay != null
@@ -574,13 +575,92 @@ namespace TimePlanner.Widget
         public void ShowTimesheet(DaySummary day) => _ = ShowTimesheetAsync(DateOnly.FromDateTime(day.Day), () => ShowDayEnded(day));
 
         //-----------------------------
-        //loads and shows one day of the timesheet
+        //loads and shows one day of the timesheet, the way it was last left: the page in the widget, or the wide window
         public async Task ShowTimesheetAsync(DateOnly day, Action back, bool sendNow = false)
+        {
+            if (Session.Preferences.TimesheetWide)
+            {
+                await ShowWideTimesheetAsync(day, back, sendNow);
+                return;
+            }
+
+            var (slots, preview, sent, pending) = await LoadTimesheetAsync(day);
+            Present(Screen.Timesheet, new TimesheetReviewView(this, day, slots, preview, sent, back, pending, sendNow));
+        }
+
+        //-----------------------------
+        //one day of the timesheet: its slots, and whether it went to the dashboard
+        public async Task<(IReadOnlyList<TimesheetSlot> Slots, DayPreview Preview, SentDay? Sent, PendingDay? Pending)> LoadTimesheetAsync(DateOnly day)
         {
             var slots = await _log.GetTimesheetAsync(Session.User.UserId, day);
             var (preview, sent, pending) = await _log.GetSendStateAsync(Session.User.UserId, day);
-            Present(Screen.Timesheet, new TimesheetReviewView(this, day, slots, preview, sent, back, pending, sendNow));
+            return (slots, preview, sent, pending);
         }
+
+        //-----------------------------
+        //the wide timesheet window, and where the widget goes back to when it is restored to the small page
+        private TimesheetWindow? _wide;
+        private Action _wideBack = () => { };
+
+        //how a window is put on screen; the tests swap it so none shows
+        public Action<Window> ShowWindow { get; set; } = window =>
+        {
+            window.Show();
+            if (window.WindowState == WindowState.Minimized)
+                window.WindowState = WindowState.Normal;
+            window.Activate();
+        };
+
+        //-----------------------------
+        //opens the timesheet in its wide window, which is how it opens from now on. The widget leaves the timesheet
+        //(and a sign-in a send from it led to) for where the timesheet was opened from
+        public async Task ShowWideTimesheetAsync(DateOnly day, Action back, bool sendNow = false)
+        {
+            if (!Session.Preferences.TimesheetWide)
+            {
+                Session.Preferences.TimesheetWide = true;
+                SavePreferences();
+            }
+            _wideBack = back;
+
+            var (slots, preview, sent, pending) = await LoadTimesheetAsync(day);
+            if (_wide == null)
+            {
+                _wide = new TimesheetWindow(this);
+                _wide.Closed += (_, _) => _wide = null;
+            }
+            _wide.ApplySize(Session.Preferences.LargerText);
+            _wide.ShowStatus(Status);
+            _wide.Load(day, slots, preview, sent, pending, sendNow);
+            ShowWindow(_wide);
+
+            if (_screen is Screen.Timesheet or Screen.SignIn)
+                back();
+        }
+
+        //-----------------------------
+        //shows another day, or the same one again after a change, in the wide window
+        public Task ReopenWideTimesheetAsync(DateOnly day) => ShowWideTimesheetAsync(day, _wideBack);
+
+        //-----------------------------
+        //Restore: the wide window closes and the widget shows the same day on the small page, which is how it opens from now on
+        public Task RestoreTimesheetAsync(DateOnly day)
+        {
+            Session.Preferences.TimesheetWide = false;
+            SavePreferences();
+            var wide = _wide;
+            _wide = null;
+            wide?.Close();
+            return ShowTimesheetAsync(day, _wideBack);
+        }
+
+        //-----------------------------
+        //the projects to log against, for the wide timesheet's rows
+        public Task<List<Core.Domain.Entities.Project>> GetProjectsAsync() => _log.GetProjectsAsync();
+
+        //-----------------------------
+        //puts back the entries an edit changed, for the wide timesheet's undo
+        public Task<EditResult> RestoreEntriesAsync(EditResult saved) => _log.RestoreEntriesAsync(Session.User.UserId, saved);
 
         //-----------------------------
         //gets timesheet slots for a user and day
@@ -727,6 +807,7 @@ namespace TimePlanner.Widget
             Session.Preferences.LargerText = on;
             SavePreferences();
             _host.ApplySize();
+            _wide?.ApplySize(on);
         }
 
         /// <summary>

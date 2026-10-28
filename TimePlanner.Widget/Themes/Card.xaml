@@ -165,6 +165,27 @@
         <Setter Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
     </Style>
 
+    <!-- A small rounded label beside other text, such as a timesheet's send state ("Sent 3:05 PM"). 24 tall with round ends:
+         the radius is half the height, as a larger one would draw an oval -->
+    <Style x:Key="Pill" TargetType="Border">
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusSwitch}" />
+        <Setter Property="Padding" Value="8,3" />
+        <Setter Property="BorderThickness" Value="{DynamicResource BorderWidth}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="TextElement.FontSize" Value="{StaticResource FontSizeCaption}" />
+        <Setter Property="TextElement.FontWeight" Value="{StaticResource FontWeightSemibold}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- The same in the warning colours, for something still to do ("Not sent yet") -->
+    <Style x:Key="Pill.Warning" TargetType="Border" BasedOn="{StaticResource Pill}">
+        <Setter Property="BorderBrush" Value="{StaticResource WarningBorderBrush}" />
+        <Setter Property="Background" Value="{StaticResource WarningFillBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource WarningTextBrush}" />
+    </Style>
+
     <!-- Text-button row: one 40px row; a lone text button centres in it -->
     <Style x:Key="FootRow" TargetType="Grid">
         <Setter Property="MinHeight" Value="{StaticResource SizeControl}" />
