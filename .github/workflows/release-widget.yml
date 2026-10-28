@@ -1,4 +1,4 @@
-# builds the widget as a self contained zip that runs on any Windows 10/11 64 bit machine without installing .NET.
+# builds the widget as a self contained folder, zipped and packed into an installer that runs on any Windows 10/11 64 bit machine without installing .NET.
 # Push a tag such as v1.0.0 and the zip, with a checksum file, is attached to a GitHub Release. Run it by hand to get the zip as a build artifact without a release.
 name: Release Widget
 
@@ -51,10 +51,16 @@ jobs:
           if ($env:DASHBOARD_URL -and -not $env:DASHBOARD_URL.StartsWith('https://')) { throw "Dashboard URL must start with https://" }
           dotnet publish TimePlanner.Widget/TimePlanner.Widget.csproj `
             --configuration Release --runtime win-x64 --self-contained true `
-            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:Version=$env:VERSION `
             "-p:DashboardUrl=$env:DASHBOARD_URL" `
             --output publish/widget
+
+      # voice transcription needs Whisper's native files beside the exe, a single-file build hides them and voice silently returns nothing
+      - name: Check the voice engine is included
+        run: |
+          $engine = Get-ChildItem publish/widget -Recurse -Filter whisper.dll
+          if (-not $engine) { throw "whisper.dll is missing from the published widget, voice would not work" }
+          $engine | ForEach-Object { $_.FullName.Substring((Resolve-Path publish/widget).Path.Length) }
 
       - name: Build the installer
         run: |
