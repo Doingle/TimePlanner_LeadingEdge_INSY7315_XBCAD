@@ -103,6 +103,24 @@ namespace TimePlanner.Widget
                 flow.ShowTimesheet(await flow.EndDayAsync());
             }),
 
+            new("timesheet-wide", "Day ended", "Timesheet, wide window", async s =>
+            {
+                var flow = await Afternoon(s, 16, 35);
+                await flow.EndDayAsync();
+                await flow.ShowWideTimesheetAsync(DateOnly.FromDateTime(PreviewSession.Day), flow.ShowFromTray);
+            }),
+            new("timesheet-large", "Large view", "Timesheet", Large(async s =>
+            {
+                var flow = await Afternoon(s, 16, 35);
+                flow.ShowTimesheet(await flow.EndDayAsync());
+            })),
+            new("timesheet-wide-large", "Large view", "Timesheet, wide window", Large(async s =>
+            {
+                var flow = await Afternoon(s, 16, 35);
+                await flow.EndDayAsync();
+                await flow.ShowWideTimesheetAsync(DateOnly.FromDateTime(PreviewSession.Day), flow.ShowFromTray);
+            })),
+
             new("check-in", "Check-in alert", "Check-in alert", async s => (await Afternoon(s, 16, 35)).CheckIn()),
 
             new("ai-settings", "Voice and AI", "Voice and AI settings", async s =>
