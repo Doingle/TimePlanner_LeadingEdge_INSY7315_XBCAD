@@ -49,59 +49,47 @@ namespace TimePlanner.Widget.Services.Ai
                         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                         "Programs", "Ollama", "ollama.exe");
 
-                    //verify ollama executable existence
-                    if (File.Exists(ollamaExe))
+                    //start silent managed ollama server
+                    if (await StartHiddenServerAsync(ollamaExe, ct))
                     {
-                        var psi = new ProcessStartInfo
-                        {
-                            FileName = ollamaExe,
-                            Arguments = "serve",
-                            UseShellExecute = false,
-                            CreateNoWindow = true,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true
-                        };
-                        psi.Environment["OLLAMA_HOST"] = "127.0.0.1:11434";
-
-                        var proc = new Process { StartInfo = psi };
-                        proc.OutputDataReceived += (_, _) => { };
-                        proc.ErrorDataReceived += (_, _) => { };
-
-                        //start process and discard streams
-                        if (proc.Start())
-                        {
-                            proc.BeginOutputReadLine();
-                            proc.BeginErrorReadLine();
-                            _startedProcess = proc;
-
-                            //poll for server response up to twenty seconds
-                            if (await PollVersionAsync(20, ct))
-                            {
-                                return true;
-                            }
-                        }
+                        return true;
                     }
                 }
                 //otherwise start user installed ollama app if present
                 else
                 {
                     var installed = OllamaInstaller.FindInstalledOllama();
-                    //start unmanaged ollama app
+                    //start unmanaged ollama instance
                     if (installed != null)
                     {
-                        try
+                        var dir = Path.GetDirectoryName(installed);
+                        var ollamaExe = dir != null ? Path.Combine(dir, "ollama.exe") : null;
+
+                        //start silent server when ollama.exe present
+                        if (ollamaExe != null && File.Exists(ollamaExe))
                         {
-                            Process.Start(new ProcessStartInfo(installed) { UseShellExecute = true });
-                            //poll for unmanaged server response up to twenty seconds
-                            if (await PollVersionAsync(20, ct))
+                            if (await StartHiddenServerAsync(ollamaExe, ct))
                             {
                                 return true;
                             }
                         }
-                        catch (Exception ex)
+                        //otherwise fall back to launching desktop app
+                        else
                         {
-                            //ignore start error
-                            Trace.TraceWarning($"Failed to start unmanaged Ollama app: {ex.Message}");
+                            try
+                            {
+                                Process.Start(new ProcessStartInfo(installed) { UseShellExecute = true });
+                                //poll for unmanaged server response up to twenty seconds
+                                if (await PollVersionAsync(20, ct))
+                                {
+                                    return true;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                //ignore start error
+                                Trace.TraceWarning($"Failed to start unmanaged Ollama app: {ex.Message}");
+                            }
                         }
                     }
                 }
@@ -112,6 +100,56 @@ namespace TimePlanner.Widget.Services.Ai
             {
                 _gate.Release();
             }
+        }
+
+        //-----------------------------
+        //starts silent ollama server process and polls until responding
+        private async Task<bool> StartHiddenServerAsync(string ollamaExe, CancellationToken ct)
+        {
+            //verify ollama executable existence
+            if (!File.Exists(ollamaExe))
+            {
+                return false;
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = ollamaExe,
+                Arguments = "serve",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            psi.Environment["OLLAMA_HOST"] = "127.0.0.1:11434";
+
+            var proc = new Process { StartInfo = psi };
+            proc.OutputDataReceived += (_, _) => { };
+            proc.ErrorDataReceived += (_, _) => { };
+
+            //start process and discard streams
+            try
+            {
+                if (proc.Start())
+                {
+                    proc.BeginOutputReadLine();
+                    proc.BeginErrorReadLine();
+                    _startedProcess = proc;
+
+                    //poll for server response up to twenty seconds
+                    if (await PollVersionAsync(20, ct))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                //ignore start error
+                Trace.TraceWarning($"Failed to start silent Ollama server: {ex.Message}");
+            }
+
+            return false;
         }
 
         //-----------------------------
