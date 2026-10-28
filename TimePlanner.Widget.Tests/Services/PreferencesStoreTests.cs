@@ -132,6 +132,33 @@ namespace TimePlanner.Widget.Tests.Services
         }
 
         //-----------------------------
+        //the timesheet opens the way it was last left: wide, at its window's saved place; a place that couldn't be a window is dropped
+        //without losing the rest, and a file from before the setting opens the small page
+        [Fact]
+        public void TimesheetWindow_RoundTrips_AndAnImpossiblePlaceIsDropped()
+        {
+            var path = Path.Combine(_dir, "widget.json");
+            var store = new PreferencesStore(path);
+            store.Save(new WidgetPreferences { TimesheetWide = true, TimesheetWindow = new WindowPlace(10, 20, 1200, 700, true), LargerText = true });
+
+            var loaded = store.Load();
+            Assert.True(loaded.TimesheetWide);
+            Assert.Equal(new WindowPlace(10, 20, 1200, 700, true), loaded.TimesheetWindow);
+            Assert.True(loaded.LargerText);
+
+            File.WriteAllText(path, """{ "TimesheetWide": true, "TimesheetWindow": { "Left": 0, "Top": 0, "Width": -5, "Height": 300, "Maximised": false }, "SoundOnCheckIn": false }""");
+            loaded = store.Load();
+            Assert.True(loaded.TimesheetWide);
+            Assert.Null(loaded.TimesheetWindow);
+            Assert.False(loaded.SoundOnCheckIn);
+
+            File.WriteAllText(path, """{ "SoundOnCheckIn": false }""");
+            loaded = store.Load();
+            Assert.False(loaded.TimesheetWide);
+            Assert.Null(loaded.TimesheetWindow);
+        }
+
+        //-----------------------------
         //round trip preserves every setting
         [Fact]
         public void RoundTrip_KeepsEverySetting()
