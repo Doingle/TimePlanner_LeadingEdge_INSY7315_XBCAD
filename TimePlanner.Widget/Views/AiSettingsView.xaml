@@ -3,6 +3,74 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
              xmlns:views="clr-namespace:TimePlanner.Widget.Views">
+    <UserControl.Resources>
+        <!-- The line under a screen's title -->
+        <Style x:Key="Ai.Intro" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,8,0,0" />
+        </Style>
+
+        <!-- Recommended install: the primary button grown to two left-aligned lines -->
+        <Style x:Key="Ai.ChoicePrimary" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+            <Setter Property="Height" Value="NaN" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+
+        <!-- Custom install: an outlined row with two lines and a chevron -->
+        <Style x:Key="Ai.ChoiceRow" TargetType="Button" BasedOn="{StaticResource NavRow}">
+            <Setter Property="Height" Value="NaN" />
+            <Setter Property="Padding" Value="16,12" />
+        </Style>
+
+        <!-- A step's circle, 24 round: done is a green tick on pale green, the current step a white number on purple,
+             a later step a grey number in an outline -->
+        <Style x:Key="Ai.StepCircle" TargetType="Border">
+            <Setter Property="Width" Value="{StaticResource Space24}" />
+            <Setter Property="Height" Value="{StaticResource Space24}" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusFull}" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="Ai.StepNumber" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}" />
+            <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- The thin line joining one step's circle to the next -->
+        <Style x:Key="Ai.StepLine" TargetType="Border">
+            <Setter Property="Width" Value="{DynamicResource Hairline}" />
+            <Setter Property="Background" Value="{StaticResource BorderSubtleBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,28,0,4" />
+        </Style>
+
+        <Style x:Key="Ai.StepTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+            <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+        </Style>
+        <Style x:Key="Ai.StepDetail" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+        </Style>
+
+        <!-- A model in a picker: its name, and its size at the right. Closed, the row takes the field's width less the
+             room the field keeps for its text and chevron (17 + 45), so the size sits by the chevron -->
+        <DataTemplate x:Key="Ai.ModelItem">
+            <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=ComboBox}}">
+                <DockPanel Margin="0,0,62,0">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding SizeEstimate}" Margin="8,0,0,0"
+                               Foreground="{StaticResource TextSecondaryBrush}" FontWeight="{StaticResource FontWeightRegular}" />
+                    <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
     <controls:WidgetCard AutomationProperties.Name="Voice and AI settings">
         <Grid>
             <!-- ========================= MAIN VIEW ========================= -->
@@ -20,60 +88,225 @@
                     <TextBlock Style="{StaticResource Text.Title}" Text="Voice and AI" Margin="4,0,0,0" VerticalAlignment="Center" />
                 </DockPanel>
 
-                <!-- setup card -->
-                <views:AiSetupCard x:Name="SetupCard" Margin="0,12,0,0" />
+                <!-- setup card: installing, a problem, organisation AI, or the slow PC hint -->
+                <views:AiSetupCard x:Name="SetupCard" Margin="0,12,0,0" Visibility="Collapsed" />
 
-                <!-- voice notes at check-ins -->
-                <DockPanel Margin="0,12,0,0" MinHeight="{StaticResource SizeControl}">
-                    <ToggleButton x:Name="VoiceEnabledSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}" Margin="16,0,0,0"
-                                  Checked="VoiceEnabled_Changed" Unchecked="VoiceEnabled_Changed" />
-                    <TextBlock Text="Voice notes at check-ins" Style="{StaticResource Text.Body}" VerticalAlignment="Center" />
-                </DockPanel>
+                <!-- ===== not set up: choose how to install ===== -->
+                <StackPanel x:Name="NotSetUpPanel" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource Ai.Intro}"
+                               Text="Voice notes and Build my day need a free AI engine and two models. Choose how to install them." />
 
-                <!-- build my day model -->
-                <StackPanel Margin="0,8,0,0">
-                    <TextBlock Style="{StaticResource Text.Label}" Text="Build my day model" />
-                    <DockPanel>
-                        <Button x:Name="DayModelDownloadButton" DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}"
-                                Margin="8,0,0,0" Visibility="Collapsed" Click="DayModelDownload_Click" />
-                        <ComboBox x:Name="DayModelSelect" Style="{StaticResource Select}" SelectionChanged="DayModel_SelectionChanged" />
-                    </DockPanel>
-                    <controls:BarProgress x:Name="DayModelProgressBar" Margin="0,4,0,0" Visibility="Collapsed" />
+                    <Button x:Name="RecommendedButton" Style="{StaticResource Ai.ChoicePrimary}" Margin="{StaticResource GapFieldToField}"
+                            ToolTip="Installs Ollama (the free AI engine) and two models, in order"
+                            AutomationProperties.Name="Recommended install: installs everything in order, about 2.2 GB" Click="Recommended_Click">
+                        <StackPanel>
+                            <TextBlock Text="Recommended install" />
+                            <TextBlock Text="Installs everything in order · about 2.2 GB" Margin="0,2,0,0" FontSize="{StaticResource FontSizeCaption}"
+                                       FontWeight="{StaticResource FontWeightRegular}" Foreground="{StaticResource TextOnActionSecondaryBrush}" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- or -->
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Border Height="{DynamicResource Hairline}" Background="{StaticResource BorderSubtleBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="or" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextTertiaryBrush}" Margin="12,0" />
+                        <Border Grid.Column="2" Height="{DynamicResource Hairline}" Background="{StaticResource BorderSubtleBrush}" VerticalAlignment="Center" />
+                    </Grid>
+
+                    <Button x:Name="CustomInstallButton" Style="{StaticResource Ai.ChoiceRow}" Margin="0,12,0,0"
+                            AutomationProperties.Name="Custom install: pick each part yourself, step by step" Click="OpenCustom_Click">
+                        <DockPanel>
+                            <controls:Icon Kind="ChevronRight" DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
+                            <StackPanel>
+                                <TextBlock Text="Custom install" FontWeight="{StaticResource FontWeightSemibold}" />
+                                <TextBlock Text="Pick each part yourself, step by step" Style="{StaticResource Ai.StepDetail}" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Button>
                 </StackPanel>
 
-                <!-- voice accuracy -->
-                <StackPanel Margin="0,8,0,0">
-                    <TextBlock Style="{StaticResource Text.Label}" Text="Voice accuracy" />
-                    <DockPanel>
-                        <Button x:Name="VoiceModelDownloadButton" DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}"
-                                Margin="8,0,0,0" Visibility="Collapsed" Click="VoiceModelDownload_Click" />
-                        <ComboBox x:Name="VoiceModelSelect" Style="{StaticResource Select}" SelectionChanged="VoiceModel_SelectionChanged" />
-                    </DockPanel>
-                    <controls:BarProgress x:Name="VoiceModelProgressBar" Margin="0,4,0,0" Visibility="Collapsed" />
+                <!-- ===== installed: voice switch and what's on this PC ===== -->
+                <StackPanel x:Name="InstalledPanel" Visibility="Collapsed">
+                    <!-- installed: one big tick and the words, while everything is ready -->
+                    <Border x:Name="InstalledStatus" Margin="{StaticResource GapFieldToField}" Padding="12" CornerRadius="{StaticResource RadiusControl}"
+                            Background="{StaticResource SuccessFillBrush}" BorderBrush="{StaticResource SuccessBorderBrush}"
+                            BorderThickness="{DynamicResource BorderWidth}" AutomationProperties.Name="AI is installed and ready">
+                        <DockPanel>
+                            <Border Width="{StaticResource SizeBadge}" Height="{StaticResource SizeBadge}" CornerRadius="{StaticResource RadiusFull}"
+                                    Background="{StaticResource SurfaceBrush}" VerticalAlignment="Center" Margin="0,0,12,0">
+                                <controls:Icon Kind="Check" Size="{StaticResource SizeIcon}" Foreground="{StaticResource LiveBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource Ai.StepTitle}" Margin="0" Text="AI is installed" />
+                                <TextBlock Style="{StaticResource Ai.StepDetail}" Text="Voice notes and Build my day are ready to use." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                    <!-- voice notes at check-ins: a plain row with its switch -->
+                    <Border Margin="0,8,0,0" Height="{StaticResource SizeControl}">
+                        <DockPanel>
+                            <ToggleButton x:Name="VoiceEnabledSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}" Margin="16,0,0,0"
+                                          VerticalAlignment="Center" AutomationProperties.LabeledBy="{Binding ElementName=VoiceEnabledLabel}"
+                                          Checked="VoiceEnabled_Changed" Unchecked="VoiceEnabled_Changed" />
+                            <TextBlock x:Name="VoiceEnabledLabel" Text="Voice notes at check-ins" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </Border>
+
+
+                    <Button x:Name="ChangeInstalledRow" Style="{StaticResource NavRow}" Margin="0,12,0,0" Click="OpenCustom_Click">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <TextBlock Text="Custom install" Margin="8,0,4,0" VerticalAlignment="Center" Foreground="{StaticResource TextTertiaryBrush}" />
+                                <controls:Icon Kind="ChevronRight" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
+                            </StackPanel>
+                            <TextBlock Text="Reinstall or change" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                    </Button>
                 </StackPanel>
 
                 <!-- advanced nav row -->
-                <Button x:Name="AdvancedRow" Style="{StaticResource NavRow}" Margin="{StaticResource GapFieldToField}" Click="OpenAdvanced_Click">
+                <Button x:Name="AdvancedRow" Style="{StaticResource NavRow}" Margin="0,12,0,0" Click="OpenAdvanced_Click">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                            <TextBlock x:Name="AdvancedSummary" Text="Automatic · This PC" Margin="0,0,4,0" VerticalAlignment="Center"
+                            <TextBlock x:Name="AdvancedSummary" Text="Microphone and more" Margin="0,0,4,0" VerticalAlignment="Center"
                                        Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" />
                             <controls:Icon Kind="ChevronRight" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
                         </StackPanel>
-                        <TextBlock Text="Advanced" VerticalAlignment="Center" />
+                        <TextBlock Text="Advanced" Margin="0,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     </DockPanel>
                 </Button>
 
-                <!-- notice banner -->
-                <Border Background="{DynamicResource AccentFillBrush}" CornerRadius="{DynamicResource RadiusBanner}"
-                        Padding="10,6" Margin="{StaticResource GapFieldToField}">
-                    <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                <!-- notice: an icon and the words, no fill -->
+                <DockPanel Margin="{StaticResource GapFieldToField}">
+                    <controls:Icon Kind="Info" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Top"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                    <TextBlock Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"
                                Text="AI can make mistakes. Always check your day before sending it." />
-                </Border>
+                </DockPanel>
 
-                <!-- done button -->
-                <Button Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}"
+                <!-- Close before anything is installed, Done after -->
+                <Button x:Name="CloseButton" Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapSection}"
+                        Content="Close" Click="Back_Click" Visibility="Collapsed" />
+                <Button x:Name="DoneButton" Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}"
                         Content="Done" Click="Back_Click" />
+            </StackPanel>
+
+            <!-- ========================= CUSTOM INSTALL ========================= -->
+            <StackPanel x:Name="CustomView" Visibility="Collapsed">
+                <DockPanel Margin="-8,0,0,0">
+                    <Button Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back to Voice and AI"
+                            AutomationProperties.Name="Back to Voice and AI" Click="CloseCustom_Click">
+                        <controls:Icon Kind="ChevronLeft" />
+                    </Button>
+                    <TextBlock Style="{StaticResource Text.Title}" Text="Custom install" Margin="4,0,0,0" VerticalAlignment="Center" />
+                </DockPanel>
+                <TextBlock Style="{StaticResource Ai.Intro}" Text="Do one step at a time. Pick a type, then download it." />
+
+                <!-- step 1: the AI engine -->
+                <Grid Margin="{StaticResource GapFieldToField}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource Ai.StepLine}" />
+                    <Border x:Name="EngineCircle" Style="{StaticResource Ai.StepCircle}">
+                        <Grid>
+                            <controls:Icon x:Name="EngineTick" Kind="Check" Size="{StaticResource SizeIconSm}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock x:Name="EngineNumber" Style="{StaticResource Ai.StepNumber}" Text="1" />
+                        </Grid>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="12,0,0,16">
+                        <TextBlock x:Name="EngineTitle" Style="{StaticResource Ai.StepTitle}" Text="Install the AI engine" />
+                        <TextBlock Style="{StaticResource Ai.StepDetail}" Text="Ollama, free. Runs only while Time Planner is open." />
+                        <Button x:Name="EngineInstallButton" Style="{StaticResource Button.Primary}" Margin="{StaticResource GapStacked}"
+                                ToolTip="Installs Ollama (the free AI engine) and two models, in order"
+                                AutomationProperties.Name="Install the AI engine" Click="InstallEngine_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Kind="Download" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Text="Install" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- step 2: the Build my day model -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource Ai.StepLine}" />
+                    <Border x:Name="DayCircle" Style="{StaticResource Ai.StepCircle}">
+                        <Grid>
+                            <controls:Icon x:Name="DayTick" Kind="Check" Size="{StaticResource SizeIconSm}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock x:Name="DayNumber" Style="{StaticResource Ai.StepNumber}" Text="2" />
+                        </Grid>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="12,0,0,16">
+                        <TextBlock x:Name="DayTitle" Style="{StaticResource Ai.StepTitle}" Text="Choose the Build my day model" />
+                        <TextBlock x:Name="DayPendingText" Style="{StaticResource Ai.StepDetail}" Text="You can pick its type in this step." />
+                        <StackPanel x:Name="DayControls">
+                            <ComboBox x:Name="DayModelSelect" Style="{StaticResource Select}" Margin="{StaticResource GapStacked}"
+                                      ItemTemplate="{StaticResource Ai.ModelItem}" AutomationProperties.Name="Build my day model"
+                                      SelectionChanged="DayModel_SelectionChanged" />
+                            <Button x:Name="DayModelDownloadButton" Style="{StaticResource Button.Primary}" Margin="{StaticResource GapStacked}"
+                                    AutomationProperties.Name="Download the Build my day model" Click="DayModelDownload_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <controls:Icon Kind="Download" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="Download" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <controls:BarProgress x:Name="DayModelProgressBar" Margin="{StaticResource GapStacked}" Visibility="Collapsed" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+
+                <!-- step 3: the voice model -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <Border x:Name="VoiceCircle" Style="{StaticResource Ai.StepCircle}">
+                        <Grid>
+                            <controls:Icon x:Name="VoiceTick" Kind="Check" Size="{StaticResource SizeIconSm}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock x:Name="VoiceNumber" Style="{StaticResource Ai.StepNumber}" Text="3" />
+                        </Grid>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                        <TextBlock x:Name="VoiceTitle" Style="{StaticResource Ai.StepTitle}" Text="Choose a voice model" />
+                        <TextBlock x:Name="VoicePendingText" Style="{StaticResource Ai.StepDetail}" Text="You can pick its type in this step." />
+                        <StackPanel x:Name="VoiceControls">
+                            <ComboBox x:Name="VoiceModelSelect" Style="{StaticResource Select}" Margin="{StaticResource GapStacked}"
+                                      ItemTemplate="{StaticResource Ai.ModelItem}" AutomationProperties.Name="Voice model"
+                                      SelectionChanged="VoiceModel_SelectionChanged" />
+                            <Button x:Name="VoiceModelDownloadButton" Style="{StaticResource Button.Primary}" Margin="{StaticResource GapStacked}"
+                                    AutomationProperties.Name="Download the voice model" Click="VoiceModelDownload_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <controls:Icon Kind="Download" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="Download" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <controls:BarProgress x:Name="VoiceModelProgressBar" Margin="{StaticResource GapStacked}" Visibility="Collapsed" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+
+                <!-- everything again, in order, once the engine is in -->
+                <Button x:Name="ReinstallButton" Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapSection}"
+                        ToolTip="Installs the AI engine and both models again, in order" Click="InstallEngine_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <controls:Icon Kind="Download" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Reinstall everything" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource Button.Secondary}" Margin="{StaticResource GapStacked}" Content="Done" Click="CloseCustom_Click" />
             </StackPanel>
 
             <!-- ========================= ADVANCED VIEW ========================= -->

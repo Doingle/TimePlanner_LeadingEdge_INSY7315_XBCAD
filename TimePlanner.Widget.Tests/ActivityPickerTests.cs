@@ -98,6 +98,70 @@ public class ActivityPickerTests
         }
     });
 
+    [Fact]
+    public Task AnItemWithNothingUnderItYet_CanTakeTheNextLevel_UntilTheDeepest() => ReminderFlowTests.OnUi(async () =>
+    {
+        var picker = new ActivityPicker();
+        var window = new Window { Content = picker, Width = 320, Height = 120, WindowStyle = WindowStyle.None, ShowInTaskbar = false };
+        window.Show();
+        window.Activate();
+        try
+        {
+            picker.Load([new ActivityNode("Coding", new ActivityNode("Frontend", new ActivityNode("React")), new ActivityNode("Backend"), new ActivityNode("Testing"))],
+                [], []);
+            picker.CanRename = path => path.Count > 1;
+            picker.CanRemove = path => path.Count > 1;
+
+            // Coding is a main activity with things under it: nothing behind a More button
+            picker.Open();
+            var menu = OpenMenu();
+            Assert.Null(MoreButton(Row(menu, "Coding")));
+
+            // Backend has nothing under it yet: its More menu adds under it, renames it and, after a divider, removes it in red
+            Press(Row(menu, "Coding"), Key.Enter);
+            ClickButton(MoreButton(Row(menu, "Backend"))!);
+            var more = OpenMenuNamed("More for Backend");
+            Assert.Equal(["Add under Backend", "Rename Backend", "Remove Backend"], more.Items.OfType<MenuItem>().Select(AutomationProperties.GetName));
+            Assert.IsType<Separator>(more.Items[2]);
+            var remove = (MenuItem)more.Items[3];
+            Assert.Same(remove.FindResource("TextDangerBrush"), remove.Foreground);
+
+            // Add under opens Backend with the add field ready, and Backend can still be chosen on its own
+            ((MenuItem)more.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.False(more.IsOpen);
+            Assert.True(menu.IsOpen);
+            Assert.NotNull(Named(menu, "Backend only"));
+            var input = Descendants<TextBox>(menu).Single();
+            input.Text = "API";
+            Press(input, Key.Enter);
+
+            Assert.Equal(["Coding", "Backend", "API"], picker.SelectedPath);
+            await WaitUntil(() => !menu.IsOpen);
+
+            // React is at the deepest level: its More menu has no Add under, and Right leaves it where it is
+            picker.Open(expand: ["Coding", "Frontend"]);
+            menu = OpenMenu();
+            Press(Row(menu, "React"), Key.Apps);
+            more = OpenMenuNamed("More for React");
+            Assert.Equal(["Rename React", "Remove React"], more.Items.OfType<MenuItem>().Select(AutomationProperties.GetName));
+            more.IsOpen = false;
+            Press(Row(menu, "React"), Key.Right);
+            Assert.Empty(Descendants<TextBox>(menu));
+            Assert.NotNull(Row(menu, "React"));
+
+            // Right on a row with nothing under it does what Add under does
+            Press(Row(menu, "React"), Key.Left);
+            Press(Row(menu, "Testing"), Key.Right);
+            Assert.NotNull(Named(menu, "Testing only"));
+            Assert.Single(Descendants<TextBox>(menu));
+            menu.IsOpen = false;
+        }
+        finally
+        {
+            window.Close();
+        }
+    });
+
     private static MenuItem Named(ContextMenu menu, string name)
     {
         var row = menu.Items.OfType<MenuItem>().FirstOrDefault(i => AutomationProperties.GetName(i) == name);
@@ -109,6 +173,17 @@ public class ActivityPickerTests
         PresentationSource.CurrentSources.OfType<HwndSource>()
             .SelectMany(source => source.RootVisual is { } root ? Descendants<ContextMenu>(root) : [])
             .Single(menu => menu.IsOpen);
+
+    private static ContextMenu OpenMenuNamed(string name) =>
+        PresentationSource.CurrentSources.OfType<HwndSource>()
+            .SelectMany(source => source.RootVisual is { } root ? Descendants<ContextMenu>(root) : [])
+            .Single(menu => menu.IsOpen && AutomationProperties.GetName(menu) == name);
+
+    private static Button? MoreButton(MenuItem row) =>
+        Descendants<Button>(row).SingleOrDefault(b => AutomationProperties.GetName(b).StartsWith("More for "));
+
+    private static void ClickButton(Button button) =>
+        button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 
     private static MenuItem? FindRow(ContextMenu menu, string label) =>
         menu.Items.OfType<MenuItem>().FirstOrDefault(i => i.Tag is IReadOnlyList<string> path && path[^1] == label);

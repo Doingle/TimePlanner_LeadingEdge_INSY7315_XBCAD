@@ -301,7 +301,13 @@ namespace TimePlanner.Widget.Views
                 Cursor = System.Windows.Input.Cursors.Hand
             };
 
-            var stack = new StackPanel();
+            //the times and length on the top row, what it was under them, and Edit and Delete where the EntryActions style puts them
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition());
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var topRow = new DockPanel();
             var lenText = new TextBlock
@@ -322,7 +328,11 @@ namespace TimePlanner.Widget.Views
             };
             topRow.Children.Add(timeText);
 
-            stack.Children.Add(topRow);
+            grid.Children.Add(topRow);
+
+            var stack = new StackPanel();
+            Grid.SetRow(stack, 1);
+            Grid.SetColumnSpan(stack, 2);
 
             var activityText = new TextBlock
             {
@@ -366,8 +376,10 @@ namespace TimePlanner.Widget.Views
                 stack.Children.Add(noteText);
             }
 
-            //edit and delete, under the entry on the right
-            var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 8, 0, 0) };
+            grid.Children.Add(stack);
+
+            //edit and delete: at the end of the top row, and in large view under the entry on the right
+            var actions = new StackPanel { Style = (Style)FindResource("EntryActions") };
             var editBtn = EntryAction(IconKind.Edit, "Edit", "Edit entry");
             editBtn.Click += async (sender, e) =>
             {
@@ -377,16 +389,15 @@ namespace TimePlanner.Widget.Views
             actions.Children.Add(editBtn);
 
             var deleteBtn = EntryAction(IconKind.Trash, "Delete", "Delete entry");
-            deleteBtn.Margin = new Thickness(4, 0, 0, 0);
             deleteBtn.Click += async (sender, e) =>
             {
                 e.Handled = true;
                 await DeleteEntryAsync(slot);
             };
             actions.Children.Add(deleteBtn);
-            stack.Children.Add(actions);
+            grid.Children.Add(actions);
 
-            border.Child = stack;
+            border.Child = grid;
 
             //opens entry editor on click
             border.MouseLeftButtonUp += async (sender, e) =>

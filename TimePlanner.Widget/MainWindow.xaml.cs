@@ -260,11 +260,10 @@ namespace TimePlanner.Widget
             else
                 Root.ClearValue(LayoutTransformProperty);
 
-            // Tooltips, dropdowns and menus open in pop-ups of their own, outside the root's scale (PopupScale in Card.xaml)
+            // Tooltips, dropdowns and menus open in pop-ups of their own, but WPF scales each pop-up with the control it opens from,
+            // so they already grow with the root. PopupScale (Card.xaml) stays at its normal size, or they would grow twice
             if (Application.Current != null)
-                Application.Current.Resources["PopupScale"] = large
-                    ? new ScaleTransform(WidgetCard.LargeScale, WidgetCard.LargeScale)
-                    : Transform.Identity;
+                Application.Current.Resources["PopupScale"] = Transform.Identity;
 
             if (IsVisible)
             {
