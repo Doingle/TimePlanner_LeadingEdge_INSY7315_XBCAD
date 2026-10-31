@@ -405,7 +405,7 @@ public class ReminderFlowTests
         // Answering a check-in, Log entry has no close button to show
         Assert.Equal(
             "settings: Back | more-options: Back | working-days: Back | help: Back | manage-lists: Back, Add, Edit, Add, Edit"
-            + " | check-in: Close | log-entry:  | end-day: Close | sign-in: Close | timesheet: Back, Previous, Next, Edit, Delete"
+            + " | check-in: Close | log-entry:  | end-day: Close | sign-in: Close | timesheet: Back, Expand, Previous, Next, Edit, Delete"
             + " | entry-edit: Close | day-ended: Close",
             string.Join(" | ", seen));
     });

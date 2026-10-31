@@ -46,13 +46,15 @@ namespace TimePlanner.Widget.Views
             //configure dev mode badge
             DevBadge.Visibility = DevMode.Enabled ? Visibility.Visible : Visibility.Collapsed;
 
-            //populate build my day models
-            DayModelSelect.ItemsSource = AiModelCatalog.DayModels.Select(m => $"{m.Label} ({m.SizeEstimate})").ToList();
+            //populate build my day models: each shows its name, and its size at the right
+            DayModelSelect.ItemsSource = AiModelCatalog.DayModels;
             var dayModelIdx = AiModelCatalog.DayModels.ToList().FindIndex(m => m.Id == Settings.CompilerModel);
             DayModelSelect.SelectedIndex = dayModelIdx >= 0 ? dayModelIdx : 0;
 
-            //populate voice accuracy models
-            VoiceModelSelect.ItemsSource = AiModelCatalog.VoiceModels.Select(m => $"{m.Label} ({m.SizeEstimate})").ToList();
+            //populate voice models, without the "(recommended)" note so the name and size fit beside each other
+            VoiceModelSelect.ItemsSource = AiModelCatalog.VoiceModels
+                .Select(m => new { Label = m.Label.Replace(" (recommended)", string.Empty), m.SizeEstimate })
+                .ToList();
             var voiceModelIdx = AiModelCatalog.VoiceModels.ToList().FindIndex(m => m.File == Settings.WhisperModel);
             VoiceModelSelect.SelectedIndex = voiceModelIdx >= 0 ? voiceModelIdx : 0;
 
@@ -63,23 +65,17 @@ namespace TimePlanner.Widget.Views
                 AdvancedPanel.Visibility = Visibility.Collapsed;
                 MainView.Visibility = Visibility.Visible;
                 _ = RefreshCardAndOrgStatusAsync();
-                UpdateAdvancedSummary();
             };
             AdvancedPanel.ResetRequested += () =>
             {
                 AdvancedPanel.Visibility = Visibility.Collapsed;
                 MainView.Visibility = Visibility.Visible;
                 _ = RefreshCardAndOrgStatusAsync();
-                UpdateAdvancedSummary();
-            };
-            AdvancedPanel.HardwareChanged += () =>
-            {
-                UpdateAdvancedSummary();
             };
 
             UpdateVoiceSwitch();
             UpdateDownloadButtons();
-            UpdateAdvancedSummary();
+            ShowSetUpState();
 
             _ = RefreshCardAndOrgStatusAsync();
             _ready = true;
@@ -117,27 +113,109 @@ namespace TimePlanner.Widget.Views
             var dayModel = AiModelCatalog.DayModels.ElementAtOrDefault(DayModelSelect.SelectedIndex) ?? AiModelCatalog.DayModels[0];
             var dayPresent = dayModel.Id == Settings.CompilerModel && (readiness?.DayReady ?? false);
             DayModelDownloadButton.Visibility = dayPresent ? Visibility.Collapsed : Visibility.Visible;
-            DayModelDownloadButton.Content = $"Download ({dayModel.SizeEstimate})";
+            DayModelDownloadButton.ToolTip = $"Download {dayModel.Label} ({dayModel.SizeEstimate})";
 
             var voiceModel = AiModelCatalog.VoiceModels.ElementAtOrDefault(VoiceModelSelect.SelectedIndex) ?? AiModelCatalog.VoiceModels[0];
             var voicePresent = _flow.ModelManager.IsDownloaded(voiceModel.File);
             VoiceModelDownloadButton.Visibility = voicePresent ? Visibility.Collapsed : Visibility.Visible;
-            VoiceModelDownloadButton.Content = $"Download ({voiceModel.SizeEstimate})";
+            VoiceModelDownloadButton.ToolTip = $"Download {voiceModel.Label} ({voiceModel.SizeEstimate})";
+
+            _dayPresent = dayPresent;
+            _voicePresent = voicePresent;
+            UpdateSteps();
+        }
+
+        private enum StepState { Done, Current, Pending }
+
+        private bool _engineInstalled;
+        private bool _dayPresent;
+        private bool _voicePresent;
+
+        //-----------------------------
+        //before setup: the two ways to install and Close; after it: the voice switch, what's installed and Done
+        private void ShowSetUpState()
+        {
+            var notSetUp = !Settings.SetupCompleted && Settings.Compiler != CompilerKind.Dashboard;
+            NotSetUpPanel.Visibility = notSetUp ? Visibility.Visible : Visibility.Collapsed;
+            InstalledPanel.Visibility = notSetUp ? Visibility.Collapsed : Visibility.Visible;
+            CloseButton.Visibility = notSetUp ? Visibility.Visible : Visibility.Collapsed;
+            DoneButton.Visibility = notSetUp ? Visibility.Collapsed : Visibility.Visible;
         }
 
         //-----------------------------
-        //updates summary text displayed on advanced nav row
-        private void UpdateAdvancedSummary()
+        //the installed banner and the custom install steps. One step at a time: the engine first,
+        //then the Build my day model, then the voice model; a step whose turn hasn't come is greyed with its picker hidden
+        private void UpdateSteps()
         {
-            var hw = Settings.DayHardware switch
-            {
-                HardwareChoice.Graphics => "Graphics",
-                HardwareChoice.Processor => "Processor",
-                _ => "Automatic"
-            };
+            //the banner shows while everything is ready; otherwise the setup card says what's wrong
+            var dayReady = _flow.AiSetup.LastReadiness?.DayReady ?? false;
+            var voiceReady = _flow.AiSetup.LastReadiness?.VoiceReady ?? _flow.AiSetup.IsVoiceReady;
+            InstalledStatus.Visibility = dayReady && voiceReady ? Visibility.Visible : Visibility.Collapsed;
 
-            var engine = Settings.Compiler == CompilerKind.Dashboard ? "Organisation AI" : "This PC";
-            AdvancedSummary.Text = $"{hw} · {engine}";
+            var engine = _engineInstalled ? StepState.Done : StepState.Current;
+            var dayStep = _dayPresent ? StepState.Done : _engineInstalled ? StepState.Current : StepState.Pending;
+            var voiceStep = _voicePresent ? StepState.Done : _engineInstalled && _dayPresent ? StepState.Current : StepState.Pending;
+
+            SetStep(EngineCircle, EngineTick, EngineNumber, EngineTitle, engine);
+            EngineInstallButton.Visibility = engine == StepState.Done ? Visibility.Collapsed : Visibility.Visible;
+            //once the engine is in, the whole install can still run again
+            ReinstallButton.Visibility = engine == StepState.Done ? Visibility.Visible : Visibility.Collapsed;
+
+            SetStep(DayCircle, DayTick, DayNumber, DayTitle, dayStep);
+            DayControls.Visibility = dayStep == StepState.Pending ? Visibility.Collapsed : Visibility.Visible;
+            DayPendingText.Visibility = dayStep == StepState.Pending ? Visibility.Visible : Visibility.Collapsed;
+
+            SetStep(VoiceCircle, VoiceTick, VoiceNumber, VoiceTitle, voiceStep);
+            VoiceControls.Visibility = voiceStep == StepState.Pending ? Visibility.Collapsed : Visibility.Visible;
+            VoicePendingText.Visibility = voiceStep == StepState.Pending ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        //-----------------------------
+        //one step's circle and title: a green tick on pale green, a white number on purple, or a grey number in an outline
+        private void SetStep(Border circle, Controls.Icon tick, TextBlock? number, TextBlock? title, StepState state)
+        {
+            circle.Background = state switch
+            {
+                StepState.Done => Res("SuccessFillBrush"),
+                StepState.Current => Res("ActionBrush"),
+                _ => Res("SurfaceBrush"),
+            };
+            circle.BorderBrush = Res("BorderControlBrush");
+            circle.BorderThickness = state == StepState.Pending ? new Thickness(1) : new Thickness(0);
+            tick.Foreground = Res("LiveBrush");
+            tick.Visibility = state == StepState.Done ? Visibility.Visible : Visibility.Collapsed;
+
+            if (number != null)
+            {
+                number.Visibility = state == StepState.Done ? Visibility.Collapsed : Visibility.Visible;
+                number.Foreground = state == StepState.Current ? Res("TextOnActionBrush") : Res("TextTertiaryBrush");
+            }
+
+            if (title != null)
+                title.Foreground = state == StepState.Pending ? Res("TextTertiaryBrush") : Res("TextPrimaryBrush");
+        }
+
+        private System.Windows.Media.Brush Res(string key) => (System.Windows.Media.Brush)FindResource(key);
+
+        //-----------------------------
+        //whether the AI engine answers; asked only when Build my day runs on this PC
+        private async Task CheckEngineAsync()
+        {
+            if (Settings.Compiler != CompilerKind.Ollama)
+            {
+                _engineInstalled = false;
+                return;
+            }
+
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                _engineInstalled = (await _flow.Ai.CheckOllamaAsync(cts.Token)).State != OllamaState.NotRunning;
+            }
+            catch
+            {
+                _engineInstalled = false;
+            }
         }
 
         //-----------------------------
@@ -154,9 +232,13 @@ namespace TimePlanner.Widget.Views
                 readiness = new AiReadiness(false, false, "The voice model isn't downloaded.", "The AI engine isn't running.");
             }
 
+            await CheckEngineAsync();
             UpdateVoiceSwitch(readiness);
             UpdateDownloadButtons(readiness);
+            ShowSetUpState();
 
+            //the card shows only when it has something to say; before setup the two install choices stand in for it
+            SetupCard.Visibility = Visibility.Visible;
             if (Settings.Compiler == CompilerKind.Dashboard)
             {
                 SetupCard.SetOrganisationAi();
@@ -164,6 +246,7 @@ namespace TimePlanner.Widget.Views
             else if (!Settings.SetupCompleted)
             {
                 SetupCard.SetNotSetUp();
+                SetupCard.Visibility = Visibility.Collapsed;
             }
             else if (!readiness.VoiceReady || !readiness.DayReady)
             {
@@ -186,6 +269,7 @@ namespace TimePlanner.Widget.Views
                 var showSlowPc = fasterTps > 0 && fasterTps < 8 && isRecommended && !Settings.SlowPcHintDismissed;
 
                 SetupCard.SetReady($"Build my day uses {hwName}", showSlowPc);
+                SetupCard.Visibility = showSlowPc ? Visibility.Visible : Visibility.Collapsed;
             }
         }
 
@@ -212,6 +296,11 @@ namespace TimePlanner.Widget.Views
         private async Task RunSetupAsync(int startStep)
         {
             _setupCts = new CancellationTokenSource();
+
+            //while it installs, the card's progress takes the place of the two install choices
+            NotSetUpPanel.Visibility = Visibility.Collapsed;
+            SetupCard.Visibility = Visibility.Visible;
+            SetupCard.SetInstalling(1, 4, "Starting", null, true);
             var progress = new Progress<AiSetupProgress>(p =>
             {
                 SetupCard.SetInstalling(p.Step, p.TotalSteps, p.Description, p.Fraction, p.Step <= 3);
@@ -227,13 +316,14 @@ namespace TimePlanner.Widget.Views
 
                 UpdateVoiceSwitch();
                 UpdateDownloadButtons();
-                UpdateAdvancedSummary();
                 await RefreshCardAndOrgStatusAsync();
             }
-            //handle cancellation
+            //handle cancellation: back to the two install choices
             catch (OperationCanceledException)
             {
                 SetupCard.SetNotSetUp();
+                SetupCard.Visibility = Visibility.Collapsed;
+                ShowSetUpState();
             }
             //handle setup failure
             catch (Exception ex)
@@ -253,6 +343,37 @@ namespace TimePlanner.Widget.Views
         {
             Save();
             _back();
+        }
+
+        //-----------------------------
+        //recommended install: the whole setup, in order
+        private async void Recommended_Click(object sender, RoutedEventArgs e) => await RunSetupAsync(1);
+
+        //-----------------------------
+        //opens custom install, from the install choices or from Change what's installed
+        private void OpenCustom_Click(object sender, RoutedEventArgs e)
+        {
+            MainView.Visibility = Visibility.Collapsed;
+            CustomView.Visibility = Visibility.Visible;
+            _ = RefreshCardAndOrgStatusAsync();
+        }
+
+        //-----------------------------
+        //back from custom install to the main page
+        private void CloseCustom_Click(object sender, RoutedEventArgs e)
+        {
+            CustomView.Visibility = Visibility.Collapsed;
+            MainView.Visibility = Visibility.Visible;
+            _ = RefreshCardAndOrgStatusAsync();
+        }
+
+        //-----------------------------
+        //step 1 of custom install: the engine comes with the full setup, so this runs it and shows its progress on the main page
+        private async void InstallEngine_Click(object sender, RoutedEventArgs e)
+        {
+            CustomView.Visibility = Visibility.Collapsed;
+            MainView.Visibility = Visibility.Visible;
+            await RunSetupAsync(1);
         }
 
         //-----------------------------

@@ -17,6 +17,8 @@
     <Color x:Key="TextOnActionColor">#FFFFFF</Color>      
     <Color x:Key="TextOnActionSecondaryColor">#D4D4D8</Color>  
     <Color x:Key="TextAccentColor">#6247AA</Color>
+    <!-- Remove in a row's More menu: red, always beside its trash icon and word (6.6:1 on white) -->
+    <Color x:Key="TextDangerColor">#B42318</Color>
 
     <!-- Color — action: primary button, hero band,focus ring, selected border -->
     <Color x:Key="ActionColor">#6247AA</Color>
@@ -44,6 +46,10 @@
     <Color x:Key="DataTrackColor">#E4E4E7</Color>
     <!-- Status dot: green while the day is tracking -->
     <Color x:Key="LiveColor">#2E8B57</Color>
+    <!-- A step that's done (Voice and AI): a pale green circle behind the green tick -->
+    <Color x:Key="SuccessFillColor">#E7F4EC</Color>
+    <!-- ... and the outline round the "AI is installed" banner -->
+    <Color x:Key="SuccessBorderColor">#B7DFC5</Color>
     <!-- Warning notice ("Sunday isn't sent yet"): warm fill and outline, dark amber text (6.5:1 on the fill) -->
     <Color x:Key="WarningFillColor">#FFF4E5</Color>
     <Color x:Key="WarningBorderColor">#F2C98F</Color>
@@ -61,6 +67,7 @@
     <SolidColorBrush x:Key="TextOnActionBrush" Color="{StaticResource TextOnActionColor}" />
     <SolidColorBrush x:Key="TextOnActionSecondaryBrush" Color="{StaticResource TextOnActionSecondaryColor}" />
     <SolidColorBrush x:Key="TextAccentBrush" Color="{StaticResource TextAccentColor}" />
+    <SolidColorBrush x:Key="TextDangerBrush" Color="{StaticResource TextDangerColor}" />
 
     <SolidColorBrush x:Key="ActionBrush" Color="{StaticResource ActionColor}" />
     <SolidColorBrush x:Key="ActionHoverBrush" Color="{StaticResource ActionHoverColor}" />
@@ -83,6 +90,8 @@
     <SolidColorBrush x:Key="DataBrush" Color="{StaticResource DataColor}" />
     <SolidColorBrush x:Key="DataTrackBrush" Color="{StaticResource DataTrackColor}" />
     <SolidColorBrush x:Key="LiveBrush" Color="{StaticResource LiveColor}" />
+    <SolidColorBrush x:Key="SuccessFillBrush" Color="{StaticResource SuccessFillColor}" />
+    <SolidColorBrush x:Key="SuccessBorderBrush" Color="{StaticResource SuccessBorderColor}" />
     <SolidColorBrush x:Key="WarningFillBrush" Color="{StaticResource WarningFillColor}" />
     <SolidColorBrush x:Key="WarningBorderBrush" Color="{StaticResource WarningBorderColor}" />
     <SolidColorBrush x:Key="WarningTextBrush" Color="{StaticResource WarningTextColor}" />

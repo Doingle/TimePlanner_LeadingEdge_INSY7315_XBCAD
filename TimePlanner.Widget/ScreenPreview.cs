@@ -125,6 +125,8 @@ namespace TimePlanner.Widget
 
             new("ai-settings", "Voice and AI", "Voice and AI settings", async s =>
                 (await Afternoon(s, 16, 35)).ShowAiSettings(() => s.Flow.ShowSettings())),
+            new("ai-advanced", "Voice and AI", "Voice and AI, advanced options", async s =>
+                (await Afternoon(s, 16, 35)).ShowAiSettings(() => s.Flow.ShowSettings(), openAdvanced: true)),
             new("voice-note", "Voice and AI", "Recording a voice note", async s =>
             {
                 var flow = await Afternoon(s, 16, 35);

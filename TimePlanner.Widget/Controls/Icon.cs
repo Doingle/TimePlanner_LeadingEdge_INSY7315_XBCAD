@@ -38,6 +38,8 @@ namespace TimePlanner.Widget.Controls
         Maximise, ArrowLeft,
         Calendar,
         Trash,
+        More,
+        Gauge, Chip, Storage, Cube, Code,
     }
 
     public sealed class Icon : FrameworkElement
@@ -196,8 +198,8 @@ namespace TimePlanner.Widget.Controls
                 new(Freeze(new RectangleGeometry(new Rect(8, 8, 12, 12), 2, 2))),
                 P("M16,8 V4 A2,2 0 0 0 14,2 H4 A2,2 0 0 0 2,4 V14 A2,2 0 0 0 4,16 H8"),
             ],
-            // The Timesheet's wide window: a square opens it, an arrow goes back to the small one
-            [IconKind.Maximise] = [new(Freeze(new RectangleGeometry(new Rect(5, 5, 14, 14), 2, 2)))],
+            // The Timesheet's wide window: a box with an arrow out of it opens it, an arrow goes back to the small one
+            [IconKind.Maximise] = [P("M15,3 H21 V9"), P("M10,14 L21,3"), P("M18,13 V19 A2,2 0 0 1 16,21 H5 A2,2 0 0 1 3,19 V8 A2,2 0 0 1 5,6 H11")],
             [IconKind.ArrowLeft] = [P("M19,12 H5"), P("M11,18 L5,12 L11,6")],
             [IconKind.Calendar] =
             [
@@ -205,6 +207,28 @@ namespace TimePlanner.Widget.Controls
                 P("M8,3 V7"), P("M16,3 V7"), P("M4,10 H20"),
             ],
             [IconKind.Trash] = [P("M4,6 H20"), P("M18,6 V20 A2,2 0 0 1 16,22 H8 A2,2 0 0 1 6,20 V6"), P("M9,6 V4 A2,2 0 0 1 11,2 H13 A2,2 0 0 1 15,4 V6")],
+            // A row's More menu: three dots in a line
+            [IconKind.More] =
+            [
+                new(Freeze(new EllipseGeometry(new Point(5, 12), 1.5, 1.5)), Filled: true),
+                new(Freeze(new EllipseGeometry(new Point(12, 12), 1.5, 1.5)), Filled: true),
+                new(Freeze(new EllipseGeometry(new Point(19, 12), 1.5, 1.5)), Filled: true),
+            ],
+            // Voice and AI's Advanced sections: speed and hardware, Build my day engine, storage, your own models, developer services
+            [IconKind.Gauge] = [P("M5,17 A8,8 0 1 1 19,17"), P("M12,13 L15.5,9.5")],
+            [IconKind.Chip] =
+            [
+                new(Freeze(new RectangleGeometry(new Rect(6, 6, 12, 12), 2, 2))),
+                P("M9,2 V5 M15,2 V5 M9,19 V22 M15,19 V22 M2,9 H5 M2,15 H5 M19,9 H22 M19,15 H22"),
+            ],
+            [IconKind.Storage] =
+            [
+                new(Freeze(new RectangleGeometry(new Rect(3, 12, 18, 8), 2, 2))),
+                P("M3,14 L6,5 Q6.5,4 7.5,4 H16.5 Q17.5,4 18,5 L21,14"),
+                P("M7,16 H7.01 M11,16 H11.01"),
+            ],
+            [IconKind.Cube] = [P("M21,8 L12,3 L3,8 V16 L12,21 L21,16 Z"), P("M3,8 L12,13 L21,8"), P("M12,13 V21")],
+            [IconKind.Code] = [P("M16,18 L22,12 L16,6"), P("M8,6 L2,12 L8,18")],
         };
     }
 }

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -327,10 +328,11 @@ namespace TimePlanner.Widget.Controls
         }
 
         //-----------------------------
-        //creates a row for one item: its name, then rename and remove while pointed at, then a check or a chevron
+        //creates a row for one item: its name, then its More button while pointed at, then a check or a chevron
         private MenuItem NodeRow(IReadOnlyList<string> nodePath, ActivityNode node)
         {
             var branch = IsBranch(nodePath, node);
+            var canAddUnder = CanAddUnder(nodePath, node);
             var header = new DockPanel();
 
             //a branch shows where it goes, the chosen item shows a check
@@ -348,22 +350,19 @@ namespace TimePlanner.Widget.Controls
 
             var row = new MenuItem { Style = Res<Style>("Picker.Row"), Header = header, Tag = nodePath };
 
-            //rename and remove show only on the row being pointed at or moved to
-            var actions = new StackPanel { Orientation = Orientation.Horizontal };
-            actions.SetBinding(VisibilityProperty, new Binding(nameof(MenuItem.IsHighlighted)) { Source = row, Converter = ShowWhenTrue });
-            if (CanRename?.Invoke(nodePath) == true)
-                actions.Children.Add(RowAction(IconKind.Edit, "Rename", $"Rename {node.Label}", () => BeginRenaming(row, nodePath)));
-            if (CanRemove?.Invoke(nodePath) == true)
-                actions.Children.Add(RowAction(IconKind.Close, "Remove", $"Remove {node.Label}", () => RequestRemove(nodePath)));
-            if (actions.Children.Count > 0)
+            //add under, rename and remove wait behind one More button, shown only on the row being pointed at or moved to
+            if (HasMore(nodePath, node))
             {
-                DockPanel.SetDock(actions, Dock.Right);
-                header.Children.Add(actions);
+                var more = RowAction(IconKind.More, "More", $"More for {node.Label}", () => OpenMore(row, nodePath));
+                more.SetBinding(VisibilityProperty, new Binding(nameof(MenuItem.IsHighlighted)) { Source = row, Converter = ShowWhenTrue });
+                DockPanel.SetDock(more, Dock.Right);
+                header.Children.Add(more);
             }
 
             header.Children.Add(Label(node.Label));
 
-            var spoken = node.Label + (branch ? ", has more" : "") + (CanRename?.Invoke(nodePath) == true ? ", F2 to rename" : "");
+            var spoken = node.Label + (branch ? ", has more" : "") + (canAddUnder ? ", Right arrow to add under it" : "")
+                + (CanRename?.Invoke(nodePath) == true ? ", F2 to rename" : "");
             AutomationProperties.SetName(row, spoken);
             row.PreviewMouseLeftButtonUp += Row_PreviewMouseLeftButtonUp;
             row.PreviewKeyDown += Row_PreviewKeyDown;
@@ -389,6 +388,79 @@ namespace TimePlanner.Widget.Controls
                 click();
             };
             return button;
+        }
+
+        //-----------------------------
+        //whether a row has anything behind its More button
+        private bool HasMore(IReadOnlyList<string> path, ActivityNode node) =>
+            CanAddUnder(path, node) || CanRename?.Invoke(path) == true || CanRemove?.Invoke(path) == true;
+
+        //-----------------------------
+        //opens a row's More menu over the row: add under and rename, then remove after a divider, each only where it applies
+        private void OpenMore(MenuItem row, IReadOnlyList<string> path)
+        {
+            if (NodeAt(path) is not { } node)
+                return;
+
+            var more = new ContextMenu { Style = Res<Style>("Picker.MoreMenu"), PlacementTarget = row, Placement = PlacementMode.Custom };
+            more.CustomPopupPlacementCallback = (popupSize, targetSize, _) => PlaceMore(row, popupSize, targetSize);
+            AutomationProperties.SetName(more, $"More for {node.Label}");
+
+            if (CanAddUnder(path, node))
+                more.Items.Add(MoreItem(more, IconKind.Plus, $"Add under {node.Label}", $"Add under {node.Label}", () => BeginAddingUnder(path)));
+            if (CanRename?.Invoke(path) == true)
+                more.Items.Add(MoreItem(more, IconKind.Edit, "Rename", $"Rename {node.Label}", () => BeginRenaming(row, path)));
+            if (CanRemove?.Invoke(path) == true)
+            {
+                if (more.Items.Count > 0)
+                    more.Items.Add(new Separator { Style = Res<Style>("Menu.Separator") });
+                var remove = MoreItem(more, IconKind.Trash, "Remove", $"Remove {node.Label}", () => RequestRemove(path));
+                remove.Foreground = Res<Brush>("TextDangerBrush");
+                more.Items.Add(remove);
+            }
+
+            //the first item takes focus, so the keyboard works in the menu straight away
+            more.Opened += (_, _) => FocusLater(more.Items.OfType<MenuItem>().FirstOrDefault());
+            //closed, the dropdown takes the pointer back, so a click outside it still closes it
+            more.Closed += (_, _) =>
+            {
+                if (_menu is { IsOpen: true })
+                    Mouse.Capture(_menu, CaptureMode.SubTree);
+            };
+            more.IsOpen = true;
+        }
+
+        //-----------------------------
+        //one row of a More menu: its icon and word. The menu closes before the row acts
+        private MenuItem MoreItem(ContextMenu more, IconKind kind, string text, string spoken, Action act)
+        {
+            var item = new MenuItem
+            {
+                Style = Res<Style>("Menu.Row"),
+                Header = Label(text),
+                Icon = new Icon { Kind = kind, Size = Res<double>("SizeIconSm") },
+            };
+            AutomationProperties.SetName(item, spoken);
+            item.Click += (_, _) =>
+            {
+                more.IsOpen = false;
+                act();
+            };
+            return item;
+        }
+
+        //-----------------------------
+        //the More menu covers its row from the top, its right edge on the row's; near the foot of the screen it rises from the row's bottom
+        private static CustomPopupPlacement[] PlaceMore(FrameworkElement row, Size popupSize, Size targetSize)
+        {
+            var s = row.ActualWidth > 0 && targetSize.Width > 0 ? targetSize.Width / row.ActualWidth : 1.0;
+            var m = PopupPlacement.ShadowMargin;
+            var x = targetSize.Width - popupSize.Width + m.Right * s;
+            return
+            [
+                new CustomPopupPlacement(new Point(x, -m.Top * s), PopupPrimaryAxis.Horizontal),
+                new CustomPopupPlacement(new Point(x, targetSize.Height - popupSize.Height + m.Bottom * s), PopupPrimaryAxis.Horizontal),
+            ];
         }
 
         //-----------------------------
@@ -589,6 +661,14 @@ namespace TimePlanner.Widget.Controls
             var field = AddField(path);
             Replace(addRow, field, _addInput);
             FocusLater(_addInput);
+        }
+
+        //-----------------------------
+        //opens a row with nothing under it yet, with the add field ready for its first item
+        private void BeginAddingUnder(IReadOnlyList<string> path)
+        {
+            _addPath = path;
+            ShowLevel(path);
         }
 
         private void CancelAdding()
@@ -847,6 +927,10 @@ namespace TimePlanner.Widget.Controls
                     e.Handled = true;
                     ShowLevel(path);
                     break;
+                case Key.Right when NodeAt(path) is { } node && CanAddUnder(path, node):
+                    e.Handled = true;
+                    BeginAddingUnder(path);
+                    break;
                 case Key.Left or Key.Back when _level.Count > 0:
                     e.Handled = true;
                     GoBack();
@@ -858,6 +942,12 @@ namespace TimePlanner.Widget.Controls
                 case Key.Delete when CanRemove?.Invoke(path) == true:
                     e.Handled = true;
                     RequestRemove(path);
+                    break;
+                //the menu key, or Shift+F10, opens the row's More menu
+                case Key.Apps or Key.System when (e.Key == Key.Apps || (e.SystemKey == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift))
+                                                && NodeAt(path) is { } node && HasMore(path, node):
+                    e.Handled = true;
+                    OpenMore(row, path);
                     break;
             }
         }
@@ -916,6 +1006,11 @@ namespace TimePlanner.Widget.Controls
         //a row opens a level when it has children, or when a choice has to go deeper than it
         private bool IsBranch(IReadOnlyList<string> path, ActivityNode node) =>
             path.Count < MaxDepth && (node.Children.Count > 0 || path.Count < RequiredDepth);
+
+        //-----------------------------
+        //a row with nothing under it yet can still take a level under it while the tree has room for one
+        private bool CanAddUnder(IReadOnlyList<string> path, ActivityNode node) =>
+            !IsBranch(path, node) && path.Count < MaxDepth;
 
         //-----------------------------
         //finds node at path in tree

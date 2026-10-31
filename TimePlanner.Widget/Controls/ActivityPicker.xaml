@@ -27,7 +27,30 @@
             </Setter>
         </Style>
 
-        <!-- A small icon button inside a row (rename, remove): 24 square, and in large view its word beside the icon -->
+        <!-- A row's More menu (Add under, Rename, Remove): a small panel of menu rows over its row, growing with large view -->
+        <Style x:Key="Picker.MoreMenu" TargetType="ContextMenu">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="HasDropShadow" Value="False" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="FontFamily" Value="{StaticResource FontFamily}" />
+            <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+            <Setter Property="FontWeight" Value="{StaticResource FontWeightRegular}" />
+            <Setter Property="LayoutTransform" Value="{DynamicResource PopupScale}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Grid Margin="{x:Static controls:PopupPlacement.ShadowMargin}">
+                            <Border Style="{StaticResource Menu.Shadow}" />
+                            <Border Style="{StaticResource Menu.Panel}" MinWidth="176" MaxWidth="220">
+                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" KeyboardNavigation.TabNavigation="Cycle" />
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- The More button inside a row: 24 square, and in large view its word beside the icon -->
         <Style x:Key="Picker.RowAction" TargetType="Button" BasedOn="{StaticResource Button.IconWordSide}">
             <Setter Property="Width" Value="{StaticResource Space24}" />
             <Setter Property="Height" Value="{StaticResource Space24}" />

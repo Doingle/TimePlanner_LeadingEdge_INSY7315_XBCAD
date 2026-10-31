@@ -87,6 +87,7 @@ namespace TimePlanner.Widget.Views
                 && (Settings.Transcriber != TranscriberKind.LocalWhisper || Settings.Compiler == CompilerKind.OpenAiCompatible)
                 ? Visibility.Visible : Visibility.Collapsed;
 
+            UpdateSummaries();
             _ = CheckOrgAiAvailabilityAsync();
             _ = RefreshOllamaModelListAsync();
         }
@@ -124,7 +125,44 @@ namespace TimePlanner.Widget.Views
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var ollamaModelsPath = Path.Combine(userProfile, ".ollama", "models");
             var voiceModelsPath = Path.Combine(localAppData, "TimePlanner", "models");
-            EngineLocationsText.Text = $"Models stored in:\n• Ollama: {ollamaModelsPath}\n• Voice: {voiceModelsPath}";
+            OllamaPathText.Text = ollamaModelsPath;
+            VoicePathText.Text = voiceModelsPath;
+        }
+
+        //-----------------------------
+        //opens or closes the section under a header, turning its chevron up while it's open
+        private void Section_Click(object sender, RoutedEventArgs e)
+        {
+            var (body, chevron, title) = sender == SpeedHeader ? (SpeedBody, SpeedChevron, SpeedTitle)
+                : sender == EngineHeader ? (EngineBody, EngineChevron, EngineTitle)
+                : sender == StorageHeader ? (StorageBody, StorageChevron, StorageTitle)
+                : sender == OwnHeader ? (OwnBody, OwnChevron, OwnTitle)
+                : (DevBody, DevChevron, DevTitle);
+
+            var open = body.Visibility != Visibility.Visible;
+            body.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+            chevron.RenderTransform = open ? new System.Windows.Media.RotateTransform(180) : null;
+            title.FontWeight = open ? (FontWeight)FindResource("FontWeightSemibold") : (FontWeight)FindResource("FontWeightRegular");
+        }
+
+        //-----------------------------
+        //what each section's header says it's set to
+        private void UpdateSummaries()
+        {
+            if (Settings == null) return;
+            SpeedSummary.Text = Settings.DayHardware switch
+            {
+                HardwareChoice.Graphics => "Graphics card",
+                HardwareChoice.Processor => "Processor",
+                _ => "Automatic"
+            };
+            EngineSummary.Text = Settings.Compiler == CompilerKind.Dashboard ? "Organisation" : "This PC";
+            //something is stored once setup finished, or once the voice model is on disk
+            var stored = Settings.SetupCompleted || (_flow?.AiSetup.IsVoiceReady ?? false);
+            StorageSummary.Text = stored ? "about 2.2 GB" : "Nothing yet";
+            OwnSummary.Text = !string.IsNullOrWhiteSpace(Settings.WhisperModelPath) ? "Your own" : "Built-in";
+            DevSummary.Text = Settings.Transcriber == TranscriberKind.OpenAiCompatible || Settings.Compiler == CompilerKind.OpenAiCompatible
+                ? "Remote" : "Local";
         }
 
         //-----------------------------
@@ -150,6 +188,7 @@ namespace TimePlanner.Widget.Views
             if (Settings == null) return;
             Settings.DayHardware = (HardwareChoice)Math.Clamp(DayHardwareSelect.SelectedIndex, 0, 2);
             _flow?.SavePreferences();
+            UpdateSummaries();
             HardwareChanged?.Invoke();
         }
 
@@ -159,6 +198,7 @@ namespace TimePlanner.Widget.Views
             Settings.VoiceHardware = VoiceHardwareSelect.SelectedIndex == 1 ? VoiceHardwareChoice.Processor : VoiceHardwareChoice.Automatic;
             VoiceRestartCaption.Visibility = Settings.VoiceHardware != _initialVoiceHardware ? Visibility.Visible : Visibility.Collapsed;
             _flow?.SavePreferences();
+            UpdateSummaries();
             HardwareChanged?.Invoke();
         }
 
@@ -179,7 +219,8 @@ namespace TimePlanner.Widget.Views
                 Settings.LastSpeedCheck = new SpeedResult(res.GraphicsTokensPerSec, res.ProcessorTokensPerSec, Settings.LastSpeedCheck?.VoiceSecondsGraphics, Settings.LastSpeedCheck?.VoiceSecondsProcessor, DateTime.UtcNow);
                 _flow.SavePreferences();
                 UpdateHardwareCaption();
-                HardwareChanged?.Invoke();
+                UpdateSummaries();
+            HardwareChanged?.Invoke();
             }
             catch { DayHardwareCaption.Text = "Speed check couldn't finish. Is the AI engine running?"; }
             finally { SpeedCheckButton.IsEnabled = true; }
@@ -322,7 +363,7 @@ namespace TimePlanner.Widget.Views
         {
             if (Settings == null) return;
             var dlg = new OpenFileDialog { Filter = "ggml models (*.bin)|*.bin|All files (*.*)|*.*", Title = "Choose a voice model" };
-            if (dlg.ShowDialog() == true) { Settings.WhisperModelPath = dlg.FileName; VoiceModelPathBox.Text = dlg.FileName; _flow?.SavePreferences(); }
+            if (dlg.ShowDialog() == true) { Settings.WhisperModelPath = dlg.FileName; VoiceModelPathBox.Text = dlg.FileName; _flow?.SavePreferences(); UpdateSummaries(); }
         }
 
         private void ClearVoiceFile_Click(object sender, RoutedEventArgs e)
@@ -330,6 +371,7 @@ namespace TimePlanner.Widget.Views
             if (Settings == null) return;
             Settings.WhisperModelPath = null;
             VoiceModelPathBox.Text = string.Empty;
+            UpdateSummaries();
             _flow?.SavePreferences();
         }
 
@@ -361,6 +403,7 @@ namespace TimePlanner.Widget.Views
             Settings.Compiler = EngineOrgAiRadio.IsChecked == true ? CompilerKind.Dashboard : CompilerKind.Ollama;
             OrgAiNotice.Visibility = Settings.Compiler == CompilerKind.Dashboard ? Visibility.Visible : Visibility.Collapsed;
             _flow?.SavePreferences();
+            UpdateSummaries();
             HardwareChanged?.Invoke();
         }
 

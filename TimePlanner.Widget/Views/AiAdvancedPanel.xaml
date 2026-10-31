@@ -2,215 +2,334 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
-    <StackPanel>
+    <UserControl.Resources>
+        <!-- A group of sections: one outline round them, a hairline between each -->
+        <Style x:Key="Adv.Group" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource BorderWidth}" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+            <Setter Property="Margin" Value="0,8,0,0" />
+        </Style>
+        <Style x:Key="Adv.Divider" TargetType="Border">
+            <Setter Property="Height" Value="{DynamicResource Hairline}" />
+            <Setter Property="Background" Value="{StaticResource BorderSubtleBrush}" />
+        </Style>
+
+        <!-- A group's label ("This PC", "Bring your own") -->
+        <Style x:Key="Adv.GroupLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+            <Setter Property="Margin" Value="0,16,0,0" />
+        </Style>
+
+        <!-- A section's header: its icon, name, what it's set to and a chevron; the whole row opens and closes it -->
+        <Style x:Key="Adv.Section" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+            <Setter Property="Height" Value="NaN" />
+            <Setter Property="MinHeight" Value="{StaticResource SizeControl}" />
+            <Setter Property="Padding" Value="12,14,8,14" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontWeight" Value="{StaticResource FontWeightRegular}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Adv.SectionIcon" TargetType="controls:Icon">
+            <Setter Property="Size" Value="{StaticResource SizeIcon}" />
+            <Setter Property="Foreground" Value="{StaticResource TextAccentBrush}" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="Adv.Summary" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="8,0,4,0" />
+        </Style>
+        <Style x:Key="Adv.Chevron" TargetType="controls:Icon">
+            <Setter Property="Kind" Value="ChevronDown" />
+            <Setter Property="Size" Value="{StaticResource SizeIconSm}" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+        </Style>
+
+        <!-- An open section's settings, lined up under its name -->
+        <Style x:Key="Adv.Body" TargetType="StackPanel">
+            <Setter Property="Margin" Value="44,0,12,16" />
+            <Setter Property="Visibility" Value="Collapsed" />
+        </Style>
+        <Style x:Key="Adv.Label" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+            <Setter Property="FontWeight" Value="{StaticResource FontWeightSemibold}" />
+            <Setter Property="Margin" Value="0,12,0,6" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="Adv.Help" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+            <!-- A result line with nothing to say takes no room -->
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <!-- "Test" beside a label: a small text button in the accent colour -->
+        <Style x:Key="Adv.Link" TargetType="Button" BasedOn="{StaticResource Button.Text}">
+            <Setter Property="Height" Value="{StaticResource Space24}" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{StaticResource TextAccentBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+    </UserControl.Resources>
+
+    <DockPanel>
         <!-- header -->
-        <DockPanel Margin="-8,0,0,0">
+        <DockPanel DockPanel.Dock="Top" Margin="-8,0,0,0">
             <Button Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back to Voice and AI" AutomationProperties.Name="Back to Voice and AI" Click="Close_Click">
                 <controls:Icon Kind="ChevronLeft" />
             </Button>
             <TextBlock Style="{StaticResource Text.Title}" Text="Advanced" Margin="4,0,0,0" VerticalAlignment="Center" />
         </DockPanel>
 
-        <ScrollViewer Margin="0,12,0,0" MaxHeight="450" VerticalScrollBarVisibility="Auto" Focusable="False">
-            <StackPanel>
+        <!-- Done stays at the foot -->
+        <Button DockPanel.Dock="Bottom" Style="{StaticResource Button.Primary}" Margin="{StaticResource GapFieldToField}" Content="Done" Click="Close_Click" />
+
+        <!-- Everything between scrolls in a fixed height, so opening a section never changes the card's size -->
+        <ScrollViewer x:Name="Scroller" Margin="0,8,0,0" Height="460" VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="0,0,12,0">
+                <TextBlock Style="{StaticResource Text.Body}" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"
+                           Text="For fine-tuning. Most people never need to change these." />
+
                 <!-- developer setting inactive notice -->
                 <TextBlock x:Name="DevSettingInactiveCaption" Style="{StaticResource Text.Caption}"
-                           Foreground="{DynamicResource TextAccentBrush}" Margin="0,0,0,8" Visibility="Collapsed"
+                           Foreground="{DynamicResource TextAccentBrush}" Margin="0,8,0,0" Visibility="Collapsed"
                            Text="A developer setting is saved but not active." TextWrapping="Wrap" />
 
-                <!-- HARDWARE -->
-                <TextBlock Style="{StaticResource Text.Subtitle}" Text="Hardware" />
-
-                <StackPanel Margin="0,8,0,0">
-                    <TextBlock Style="{StaticResource Text.Label}" Text="Build my day runs on" />
-                    <ComboBox x:Name="DayHardwareSelect" Style="{StaticResource Select}" SelectionChanged="DayHardware_SelectionChanged" />
-                    <TextBlock x:Name="DayHardwareCaption" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="0,4,0,0" TextWrapping="Wrap" />
-                    <Button x:Name="SpeedCheckButton" Style="{StaticResource Button.Secondary}" Margin="0,8,0,0"
-                            Content="Run speed check" ToolTip="Tries the graphics card and the processor, and uses the faster one"
-                            AutomationProperties.Name="Run speed check" Click="SpeedCheck_Click" />
-                </StackPanel>
-
-                <StackPanel Margin="0,12,0,0">
-                    <TextBlock Style="{StaticResource Text.Label}" Text="Voice runs on" />
-                    <ComboBox x:Name="VoiceHardwareSelect" Style="{StaticResource Select}" SelectionChanged="VoiceHardware_SelectionChanged" />
-                    <TextBlock x:Name="VoiceRestartCaption" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="0,4,0,0" Text="Applies after Time Planner restarts" Visibility="Collapsed" />
-                </StackPanel>
-
-                <Separator Margin="0,16,0,16" Background="{DynamicResource BorderSubtleBrush}" />
-
                 <!-- MICROPHONE -->
-                <TextBlock Style="{StaticResource Text.Subtitle}" Text="Microphone" />
+                <TextBlock Style="{StaticResource Text.Label}" Text="Microphone" Margin="0,16,0,8" />
+                <DockPanel>
+                    <Button x:Name="TestMicButton" DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}" Margin="8,0,0,0" Padding="16,0"
+                            ToolTip="Test microphone recording level" AutomationProperties.Name="Test microphone recording level"
+                            Click="TestMicrophone_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:Icon Kind="Mic" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Test" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <ComboBox x:Name="MicrophoneSelect" Style="{StaticResource Select}" AutomationProperties.Name="Microphone"
+                              SelectionChanged="Microphone_SelectionChanged" />
+                </DockPanel>
+                <TextBlock x:Name="MicDisconnectedCaption" Style="{StaticResource Adv.Help}" Foreground="{DynamicResource TextAccentBrush}" Visibility="Collapsed" />
+                <controls:BarProgress x:Name="MicTestProgress" Height="{StaticResource SizeProgress}" Margin="0,8,0,0" Visibility="Collapsed" />
+                <TextBlock x:Name="MicTestResult" Style="{StaticResource Adv.Help}" />
+                <Button x:Name="OpenSoundSettingsButton" Style="{StaticResource Button.Text}" Content="Open sound settings"
+                        HorizontalAlignment="Left" Margin="0,4,0,0" Visibility="Collapsed" Click="OpenSoundSettings_Click" />
 
-                <StackPanel Margin="0,8,0,0">
-                    <TextBlock Style="{StaticResource Text.Label}" Text="Microphone" />
-                    <ComboBox x:Name="MicrophoneSelect" Style="{StaticResource Select}" SelectionChanged="Microphone_SelectionChanged" />
-                    <TextBlock x:Name="MicDisconnectedCaption" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource TextAccentBrush}"
-                               Margin="0,4,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
-                    <DockPanel Margin="0,8,0,0">
-                        <Button x:Name="TestMicButton" Style="{StaticResource Button.Secondary}" Content="Test microphone"
-                                ToolTip="Test microphone recording level" AutomationProperties.Name="Test microphone recording level"
-                                Click="TestMicrophone_Click" />
-                        <controls:BarProgress x:Name="MicTestProgress" Height="{StaticResource SizeProgress}" Margin="8,0,0,0"
-                                              VerticalAlignment="Center" Visibility="Collapsed" />
-                    </DockPanel>
-                    <TextBlock x:Name="MicTestResult" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
-                    <Button x:Name="OpenSoundSettingsButton" Style="{StaticResource Button.Text}" Content="Open sound settings"
-                            HorizontalAlignment="Left" Margin="0,4,0,0" Visibility="Collapsed" Click="OpenSoundSettings_Click" />
-                </StackPanel>
+                <!-- THIS PC -->
+                <TextBlock Style="{StaticResource Adv.GroupLabel}" Text="This PC" />
+                <Border Style="{StaticResource Adv.Group}">
+                    <StackPanel>
+                        <!-- speed and hardware -->
+                        <Button x:Name="SpeedHeader" Style="{StaticResource Adv.Section}" Click="Section_Click"
+                                AutomationProperties.Name="Speed and hardware">
+                            <DockPanel>
+                                <controls:Icon Kind="Gauge" Style="{StaticResource Adv.SectionIcon}" />
+                                <controls:Icon x:Name="SpeedChevron" DockPanel.Dock="Right" Style="{StaticResource Adv.Chevron}" />
+                                <TextBlock x:Name="SpeedSummary" DockPanel.Dock="Right" Style="{StaticResource Adv.Summary}" Text="Automatic" />
+                                <TextBlock x:Name="SpeedTitle" Text="Speed and hardware" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
+                        </Button>
+                        <StackPanel x:Name="SpeedBody" Style="{StaticResource Adv.Body}">
+                            <TextBlock Style="{StaticResource Adv.Label}" Text="Build my day runs on" Margin="0,0,0,6" />
+                            <ComboBox x:Name="DayHardwareSelect" Style="{StaticResource Select}" AutomationProperties.Name="Build my day runs on"
+                                      SelectionChanged="DayHardware_SelectionChanged" />
+                            <TextBlock Style="{StaticResource Adv.Label}" Text="Voice runs on" />
+                            <ComboBox x:Name="VoiceHardwareSelect" Style="{StaticResource Select}" AutomationProperties.Name="Voice runs on"
+                                      SelectionChanged="VoiceHardware_SelectionChanged" />
+                            <TextBlock x:Name="VoiceRestartCaption" Style="{StaticResource Adv.Help}" Text="Applies after Time Planner restarts" Visibility="Collapsed" />
+                            <Button x:Name="SpeedCheckButton" Style="{StaticResource Button.Secondary}" Margin="0,12,0,0" HorizontalAlignment="Left"
+                                    Content="Run speed check" ToolTip="Tries the graphics card and the processor, and uses the faster one"
+                                    AutomationProperties.Name="Run speed check" Click="SpeedCheck_Click" />
+                            <TextBlock x:Name="DayHardwareCaption" Style="{StaticResource Adv.Help}" />
+                        </StackPanel>
+                        <Border Style="{StaticResource Adv.Divider}" />
 
-                <Separator Margin="0,16,0,16" Background="{DynamicResource BorderSubtleBrush}" />
+                        <!-- build my day engine -->
+                        <Button x:Name="EngineHeader" Style="{StaticResource Adv.Section}" Click="Section_Click"
+                                AutomationProperties.Name="Build my day engine">
+                            <DockPanel>
+                                <controls:Icon Kind="Chip" Style="{StaticResource Adv.SectionIcon}" />
+                                <controls:Icon x:Name="EngineChevron" DockPanel.Dock="Right" Style="{StaticResource Adv.Chevron}" />
+                                <TextBlock x:Name="EngineSummary" DockPanel.Dock="Right" Style="{StaticResource Adv.Summary}" Text="This PC" />
+                                <TextBlock x:Name="EngineTitle" Text="Build my day engine" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
+                        </Button>
+                        <StackPanel x:Name="EngineBody" Style="{StaticResource Adv.Body}">
+                            <RadioButton x:Name="EngineThisPcRadio" Content="This PC (Ollama)" Checked="Engine_Checked" />
+                            <RadioButton x:Name="EngineOrgAiRadio" Content="Your organisation's AI (dashboard)" Margin="0,8,0,0" Checked="Engine_Checked" />
+                            <TextBlock x:Name="OrgAiDisabledReason" Style="{StaticResource Adv.Help}" Foreground="{DynamicResource TextTertiaryBrush}"
+                                       Margin="24,4,0,0" Visibility="Collapsed" />
+                            <TextBlock x:Name="OrgAiNotice" Style="{StaticResource Adv.Help}" Margin="24,4,0,0" Visibility="Collapsed"
+                                       Text="Your voice notes' text is sent to your organisation's AI service. Audio never leaves this PC." />
+                        </StackPanel>
+                        <Border Style="{StaticResource Adv.Divider}" />
 
-                <!-- AI ENGINE -->
-                <TextBlock Style="{StaticResource Text.Subtitle}" Text="AI engine" />
+                        <!-- storage -->
+                        <Button x:Name="StorageHeader" Style="{StaticResource Adv.Section}" Click="Section_Click"
+                                AutomationProperties.Name="Storage">
+                            <DockPanel>
+                                <controls:Icon Kind="Storage" Style="{StaticResource Adv.SectionIcon}" />
+                                <controls:Icon x:Name="StorageChevron" DockPanel.Dock="Right" Style="{StaticResource Adv.Chevron}" />
+                                <TextBlock x:Name="StorageSummary" DockPanel.Dock="Right" Style="{StaticResource Adv.Summary}" Text="about 2.2 GB" />
+                                <TextBlock x:Name="StorageTitle" Text="Storage" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
+                        </Button>
+                        <StackPanel x:Name="StorageBody" Style="{StaticResource Adv.Body}">
+                            <TextBlock x:Name="EngineManagementText" Style="{StaticResource Adv.Help}" Margin="0,0,0,0" Visibility="Collapsed" />
+                            <TextBlock Style="{StaticResource Adv.Label}" Text="Build my day models (Ollama)" Margin="0,0,0,2" />
+                            <TextBlock x:Name="OllamaPathText" Style="{StaticResource Adv.Help}" Margin="0" />
+                            <TextBlock Style="{StaticResource Adv.Label}" Text="Voice models" Margin="0,12,0,2" />
+                            <TextBlock x:Name="VoicePathText" Style="{StaticResource Adv.Help}" Margin="0" />
+                            <TextBlock x:Name="OwnOllamaNotice" Style="{StaticResource Adv.Help}" Visibility="Collapsed" />
 
-                <StackPanel Margin="0,8,0,0">
-                    <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                               Text="Installs Ollama, a free AI engine, and two models. Ollama runs quietly only while Time Planner is open." />
-                    <TextBlock x:Name="EngineManagementText" Style="{StaticResource Text.Body}" Margin="0,6,0,0" FontWeight="SemiBold" />
-                    <TextBlock x:Name="EngineLocationsText" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="0,4,0,0" TextWrapping="Wrap" />
-                    <TextBlock x:Name="OwnOllamaNotice" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="0,4,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
+                            <Button x:Name="RemoveEngineButton" Style="{StaticResource Button.Secondary}" Margin="0,12,0,0" HorizontalAlignment="Left"
+                                    Foreground="{StaticResource TextDangerBrush}" BorderBrush="{StaticResource TextDangerBrush}"
+                                    Content="Remove AI engine and models" Click="RemoveEngine_Click" />
+                            <TextBlock Style="{StaticResource Adv.Help}" Text="You can install them again later." />
 
-                    <Button x:Name="RemoveEngineButton" Style="{StaticResource Button.Text}" Margin="0,8,0,0"
-                            HorizontalAlignment="Left" Content="Remove AI engine and models" Click="RemoveEngine_Click" />
+                            <!-- Inline Confirm -->
+                            <Border x:Name="RemoveConfirmPanel" Background="{DynamicResource AccentFillBrush}"
+                                    CornerRadius="{DynamicResource RadiusControl}" Padding="12,10" Margin="0,8,0,0" Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                               Text="This removes Ollama and the downloaded models (about 3 GB). Your timesheets and voice notes stay. Remove?" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <Button Style="{StaticResource Button.Primary}" Content="Yes" Click="RemoveConfirmYes_Click" Margin="0,0,8,0" />
+                                        <Button Style="{StaticResource Button.Secondary}" Content="No" Click="RemoveConfirmNo_Click" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
-                    <!-- Inline Confirm -->
-                    <Border x:Name="RemoveConfirmPanel" Background="{DynamicResource AccentFillBrush}"
-                            CornerRadius="{DynamicResource RadiusBanner}" Padding="12,10" Margin="0,8,0,0" Visibility="Collapsed">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                                       Text="This removes Ollama and the downloaded models (about 3 GB). Your timesheets and voice notes stay. Remove?" />
+                <!-- BRING YOUR OWN -->
+                <TextBlock Style="{StaticResource Adv.GroupLabel}" Text="Bring your own" />
+                <Border Style="{StaticResource Adv.Group}">
+                    <StackPanel>
+                        <!-- your own models -->
+                        <Button x:Name="OwnHeader" Style="{StaticResource Adv.Section}" Click="Section_Click"
+                                AutomationProperties.Name="Your own models">
+                            <DockPanel>
+                                <controls:Icon Kind="Cube" Style="{StaticResource Adv.SectionIcon}" />
+                                <controls:Icon x:Name="OwnChevron" DockPanel.Dock="Right" Style="{StaticResource Adv.Chevron}" />
+                                <TextBlock x:Name="OwnSummary" DockPanel.Dock="Right" Style="{StaticResource Adv.Summary}" Text="Built-in" />
+                                <TextBlock x:Name="OwnTitle" Text="Your own models" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
+                        </Button>
+                        <StackPanel x:Name="OwnBody" Style="{StaticResource Adv.Body}">
+                            <DockPanel Margin="0,0,0,6">
+                                <Button x:Name="TestOllamaButton" DockPanel.Dock="Right" Style="{StaticResource Adv.Link}" Content="Test"
+                                        ToolTip="Test Ollama connectivity" AutomationProperties.Name="Test Ollama connectivity" Click="TestOllama_Click" />
+                                <TextBlock Style="{StaticResource Adv.Label}" Text="Ollama address" Margin="0" />
+                            </DockPanel>
+                            <TextBox x:Name="OllamaAddressBox" Style="{StaticResource Input}" AutomationProperties.Name="Ollama address"
+                                     TextChanged="OllamaAddress_TextChanged" />
+                            <TextBlock x:Name="OllamaTestResult" Style="{StaticResource Adv.Help}" />
+
+                            <TextBlock Style="{StaticResource Adv.Label}" Text="Ollama model" />
+                            <DockPanel>
+                                <Button x:Name="RefreshOllamaModelsButton" DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}"
+                                        Width="{StaticResource SizeControl}" Padding="0" Margin="8,0,0,0"
+                                        ToolTip="Refresh the list" AutomationProperties.Name="Refresh the list" Click="RefreshOllamaModels_Click">
+                                    <controls:Icon Kind="Download" Size="{StaticResource SizeIconSm}" />
+                                </Button>
+                                <ComboBox x:Name="OllamaModelSelect" Style="{StaticResource Select}" AutomationProperties.Name="Ollama model"
+                                          SelectionChanged="OllamaModel_SelectionChanged" />
+                            </DockPanel>
+
+                            <DockPanel Margin="0,12,0,6">
+                                <Button x:Name="TestVoiceButton" DockPanel.Dock="Right" Style="{StaticResource Adv.Link}" Content="Test"
+                                        ToolTip="Test voice model" AutomationProperties.Name="Test voice model" Click="TestVoice_Click" />
+                                <TextBlock Style="{StaticResource Adv.Label}" Text="Voice model file" Margin="0" />
+                            </DockPanel>
+                            <TextBox x:Name="VoiceModelPathBox" Style="{StaticResource Input}" IsReadOnly="True"
+                                     controls:Field.Placeholder="Using the built-in model" AutomationProperties.Name="Voice model file" />
+                            <TextBlock x:Name="VoiceTestResult" Style="{StaticResource Adv.Help}" />
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                <Button Style="{StaticResource Button.Primary}" Content="Yes" Click="RemoveConfirmYes_Click" Margin="0,0,8,0" />
-                                <Button Style="{StaticResource Button.Secondary}" Content="No" Click="RemoveConfirmNo_Click" />
+                                <Button x:Name="ChooseVoiceFileButton" Style="{StaticResource Button.Secondary}" Content="Choose file…"
+                                        ToolTip="Choose a ggml voice model file" AutomationProperties.Name="Choose a ggml voice model file"
+                                        Click="ChooseVoiceFile_Click" />
+                                <Button x:Name="ClearVoiceFileButton" Style="{StaticResource Button.Text}" Margin="8,0,0,0"
+                                        Content="Use built-in" ToolTip="Use the built-in model"
+                                        AutomationProperties.Name="Use the built-in model" Click="ClearVoiceFile_Click" />
                             </StackPanel>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
 
-                <Separator Margin="0,16,0,16" Background="{DynamicResource BorderSubtleBrush}" />
+                        <!-- developer services (dev mode only) -->
+                        <StackPanel x:Name="DevDirectApiPanel" Visibility="Collapsed">
+                            <Border Style="{StaticResource Adv.Divider}" />
+                            <Button x:Name="DevHeader" Style="{StaticResource Adv.Section}" Click="Section_Click"
+                                    AutomationProperties.Name="Developer services">
+                                <DockPanel>
+                                    <controls:Icon Kind="Code" Style="{StaticResource Adv.SectionIcon}" />
+                                    <controls:Icon x:Name="DevChevron" DockPanel.Dock="Right" Style="{StaticResource Adv.Chevron}" />
+                                    <TextBlock x:Name="DevSummary" DockPanel.Dock="Right" Style="{StaticResource Adv.Summary}" Text="Local" />
+                                    <TextBlock x:Name="DevTitle" Text="Developer services" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                </DockPanel>
+                            </Button>
+                            <StackPanel x:Name="DevBody" Style="{StaticResource Adv.Body}">
+                                <TextBlock Style="{StaticResource Adv.Label}" Text="Transcriber service" Margin="0,0,0,6" />
+                                <ComboBox x:Name="DevTranscriberSelect" Style="{StaticResource Select}" SelectionChanged="DevTranscriber_SelectionChanged" />
 
-                <!-- YOUR OWN MODELS -->
-                <TextBlock Style="{StaticResource Text.Subtitle}" Text="Your own models" />
+                                <StackPanel x:Name="DevTranscriberDetailsPanel" Visibility="Collapsed">
+                                    <TextBlock Style="{StaticResource Adv.Label}" Text="Transcriber address" />
+                                    <TextBox x:Name="DevTranscriberAddressBox" Style="{StaticResource Input}" TextChanged="DevTranscriberAddress_TextChanged" />
+                                    <TextBlock Style="{StaticResource Adv.Label}" Text="Transcriber model" />
+                                    <TextBox x:Name="DevTranscriberModelBox" Style="{StaticResource Input}" TextChanged="DevTranscriberModel_TextChanged" />
+                                    <TextBlock Style="{StaticResource Adv.Label}" Text="Transcriber API key" />
+                                    <PasswordBox x:Name="DevTranscriberApiKeyBox" Height="{StaticResource SizeControl}" Padding="14,0"
+                                                 Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderControlBrush}"
+                                                 Foreground="{StaticResource TextPrimaryBrush}" FontSize="{StaticResource FontSizeBody}"
+                                                 VerticalContentAlignment="Center" PasswordChanged="DevTranscriberApiKey_PasswordChanged" />
+                                </StackPanel>
 
-                <StackPanel Margin="0,8,0,0">
-                    <TextBlock Style="{StaticResource Text.Label}" Text="Ollama address" />
-                    <TextBox x:Name="OllamaAddressBox" Style="{StaticResource Input}" TextChanged="OllamaAddress_TextChanged" />
-                </StackPanel>
+                                <DockPanel Margin="0,8,0,0">
+                                    <Button x:Name="DevTestTranscriberButton" Style="{StaticResource Button.Secondary}" Content="Test transcriber"
+                                            Click="DevTestTranscriber_Click" />
+                                    <TextBlock x:Name="DevTranscriberTestResult" Style="{StaticResource Text.Caption}" Margin="8,0,0,0"
+                                               VerticalAlignment="Center" TextWrapping="Wrap" />
+                                </DockPanel>
 
-                <StackPanel Margin="0,8,0,0">
-                    <TextBlock Style="{StaticResource Text.Label}" Text="Ollama model" />
-                    <DockPanel>
-                        <Button x:Name="RefreshOllamaModelsButton" DockPanel.Dock="Right" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Refresh"
-                                Margin="8,0,0,0" ToolTip="Refresh the list" AutomationProperties.Name="Refresh the list"
-                                Click="RefreshOllamaModels_Click">
-                            <controls:Icon Kind="Download" />
-                        </Button>
-                        <ComboBox x:Name="OllamaModelSelect" Style="{StaticResource Select}" SelectionChanged="OllamaModel_SelectionChanged" />
-                    </DockPanel>
-                </StackPanel>
+                                <TextBlock Style="{StaticResource Adv.Label}" Text="Compiler service" />
+                                <ComboBox x:Name="DevCompilerSelect" Style="{StaticResource Select}" SelectionChanged="DevCompiler_SelectionChanged" />
 
-                <DockPanel Margin="0,8,0,0">
-                    <Button x:Name="TestOllamaButton" Style="{StaticResource Button.Secondary}" Content="Test"
-                            ToolTip="Test Ollama connectivity" AutomationProperties.Name="Test Ollama connectivity"
-                            Click="TestOllama_Click" />
-                    <TextBlock x:Name="OllamaTestResult" Style="{StaticResource Text.Caption}" Margin="8,0,0,0"
-                               VerticalAlignment="Center" TextWrapping="Wrap" />
-                </DockPanel>
+                                <StackPanel x:Name="DevCompilerDetailsPanel" Visibility="Collapsed">
+                                    <TextBlock Style="{StaticResource Adv.Label}" Text="Compiler address" />
+                                    <TextBox x:Name="DevCompilerAddressBox" Style="{StaticResource Input}" TextChanged="DevCompilerAddress_TextChanged" />
+                                    <TextBlock Style="{StaticResource Adv.Label}" Text="Compiler model" />
+                                    <TextBox x:Name="DevCompilerModelBox" Style="{StaticResource Input}" TextChanged="DevCompilerModel_TextChanged" />
+                                    <TextBlock Style="{StaticResource Adv.Label}" Text="Compiler API key" />
+                                    <PasswordBox x:Name="DevCompilerApiKeyBox" Height="{StaticResource SizeControl}" Padding="14,0"
+                                                 Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderControlBrush}"
+                                                 Foreground="{StaticResource TextPrimaryBrush}" FontSize="{StaticResource FontSizeBody}"
+                                                 VerticalContentAlignment="Center" PasswordChanged="DevCompilerApiKey_PasswordChanged" />
+                                </StackPanel>
 
-                <StackPanel Margin="0,12,0,0">
-                    <TextBlock Style="{StaticResource Text.Label}" Text="Voice model file" />
-                    <TextBox x:Name="VoiceModelPathBox" Style="{StaticResource Input}" IsReadOnly="True" Margin="0,0,0,8" />
-                    <StackPanel Orientation="Horizontal">
-                        <Button x:Name="ChooseVoiceFileButton" Style="{StaticResource Button.Secondary}" Content="Choose file…"
-                                ToolTip="Choose a ggml voice model file" AutomationProperties.Name="Choose a ggml voice model file"
-                                Click="ChooseVoiceFile_Click" />
-                        <Button x:Name="ClearVoiceFileButton" Style="{StaticResource Button.Text}" Margin="8,0,0,0"
-                                Content="Use the built-in model" ToolTip="Use the built-in model"
-                                AutomationProperties.Name="Use the built-in model" Click="ClearVoiceFile_Click" />
+                                <DockPanel Margin="0,8,0,0">
+                                    <Button x:Name="DevTestCompilerButton" Style="{StaticResource Button.Secondary}" Content="Test compiler"
+                                            Click="DevTestCompiler_Click" />
+                                    <TextBlock x:Name="DevCompilerTestResult" Style="{StaticResource Text.Caption}" Margin="8,0,0,0"
+                                               VerticalAlignment="Center" TextWrapping="Wrap" />
+                                </DockPanel>
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
-
-                <DockPanel Margin="0,8,0,0">
-                    <Button x:Name="TestVoiceButton" Style="{StaticResource Button.Secondary}" Content="Test"
-                            ToolTip="Test voice model" AutomationProperties.Name="Test voice model"
-                            Click="TestVoice_Click" />
-                    <TextBlock x:Name="VoiceTestResult" Style="{StaticResource Text.Caption}" Margin="8,0,0,0"
-                               VerticalAlignment="Center" TextWrapping="Wrap" />
-                </DockPanel>
-
-                <Separator Margin="0,16,0,16" Background="{DynamicResource BorderSubtleBrush}" />
-
-                <!-- BUILD MY DAY ENGINE -->
-                <TextBlock Style="{StaticResource Text.Subtitle}" Text="Build my day engine" />
-
-                <StackPanel Margin="0,8,0,0">
-                    <RadioButton x:Name="EngineThisPcRadio" Content="This PC (Ollama)" Margin="0,4,0,0" Checked="Engine_Checked" />
-                    <RadioButton x:Name="EngineOrgAiRadio" Content="Your organisation's AI (dashboard)" Margin="0,8,0,0" Checked="Engine_Checked" />
-                    <TextBlock x:Name="OrgAiDisabledReason" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource TextTertiaryBrush}"
-                               Margin="24,4,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
-                    <TextBlock x:Name="OrgAiNotice" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="24,4,0,0" TextWrapping="Wrap" Visibility="Collapsed"
-                               Text="Your voice notes' text is sent to your organisation's AI service. Audio never leaves this PC." />
-                </StackPanel>
-
-                <!-- DEVELOPER DIRECT API (Dev mode only) -->
-                <StackPanel x:Name="DevDirectApiPanel" Margin="0,16,0,0" Visibility="Collapsed">
-                    <Separator Margin="0,0,0,16" Background="{DynamicResource BorderSubtleBrush}" />
-                    <TextBlock Style="{StaticResource Text.Subtitle}" Text="Developer: direct API service" />
-
-                    <StackPanel Margin="0,8,0,0">
-                        <TextBlock Style="{StaticResource Text.Label}" Text="Transcriber service" />
-                        <ComboBox x:Name="DevTranscriberSelect" Style="{StaticResource Select}" SelectionChanged="DevTranscriber_SelectionChanged" />
-                    </StackPanel>
-
-                    <StackPanel x:Name="DevTranscriberDetailsPanel" Margin="0,8,0,0" Visibility="Collapsed">
-                        <TextBlock Style="{StaticResource Text.Label}" Text="Transcriber address" />
-                        <TextBox x:Name="DevTranscriberAddressBox" Style="{StaticResource Input}" TextChanged="DevTranscriberAddress_TextChanged" />
-                        <TextBlock Style="{StaticResource Text.Label}" Text="Transcriber model" Margin="0,8,0,0" />
-                        <TextBox x:Name="DevTranscriberModelBox" Style="{StaticResource Input}" TextChanged="DevTranscriberModel_TextChanged" />
-                        <TextBlock Style="{StaticResource Text.Label}" Text="Transcriber API key" Margin="0,8,0,0" />
-                        <PasswordBox x:Name="DevTranscriberApiKeyBox" Height="{StaticResource SizeControl}" Padding="14,0"
-                                     Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderControlBrush}"
-                                     Foreground="{StaticResource TextPrimaryBrush}" FontSize="{StaticResource FontSizeBody}"
-                                     VerticalContentAlignment="Center" PasswordChanged="DevTranscriberApiKey_PasswordChanged" />
-                    </StackPanel>
-
-                    <DockPanel Margin="0,8,0,0">
-                        <Button x:Name="DevTestTranscriberButton" Style="{StaticResource Button.Secondary}" Content="Test transcriber"
-                                Click="DevTestTranscriber_Click" />
-                        <TextBlock x:Name="DevTranscriberTestResult" Style="{StaticResource Text.Caption}" Margin="8,0,0,0"
-                                   VerticalAlignment="Center" TextWrapping="Wrap" />
-                    </DockPanel>
-
-                    <StackPanel Margin="0,12,0,0">
-                        <TextBlock Style="{StaticResource Text.Label}" Text="Compiler service" />
-                        <ComboBox x:Name="DevCompilerSelect" Style="{StaticResource Select}" SelectionChanged="DevCompiler_SelectionChanged" />
-                    </StackPanel>
-
-                    <StackPanel x:Name="DevCompilerDetailsPanel" Margin="0,8,0,0" Visibility="Collapsed">
-                        <TextBlock Style="{StaticResource Text.Label}" Text="Compiler address" />
-                        <TextBox x:Name="DevCompilerAddressBox" Style="{StaticResource Input}" TextChanged="DevCompilerAddress_TextChanged" />
-                        <TextBlock Style="{StaticResource Text.Label}" Text="Compiler model" Margin="0,8,0,0" />
-                        <TextBox x:Name="DevCompilerModelBox" Style="{StaticResource Input}" TextChanged="DevCompilerModel_TextChanged" />
-                        <TextBlock Style="{StaticResource Text.Label}" Text="Compiler API key" Margin="0,8,0,0" />
-                        <PasswordBox x:Name="DevCompilerApiKeyBox" Height="{StaticResource SizeControl}" Padding="14,0"
-                                     Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderControlBrush}"
-                                     Foreground="{StaticResource TextPrimaryBrush}" FontSize="{StaticResource FontSizeBody}"
-                                     VerticalContentAlignment="Center" PasswordChanged="DevCompilerApiKey_PasswordChanged" />
-                    </StackPanel>
-
-                    <DockPanel Margin="0,8,0,0">
-                        <Button x:Name="DevTestCompilerButton" Style="{StaticResource Button.Secondary}" Content="Test compiler"
-                                Click="DevTestCompiler_Click" />
-                        <TextBlock x:Name="DevCompilerTestResult" Style="{StaticResource Text.Caption}" Margin="8,0,0,0"
-                                   VerticalAlignment="Center" TextWrapping="Wrap" />
-                    </DockPanel>
-                </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
-    </StackPanel>
+    </DockPanel>
 </UserControl>
