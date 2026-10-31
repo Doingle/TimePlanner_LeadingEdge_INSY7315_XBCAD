@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Threading;
+using TimePlanner.Core.Ai;
 using TimePlanner.Core.Services;
 using TimePlanner.Core.Services.Models;
 using TimePlanner.Core.Sync;
@@ -19,45 +22,143 @@ namespace TimePlanner.Widget.Views
     {
         private readonly WidgetFlow _flow;
         private readonly DateOnly _day;
-        private readonly DayPreview _preview;
+        private readonly TimesheetReviewModel _model;
+        private readonly TimesheetActions _actions;
         private readonly Action _back;
         private DispatcherTimer? _undoTimer;
         private Action? _undoAction;
 
-        public TimesheetReviewView(WidgetFlow flow, DateOnly day, IReadOnlyList<TimesheetSlot> slots, DayPreview preview, SentDay? sent, Action back)
+        public TimesheetReviewView(WidgetFlow flow, DateOnly day, IReadOnlyList<TimesheetSlot> slots, DayPreview preview, SentDay? sent, Action back,
+            PendingDay? pending = null, bool sendNow = false)
         {
             InitializeComponent();
             _flow = flow;
             _day = day;
-            _preview = preview;
             _back = back;
 
-            var dayDate = day.ToDateTime(TimeOnly.MinValue);
-            var totalLogged = slots.Where(s => s.Kind == SlotKind.Entry).Sum(s => (s.End - s.Start).TotalMinutes);
-            Subtitle.Text = $"{Format.Day(dayDate)} · {Format.Duration(TimeSpan.FromMinutes(totalLogged))}";
-
-            //sets send status caption
-            if (sent == null)
-            {
-                StatusText.Text = "Not sent";
-            }
-            else if (sent.ChangedAt > sent.SentAt)
-            {
-                StatusText.Text = "Changed since sent · send again";
-            }
-            else
-            {
-                StatusText.Text = $"Sent {Format.Clock(sent.SentAt)}";
-            }
-
-            //disables next day navigation on today
-            var today = DateOnly.FromDateTime(DateTime.Now);
-            NextDayButton.IsEnabled = day < today;
-
-            SendButton.IsEnabled = preview.CanSend;
-
-            RenderSlots(slots);
+            _model = new TimesheetReviewModel(day, DateOnly.FromDateTime(flow.Scheduler.Now), slots, preview, sent, pending);
+            _actions = new TimesheetActions(flow, day, ReopenTimesheet);
+            DayText.Text = _model.DayText;
+            DayButton.ToolTip = _model.Subtitle;
+            TotalText.Text = _model.Total;
+            ShowBadge(SendBadge, BadgeIcon, BadgeText, _model);
+            StatusText.Text = _model.Status;
+            StatusText.Visibility = _model.ShowsStatus ? Visibility.Visible : Visibility.Collapsed;
+            AutomationProperties.SetName(DayButton, $"Day shown: {Format.Date(day)}. Choose another day");
+            PastDayHelp.Visibility = _model.IsPastDay ? Visibility.Visible : Visibility.Collapsed;
+            TodayButton.Visibility = _model.IsPastDay ? Visibility.Visible : Visibility.Collapsed;
+            NextDayButton.IsEnabled = _model.IsPastDay;
+            SendButton.Content = _model.SendLabel;
+            SendButton.IsEnabled = _model.CanSend;
+            RenderSlots();
             _ = LoadAccountStatusAsync();
+
+            Loaded += async (s, e) => await LoadAiAndRenderAsync();
+            _flow.Ai.NoteChanged += OnNoteChanged;
+            Unloaded += (s, e) => _flow.Ai.NoteChanged -= OnNoteChanged;
+            //an edit that also changed other entries offers to undo all of it. The editor has already closed, so the offer waits in the flow
+            if (flow.TakeUndo() is { } offer)
+            {
+                ShowUndo(offer.Message, async () =>
+                {
+                    var undone = await offer.Undo();
+
+                    //an undo that can no longer be done safely says why
+                    if (!undone.Ok)
+                    {
+                        MessageBox.Show(undone.Error ?? "Could not undo.", "Undo");
+                    }
+
+                    ReopenTimesheet();
+                });
+            }
+
+            //send now from a not-sent notice starts sending once the entries are in view
+            if (sendNow && _model.CanSend)
+            {
+                Loaded += SendOnceLoaded;
+            }
+        }
+
+        //-----------------------------
+        //the send state as a badge: warning colours and a send arrow until the day is on the dashboard, its full status as the tooltip
+        internal static void ShowBadge(Border badge, Icon icon, TextBlock text, TimesheetReviewModel model)
+        {
+            badge.Style = (Style)badge.FindResource(model.BadgeWarns ? "Pill.Warning" : "Pill");
+            icon.Kind = model.BadgeWarns ? IconKind.Send : IconKind.Check;
+            text.Text = model.Badge;
+            badge.ToolTip = model.Status;
+            AutomationProperties.SetName(badge, model.Status);
+        }
+
+        //-----------------------------
+        //opens the wide window on this day; the widget goes back to where the timesheet was opened from
+        private void Maximise_Click(object sender, RoutedEventArgs e) => _ = _flow.ShowWideTimesheetAsync(_day, _back);
+
+        //-----------------------------
+        //starts the send once the view has rendered
+        private async void SendOnceLoaded(object sender, RoutedEventArgs e)
+        {
+            Loaded -= SendOnceLoaded;
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+            await SendAsync();
+        }
+
+        //-----------------------------
+        //goes back to today
+        private void Today_Click(object sender, RoutedEventArgs e) =>
+            _ = _flow.ShowTimesheetAsync(DateOnly.FromDateTime(_flow.Scheduler.Now), _back);
+
+        //-----------------------------
+        //opens the list of recent days with what was logged and sent on each
+        private async void DayButton_Click(object sender, RoutedEventArgs e) =>
+            await _actions.ShowDayMenuAsync(DayButton, picked => _ = _flow.ShowTimesheetAsync(picked, _back));
+
+        //-----------------------------
+        //reloads notes when transcription state updates
+        private void OnNoteChanged(Guid id) => _ = Dispatcher.InvokeAsync(LoadAiAndRenderAsync);
+
+        private Action? _bannerAction;
+
+        //-----------------------------
+        //loads voice notes and ai markers for the day and renders slots
+        private async Task LoadAiAndRenderAsync()
+        {
+            var notes = await _flow.Ai.GetNotesAsync(_day);
+            var aiIds = await _flow.Ai.GetAiEntryIdsAsync(_day);
+            _model.UpdateAi(notes, aiIds);
+
+            UpdateUnbuiltBanner();
+            RenderSlots();
+        }
+
+        //-----------------------------
+        //updates banner offering the next step in priority order
+        private void UpdateUnbuiltBanner()
+        {
+            var banner = _model.Banner;
+            UnbuiltBanner.Visibility = banner != null ? Visibility.Visible : Visibility.Collapsed;
+            _bannerAction = null;
+            if (banner == null) return;
+
+            UnbuiltBannerText.Text = banner.Text;
+            BuildDayButton.Visibility = banner.ButtonLabel != null ? Visibility.Visible : Visibility.Collapsed;
+            if (banner.ButtonLabel == null) return;
+
+            BuildDayButton.Content = banner.ButtonLabel;
+            BuildDayButton.ToolTip = banner.ToolTip;
+            AutomationProperties.SetName(BuildDayButton, banner.ToolTip!);
+            BuildDayButton.IsEnabled = true;
+            _bannerAction = banner.NoteId is { } id
+                ? async () => await _flow.ShowVoiceNoteAsync(id, ReopenTimesheet)
+                : async () => await _flow.ShowDayBuildAsync(_day, ReopenTimesheet);
+        }
+
+        //-----------------------------
+        //executes action associated with timesheet banner
+        private void BuildDay_Click(object sender, RoutedEventArgs e)
+        {
+            _bannerAction?.Invoke();
         }
 
         //-----------------------------
@@ -87,13 +188,14 @@ namespace TimePlanner.Widget.Views
         }
 
         //-----------------------------
-        //renders timesheet slot cards
-        private void RenderSlots(IReadOnlyList<TimesheetSlot> slots)
+        //renders timesheet slot cards and voice note cards in chronological order
+        private void RenderSlots()
         {
             SlotContainer.Children.Clear();
 
-            //shows message when day has no slots
-            if (slots.Count == 0)
+            //shows message when day has no slots and no voice notes
+            var items = _model.Items;
+            if (items.Count == 0)
             {
                 var empty = new TextBlock
                 {
@@ -104,62 +206,116 @@ namespace TimePlanner.Widget.Views
                 return;
             }
 
-            //builds card for each slot
-            foreach (var slot in slots)
+            //builds card for each slot or unbuilt voice note
+            foreach (var item in items)
             {
-                if (slot.Kind == SlotKind.Entry)
+                if (item.Note != null)
                 {
-                    SlotContainer.Children.Add(BuildEntryCard(slot));
+                    SlotContainer.Children.Add(BuildVoiceNoteCard(item.Note));
                 }
-                else if (slot.Kind == SlotKind.Gap)
+                else if (item.Slot != null)
                 {
-                    SlotContainer.Children.Add(BuildGapCard(slot));
-                }
-                else if (slot.Kind == SlotKind.Break)
-                {
-                    SlotContainer.Children.Add(BuildBreakCard(slot));
+                    if (item.Slot.Kind == SlotKind.Entry)
+                    {
+                        SlotContainer.Children.Add(BuildEntryCard(item.Slot));
+                    }
+                    else if (item.Slot.Kind == SlotKind.Gap)
+                    {
+                        SlotContainer.Children.Add(BuildGapCard(item.Slot));
+                    }
+                    else if (item.Slot.Kind == SlotKind.Break)
+                    {
+                        SlotContainer.Children.Add(BuildBreakCard(item.Slot));
+                    }
                 }
             }
         }
 
         //-----------------------------
-        //builds UI card for a logged entry
-        private Border BuildEntryCard(TimesheetSlot slot)
+        //builds UI card for an unbuilt voice note
+        private Border BuildVoiceNoteCard(VoiceNote note)
         {
             var border = new Border
             {
                 Style = (Style)FindResource("Stat"),
                 Padding = new Thickness(12),
                 Margin = new Thickness(0, 0, 0, 8),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                ToolTip = "Open this voice note"
+            };
+            System.Windows.Automation.AutomationProperties.SetName(border, "Open this voice note");
+
+            var dock = new DockPanel();
+
+            var icon = new Icon
+            {
+                Kind = IconKind.Mic,
+                Size = (double)FindResource("SizeIconSm"),
+                Foreground = (Brush)FindResource("TextSecondaryBrush"),
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            DockPanel.SetDock(icon, Dock.Left);
+            dock.Children.Add(icon);
+
+            var statusText = note.Status switch
+            {
+                VoiceNoteStatus.Transcribed => "Transcribed",
+                VoiceNoteStatus.Recorded => "Transcribing…",
+                VoiceNoteStatus.Failed => "Couldn't transcribe · Retry",
+                _ => note.Status.ToString()
+            };
+
+            var text = new TextBlock
+            {
+                Text = $"Voice note · {Format.Range(note.WindowStart, note.WindowEnd)} · {statusText}",
+                Style = (Style)FindResource("Text.Body"),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            //highlight failed status in accent color
+            if (note.Status == VoiceNoteStatus.Failed)
+            {
+                text.Foreground = (Brush)FindResource("TextAccentBrush");
+            }
+
+            dock.Children.Add(text);
+            border.Child = dock;
+
+            //open voice note details on card click
+            border.MouseLeftButtonUp += async (sender, e) =>
+            {
+                await _flow.ShowVoiceNoteAsync(note.Id, ReopenTimesheet);
+            };
+
+            return border;
+        }
+
+        //-----------------------------
+        //builds UI card for a logged entry: its times and length, what it was, and its Edit and Delete
+        private Border BuildEntryCard(TimesheetSlot slot)
+        {
+            var border = new Border
+            {
+                Style = (Style)FindResource("EntryCard"),
                 Cursor = System.Windows.Input.Cursors.Hand
             };
 
-            var stack = new StackPanel();
+            //the times and length on the top row, what it was under them, and Edit and Delete where the EntryActions style puts them
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition());
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var topRow = new DockPanel();
-            var deleteBtn = new Button
-            {
-                Style = (Style)FindResource("Button.Icon"),
-                ToolTip = "Delete entry",
-                Content = new Icon { Kind = IconKind.Close, Size = (double)FindResource("SizeIconSm") }
-            };
-            DockPanel.SetDock(deleteBtn, Dock.Right);
-
-            //deletes entry when close button is clicked
-            deleteBtn.Click += async (sender, e) =>
-            {
-                e.Handled = true;
-                await DeleteEntryAsync(slot);
-            };
-
-            topRow.Children.Add(deleteBtn);
-
             var lenText = new TextBlock
             {
                 Text = Format.Duration(slot.End - slot.Start),
                 Style = (Style)FindResource("Text.Body"),
                 Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                Margin = new Thickness(8, 0, 8, 0)
+                Margin = new Thickness(8, 0, 0, 0)
             };
             DockPanel.SetDock(lenText, Dock.Right);
             topRow.Children.Add(lenText);
@@ -172,7 +328,11 @@ namespace TimePlanner.Widget.Views
             };
             topRow.Children.Add(timeText);
 
-            stack.Children.Add(topRow);
+            grid.Children.Add(topRow);
+
+            var stack = new StackPanel();
+            Grid.SetRow(stack, 1);
+            Grid.SetColumnSpan(stack, 2);
 
             var activityText = new TextBlock
             {
@@ -183,10 +343,24 @@ namespace TimePlanner.Widget.Views
 
             var projectText = new TextBlock
             {
-                Text = $"{slot.Project} · {slot.Company}",
-                Style = (Style)FindResource("Text.Caption"),
-                Foreground = (Brush)FindResource("TextSecondaryBrush")
+                Style = (Style)FindResource("Text.Caption")
             };
+
+            //add ai tag when entry was created by day compilation
+            if (_model.IsAiEntry(slot))
+            {
+                projectText.Inlines.Add(new Run("AI · ")
+                {
+                    Foreground = (Brush)FindResource("TextAccentBrush"),
+                    FontWeight = (FontWeight)FindResource("FontWeightSemibold")
+                });
+            }
+
+            projectText.Inlines.Add(new Run($"{slot.Company} › {slot.Project}")
+            {
+                Foreground = (Brush)FindResource("TextSecondaryBrush")
+            });
+
             stack.Children.Add(projectText);
 
             //adds note line when present
@@ -202,7 +376,28 @@ namespace TimePlanner.Widget.Views
                 stack.Children.Add(noteText);
             }
 
-            border.Child = stack;
+            grid.Children.Add(stack);
+
+            //edit and delete: at the end of the top row, and in large view under the entry on the right
+            var actions = new StackPanel { Style = (Style)FindResource("EntryActions") };
+            var editBtn = EntryAction(IconKind.Edit, "Edit", "Edit entry");
+            editBtn.Click += async (sender, e) =>
+            {
+                e.Handled = true;
+                await _flow.ShowEntryEditorAsync(_day, slot, slot.Start, slot.End, ReopenTimesheet);
+            };
+            actions.Children.Add(editBtn);
+
+            var deleteBtn = EntryAction(IconKind.Trash, "Delete", "Delete entry");
+            deleteBtn.Click += async (sender, e) =>
+            {
+                e.Handled = true;
+                await DeleteEntryAsync(slot);
+            };
+            actions.Children.Add(deleteBtn);
+            grid.Children.Add(actions);
+
+            border.Child = grid;
 
             //opens entry editor on click
             border.MouseLeftButtonUp += async (sender, e) =>
@@ -211,6 +406,21 @@ namespace TimePlanner.Widget.Views
             };
 
             return border;
+        }
+
+        //-----------------------------
+        //an icon button on an entry card, with its word beside the icon in large view
+        private Button EntryAction(IconKind kind, string word, string tip)
+        {
+            var button = new Button
+            {
+                Style = (Style)FindResource("EntryAction"),
+                ToolTip = tip,
+                Content = new Icon { Kind = kind, Size = (double)FindResource("SizeIconSm") }
+            };
+            WidgetCard.SetWord(button, word);
+            AutomationProperties.SetName(button, tip);
+            return button;
         }
 
         //-----------------------------
@@ -279,32 +489,13 @@ namespace TimePlanner.Widget.Views
         //deletes an entry with confirmation and shows undo bar
         private async Task DeleteEntryAsync(TimesheetSlot slot)
         {
-            var confirm = MessageBox.Show("Delete this entry?", "Delete entry", MessageBoxButton.YesNo);
-
-            //user cancelled deletion
-            if (confirm != MessageBoxResult.Yes)
+            //nothing deleted: no undo to offer
+            if (await _actions.DeleteAsync(slot) is not { } undo)
             {
                 return;
             }
 
-            var result = await _flow.DeleteEntryAsync(slot.EntryId!.Value);
-
-            //shows error if deletion fails
-            if (!result.Ok)
-            {
-                MessageBox.Show(result.Error ?? "Could not delete entry.", "Delete");
-                return;
-            }
-
-            ShowUndo("Entry deleted", async () =>
-            {
-                //restores deleted entry
-                if (result.Previous != null)
-                {
-                    await _flow.AddEntryAsync(result.Previous);
-                    ReopenTimesheet();
-                }
-            });
+            ShowUndo("Entry deleted", async () => await undo());
 
             ReopenTimesheet();
         }
@@ -360,95 +551,18 @@ namespace TimePlanner.Widget.Views
         private async void AddTime_Click(object sender, RoutedEventArgs e)
         {
             var slots = await _flow.GetTimesheetAsync(_flow.Session.User.UserId, _day);
-            var lastEntry = slots.LastOrDefault(s => s.Kind == SlotKind.Entry);
-            var start = lastEntry?.End ?? _day.ToDateTime(new TimeOnly(9, 0));
-            var end = start.AddMinutes(30);
+            var (start, end) = TimesheetReviewModel.NewEntryRange(_day, slots);
 
             await _flow.ShowEntryEditorAsync(_day, null, start, end, ReopenTimesheet);
         }
 
         //-----------------------------
         //sends current day to dashboard
-        private async void Send_Click(object sender, RoutedEventArgs e)
-        {
-            var confirm = MessageBox.Show(
-                $"Send {_preview.Rows.Count} entries ({_preview.Hours:0.##} h) for {Format.Day(_day.ToDateTime(TimeOnly.MinValue))} to the dashboard?",
-                "Send day",
-                MessageBoxButton.YesNo);
-
-            //user cancelled send
-            if (confirm != MessageBoxResult.Yes)
-            {
-                return;
-            }
-
-            SendButton.IsEnabled = false;
-            SendButton.Content = "Sending…";
-
-            try
-            {
-                await SendCoreAsync();
-            }
-            finally
-            {
-                SendButton.IsEnabled = true;
-                SendButton.Content = "Send day";
-            }
-        }
+        private async void Send_Click(object sender, RoutedEventArgs e) => await SendAsync();
 
         //-----------------------------
-        //tells the user the day reached the dashboard
-        private void ConfirmSent()
-        {
-            MessageBox.Show($"Sent {_preview.Rows.Count} entries ({_preview.Hours:0.##} h) for {Format.Day(_day.ToDateTime(TimeOnly.MinValue))} to the dashboard.", "Day sent");
-        }
-
-        //-----------------------------
-        //handles day send outcomes
-        private async Task SendCoreAsync()
-        {
-            var outcome = await _flow.SendDayAsync(_day);
-
-            //reloads timesheet when sent
-            if (outcome.Status == SendStatus.Sent)
-            {
-                ConfirmSent();
-                ReopenTimesheet();
-                return;
-            }
-
-            //prompts user to sign in
-            if (outcome.Status == SendStatus.NeedsSignIn)
-            {
-                _flow.ShowSignIn(async () =>
-                {
-                    var retry = await _flow.SendDayAsync(_day);
-
-                    //confirms sent or shows failure on retry
-                    if (retry.Status == SendStatus.Sent)
-                    {
-                        ConfirmSent();
-                    }
-                    else
-                    {
-                        MessageBox.Show(retry.Message ?? "The day was not sent.", "Send day");
-                    }
-
-                    ReopenTimesheet();
-                }, ReopenTimesheet);
-                return;
-            }
-
-            //shows rejected errors
-            if (outcome.Status == SendStatus.Rejected)
-            {
-                var msg = $"{outcome.Message}\n" + string.Join("\n", outcome.Errors);
-                MessageBox.Show(msg, "Send day");
-                return;
-            }
-
-            MessageBox.Show(outcome.Message, "Send day");
-        }
+        //asks, then sends the day (the same steps as the wide window)
+        private Task SendAsync() => _actions.SendAsync(_model, SendButton);
 
         //-----------------------------
         //exports day entries as csv file

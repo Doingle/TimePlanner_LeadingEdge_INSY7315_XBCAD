@@ -13,6 +13,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //-----------------------------
         //projects with their company, optionally only one company and/or only projects still accepting time
         [HttpGet]
+        [ProducesResponseType<List<ProjectDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<List<ProjectDto>>> GetAll([FromQuery] int? companyId, [FromQuery] bool activeOnly = false)
         {
             var projects = activeOnly ? await _projects.GetActiveAsync() : await _projects.GetAllAsync();
@@ -24,6 +26,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
 
         //-----------------------------
         [HttpGet("{id:int}")]
+        [ProducesResponseType<ProjectDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ProjectDto>> Get(int id)
         {
             var project = await _projects.GetByIdAsync(id);

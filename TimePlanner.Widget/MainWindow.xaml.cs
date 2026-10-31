@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,11 +7,16 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Controls;
+using TimePlanner.Widget.Models;
+using TimePlanner.Widget.Services;
+using TimePlanner.Widget.Views;
 
 namespace TimePlanner.Widget
 {
@@ -24,6 +29,9 @@ namespace TimePlanner.Widget
 
         private const double ScreenInset = 16;
 
+        // Space under the main card's top for its tallest screen, so going from screen to screen never moves the top (1.5 times in large view)
+        public const double MainRoom = 680;
+
         private enum Corner
         {
             TopLeft,
@@ -33,30 +41,130 @@ namespace TimePlanner.Widget
         }
 
         private Corner _corner = Corner.BottomRight;
-        private Point? _anchor;        
+        private Point? _anchor;
         private bool _positioning;
-        private Slot? _shown;          
+        private Slot? _shown;
+
+        // Widget positioning and desktop visibility
+        private bool _idle;
+        private bool _presenting;
+        private bool _positionDirty;
+        private Services.DesktopVisibility? _desktop;
+
+        // Widget update checking
+        private WidgetUpdateChecker? _updates;
 
         public MainWindow()
         {
             InitializeComponent();
+
             SizeChanged += (_, _) => Reposition();
             LocationChanged += (_, _) => Reanchor();
-            Closed += (_, _) => Application.Current.Shutdown();
+
+            Closed += (_, _) =>
+            {
+                _desktop?.Dispose();
+                Application.Current.Shutdown();
+            };
+
+            StateChanged += (_, _) =>
+            {
+                if (WindowState == WindowState.Minimized && Host.Content != null)
+                    Dispatcher.BeginInvoke(
+                        DispatcherPriority.ApplicationIdle,
+                        () => RestoreVisible(activate: false));
+            };
+
+            UpdateNotice.Dismissed += (_, _) => _updates?.Dismiss();
         }
 
+        public void AttachUpdates(WidgetUpdateChecker updates)
+        {
+            if (_updates != null)
+                _updates.Changed -= UpdatesChanged;
+
+            _updates = updates;
+            _updates.Changed += UpdatesChanged;
+
+            UpdateNoticeVisibility();
+        }
+
+        private void UpdatesChanged(object? sender, EventArgs e)
+            => UpdateNoticeVisibility();
+
+        private void UpdateNoticeVisibility()
+        {
+            // Defer while hidden/collapsed or working in sign-in,
+            // logging and Timesheet screens.
+            var show = _updates?.Available != null
+                && IsVisible
+                && Host.Content is SetupView or TimerView or DayEndedView;
+
+            var wasVisible = UpdateNotice.Visibility == Visibility.Visible;
+
+            //set available version on update notice when becoming visible
+            if (show && !wasVisible && _updates?.Available?.LatestVersion is { } ver && WidgetRelease.Parse(ver) is { } parsed)
+            {
+                UpdateNotice.SetAvailableUpdate(parsed);
+            }
+
+            UpdateNotice.Visibility = show
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            Host.IsEnabled = !show;
+
+            if (show && !wasVisible && IsActive)
+            {
+                UpdateNotice.MoveFocus(
+                    new TraversalRequest(FocusNavigationDirection.First));
+            }
+            else if (!show && wasVisible && IsActive
+                     && Host.Content is FrameworkElement screen)
+            {
+                screen.MoveFocus(
+                    new TraversalRequest(FocusNavigationDirection.First));
+            }
+        }
 
         public IWidgetHost OpenSlot()
         {
+            SavePosition();
+
             var slot = new Slot(this);
             _shown = slot;
+
             return slot;
         }
 
-        public void UseSlot(IWidgetHost slot) => _shown = (Slot)slot;
+        public void UseSlot(IWidgetHost slot)
+        {
+            if (_shown == slot)
+                return;
+
+            SavePosition();
+
+            _shown = (Slot)slot;
+            LoadPosition();
+            ApplySize();
+        }
 
         private sealed class Slot(MainWindow window) : IWidgetHost
         {
+            public WidgetPreferences? Preferences { get; private set; }
+            public Action? Save { get; private set; }
+
+            public void ConfigurePositions(
+                WidgetPreferences preferences,
+                Action save)
+            {
+                Preferences = preferences;
+                Save = save;
+
+                if (window._shown == this)
+                    window.LoadPosition();
+            }
+
             public void Present(FrameworkElement screen, bool activate = true)
             {
                 if (window._shown == this)
@@ -68,44 +176,190 @@ namespace TimePlanner.Widget
                 if (window._shown == this)
                     window.HideWidget();
             }
+
+            public void ApplySize()
+            {
+                if (window._shown == this)
+                    window.ApplySize();
+            }
+        }
+
+        // Large view: one 1.5 times scale at the root (a layout transform, so click areas grow too), and the room kept
+        // for the tallest screen grows with it. Off, the root has no transform at all
+        private bool Large => WidgetCard.GetIsLarge(Root);
+
+        private double Scale => Large ? WidgetCard.LargeScale : 1;
+
+        private static readonly Duration FadeOut = TimeSpan.FromMilliseconds(90);
+        private static readonly Duration FadeIn = TimeSpan.FromMilliseconds(140);
+        private static readonly Duration Shrink = TimeSpan.FromMilliseconds(160);
+        private static readonly Duration Settle = TimeSpan.FromMilliseconds(60);
+        private bool _fading;
+
+        // The window can't change size and place in one step, so a card on screen would jump between the two. Growing, it
+        // fades out, takes its new size and place unseen, and fades back in. Shrinking, the big card first draws itself smaller
+        // towards the corner it holds, into the small card's place, and the small card takes over in a short fade.
+        // A change made meanwhile is picked up at the end
+        private void ApplySize()
+        {
+            var large = _shown?.Preferences?.LargerText == true;
+            if (_fading || large == Large)
+                return;
+
+            if (!IsVisible)
+            {
+                Resize(large);
+                return;
+            }
+
+            _fading = true;
+            if (large)
+            {
+                var hide = new DoubleAnimation(0, FadeOut) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn } };
+                hide.Completed += (_, _) => ShowResized(FadeIn);
+                Root.BeginAnimation(OpacityProperty, hide);
+                return;
+            }
+
+            // A render transform only draws the card smaller; the layout and the window stay as they are until the swap
+            var scale = new ScaleTransform(1, 1);
+            Root.RenderTransformOrigin = new Point(
+                _corner is Corner.TopRight or Corner.BottomRight ? 1 : 0,
+                _corner is Corner.BottomLeft or Corner.BottomRight ? 1 : 0);
+            Root.RenderTransform = scale;
+            var shrink = new DoubleAnimation(1 / WidgetCard.LargeScale, Shrink) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut } };
+            shrink.Completed += (_, _) =>
+            {
+                Root.ClearValue(RenderTransformProperty);
+                ShowResized(Settle, from: 0.3);
+            };
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, shrink);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, shrink);
+        }
+
+        // The new size and place with the card faint, so the moment the window resizes doesn't show, then the card fades in there
+        private void ShowResized(Duration fadeIn, double from = 0)
+        {
+            Resize(_shown?.Preferences?.LargerText == true);
+            var show = new DoubleAnimation(from, 1, fadeIn) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
+            show.Completed += (_, _) =>
+            {
+                Root.BeginAnimation(OpacityProperty, null);
+                Root.Opacity = 1;
+                _fading = false;
+                ApplySize();
+            };
+            Root.BeginAnimation(OpacityProperty, show);
+        }
+
+        private void Resize(bool large)
+        {
+            WidgetCard.SetIsLarge(Root, large);
+            if (large)
+                Root.LayoutTransform = new ScaleTransform(WidgetCard.LargeScale, WidgetCard.LargeScale);
+            else
+                Root.ClearValue(LayoutTransformProperty);
+
+            // Tooltips, dropdowns and menus open in pop-ups of their own, but WPF scales each pop-up with the control it opens from,
+            // so they already grow with the root. PopupScale (Card.xaml) stays at its normal size, or they would grow twice
+            if (Application.Current != null)
+                Application.Current.Resources["PopupScale"] = Transform.Identity;
+
+            if (IsVisible)
+            {
+                UpdateLayout();
+                Reposition();
+            }
         }
 
         private void Present(FrameworkElement screen, bool activate)
         {
+            // Preserve the current widget position before changing screens.
+            SavePosition();
+
+            // Dismiss an existing update notice when navigating.
+            if (UpdateNotice.Visibility == Visibility.Visible)
+                _updates?.Dismiss();
+
+            _presenting = true;
+            _idle = screen is IdleView;
+
+            LoadPosition();
+            ApplySize();
+
             Host.Content = screen;
+
+            if (WindowState == WindowState.Minimized)
+                WindowState = WindowState.Normal;
+
             if (!IsVisible)
                 Show();
 
             UpdateLayout();
             Reposition();
 
+            _presenting = false;
+
+            // Refresh the update notice for the new screen.
+            UpdateNoticeVisibility();
+
             if (activate)
             {
-                Activate();
-                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
-                {
-                    if (Host.Content == screen && IsActive)
-                        screen.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
-                });
+                RestoreVisible(activate: true);
+
+                Dispatcher.BeginInvoke(
+                    DispatcherPriority.Loaded,
+                    () =>
+                    {
+                        if (Host.Content == screen && IsActive)
+                        {
+                            var target =
+                                UpdateNotice.Visibility == Visibility.Visible
+                                    ? (FrameworkElement)UpdateNotice
+                                    : screen;
+
+                            target.MoveFocus(
+                                new TraversalRequest(
+                                    FocusNavigationDirection.First));
+                        }
+                    });
             }
         }
 
         private void HideWidget()
         {
+            // Save the widget's position before hiding it.
+            SavePosition();
+
+            // Dismiss any visible update notice.
+            if (UpdateNotice.Visibility == Visibility.Visible)
+                _updates?.Dismiss();
+
             Hide();
             Host.Content = null;
         }
 
-
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
+
             DeviceLines.Apply(VisualTreeHelper.GetDpi(this));
+
+            HwndSource.FromHwnd(
+                new WindowInteropHelper(this).Handle
+            )?.AddHook(WindowMessage);
+
+            _desktop = new Services.DesktopVisibility(
+                Dispatcher,
+                () => RestoreVisible(activate: false));
         }
 
-        protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+        protected override void OnDpiChanged(
+            DpiScale oldDpi,
+            DpiScale newDpi)
         {
             base.OnDpiChanged(oldDpi, newDpi);
+
             DeviceLines.Apply(newDpi);
         }
 
@@ -116,31 +370,64 @@ namespace TimePlanner.Widget
 
             var area = WorkArea();
             var m = ShadowMargin;
-            _anchor ??= new Point(area.Right - ScreenInset, area.Bottom - ScreenInset);
+
+            // The idle shape starts in the top corner; the main card hangs from its top, low enough on the right
+            // to sit near the taskbar yet with room below it for the tallest screen
+            _anchor ??= new Point(
+                area.Right - ScreenInset,
+                _idle
+                    ? area.Top + ScreenInset
+                    : Math.Max(area.Top + ScreenInset, area.Bottom - ScreenInset - MainRoom * Scale));
+
             var anchor = _anchor.Value;
 
-            var left = _corner is Corner.TopLeft or Corner.BottomLeft ? anchor.X - m.Left : anchor.X - ActualWidth + m.Right;
-            var top = _corner is Corner.TopLeft or Corner.TopRight ? anchor.Y - m.Top : anchor.Y - ActualHeight + m.Bottom;
-
-            left = Math.Max(area.Left - m.Left, Math.Min(left, area.Right - ActualWidth + m.Right));
-            top = Math.Max(area.Top - m.Top, Math.Min(top, area.Bottom - ActualHeight + m.Bottom));
+            var location = new WidgetPosition(
+                anchor.X,
+                anchor.Y,
+                _corner is Corner.TopRight or Corner.BottomRight,
+                _corner is Corner.BottomLeft or Corner.BottomRight
+            ).Locate(
+                area,
+                new Size(ActualWidth, ActualHeight),
+                m);
 
             _positioning = true;
-            Left = left;
-            Top = top;
+
+            Left = location.X;
+            Top = location.Y;
+
             _positioning = false;
         }
 
         private void Reanchor()
         {
-            if (_positioning || !IsVisible || ActualWidth <= 0)
+            if (_positioning
+                || _presenting
+                || WindowState != WindowState.Normal
+                || !IsVisible
+                || ActualWidth <= 0)
+            {
                 return;
+            }
 
             var area = WorkArea();
             var m = ShadowMargin;
-            var card = new Rect(Left + m.Left, Top + m.Top, ActualWidth - m.Left - m.Right, ActualHeight - m.Top - m.Bottom);
-            var right = card.Left + card.Width / 2 > area.Left + area.Width / 2;
-            var bottom = card.Top + card.Height / 2 > area.Top + area.Height / 2;
+
+            var card = new Rect(
+                Left + m.Left,
+                Top + m.Top,
+                ActualWidth - m.Left - m.Right,
+                ActualHeight - m.Top - m.Bottom);
+
+            var right =
+                card.Left + card.Width / 2 >
+                area.Left + area.Width / 2;
+
+            // The idle shape holds whichever edge is nearer; the main card always holds its top, so it stays put from screen to screen
+            var bottom =
+                _idle &&
+                card.Top + card.Height / 2 >
+                area.Top + area.Height / 2;
 
             _corner = (right, bottom) switch
             {
@@ -149,38 +436,197 @@ namespace TimePlanner.Widget
                 (false, true) => Corner.BottomLeft,
                 _ => Corner.TopLeft,
             };
-            _anchor = new Point(right ? card.Right : card.Left, bottom ? card.Bottom : card.Top);
+
+            _anchor = new Point(
+                right ? card.Right : card.Left,
+                bottom ? card.Bottom : card.Top);
+
+            _positionDirty = true;
+        }
+
+        private void LoadPosition()
+        {
+            var saved = _idle
+                ? _shown?.Preferences?.IdlePosition
+                : _shown?.Preferences?.MainPosition;
+
+            // A main card saved by its bottom edge (before the card held its top) moves to its top, and is saved that way
+            var converted = !_idle && saved?.IsValid == true && saved.Bottom;
+            if (converted)
+                saved = saved!.PinnedAtTop(MainRoom);
+
+            if (saved?.IsValid == true)
+            {
+                _anchor = new Point(saved.X, saved.Y);
+
+                _corner = (saved.Right, saved.Bottom) switch
+                {
+                    (true, true) => Corner.BottomRight,
+                    (true, false) => Corner.TopRight,
+                    (false, true) => Corner.BottomLeft,
+                    _ => Corner.TopLeft,
+                };
+            }
+            else
+            {
+                _anchor = null;
+
+                _corner = Corner.TopRight;
+            }
+
+            _positionDirty = converted;
+        }
+
+        public void SavePosition()
+        {
+            if (!_positionDirty
+                || _anchor == null
+                || _shown?.Preferences is not { } preferences)
+            {
+                return;
+            }
+
+            Reposition();
+            Reanchor();
+
+            var saved = new WidgetPosition(
+                _anchor.Value.X,
+                _anchor.Value.Y,
+                _corner is Corner.TopRight or Corner.BottomRight,
+                _corner is Corner.BottomLeft or Corner.BottomRight);
+
+            if (_idle)
+                preferences.IdlePosition = saved;
+            else
+                preferences.MainPosition = saved;
+
+            try
+            {
+                _shown.Save?.Invoke();
+            }
+            catch (Exception ex) when (
+                ex is System.IO.IOException
+                or UnauthorizedAccessException)
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    "The widget position could not be saved.");
+            }
+
+            _positionDirty = false;
+        }
+
+        private IntPtr WindowMessage(
+            IntPtr hwnd,
+            int message,
+            IntPtr wParam,
+            IntPtr lParam,
+            ref bool handled)
+        {
+            // WM_EXITSIZEMOVE: main card's left drag ended.
+            if (message == 0x0232)
+                SavePosition();
+
+            // WM_DISPLAYCHANGE: a monitor may have gone away.
+            if (message == 0x007E)
+            {
+                Dispatcher.BeginInvoke(
+                    DispatcherPriority.ApplicationIdle,
+                    Reposition);
+            }
+
+            return IntPtr.Zero;
+        }
+
+        private void RestoreVisible(bool activate)
+        {
+            // Respect the user's Hidden idle preference.
+            if (Host.Content == null)
+                return;
+
+            _presenting = true;
+
+            WindowState = WindowState.Normal;
+            Show();
+            Reposition();
+
+            _presenting = false;
+
+            Topmost = false;
+            Topmost = true;
+
+            if (activate)
+                Activate();
         }
 
         private Rect WorkArea()
         {
             var handle = new WindowInteropHelper(this).Handle;
             var source = PresentationSource.FromVisual(this);
-            if (handle == IntPtr.Zero || source?.CompositionTarget == null || _anchor == null)
-                return SystemParameters.WorkArea;
 
-            var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
-            if (!GetMonitorInfo(MonitorFromWindow(handle, MonitorDefaultToNearest), ref info))
+            if (handle == IntPtr.Zero
+                || source?.CompositionTarget == null
+                || _anchor == null)
+            {
                 return SystemParameters.WorkArea;
+            }
+
+            var info = new MonitorInfo
+            {
+                Size = Marshal.SizeOf<MonitorInfo>()
+            };
+
+            var point = source.CompositionTarget
+                .TransformToDevice
+                .Transform(_anchor.Value);
+
+            if (!GetMonitorInfo(
+                    MonitorFromPoint(
+                        new NativePoint
+                        {
+                            X = (int)point.X,
+                            Y = (int)point.Y
+                        },
+                        MonitorDefaultToNearest),
+                    ref info))
+            {
+                return SystemParameters.WorkArea;
+            }
 
             var pixels = info.Work;
-            var fromDevice = source.CompositionTarget.TransformFromDevice;
-            var topLeft = fromDevice.Transform(new Point(pixels.Left, pixels.Top));
-            var bottomRight = fromDevice.Transform(new Point(pixels.Right, pixels.Bottom));
+
+            var fromDevice =
+                source.CompositionTarget.TransformFromDevice;
+
+            var topLeft = fromDevice.Transform(
+                new Point(pixels.Left, pixels.Top));
+
+            var bottomRight = fromDevice.Transform(
+                new Point(pixels.Right, pixels.Bottom));
+
             return new Rect(topLeft, bottomRight);
         }
-
 
         private const uint MonitorDefaultToNearest = 2;
 
         [DllImport("user32.dll")]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        private static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
+        private static extern IntPtr MonitorFromPoint(
+            NativePoint point,
+            uint flags);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativePoint
+        {
+            public int X;
+            public int Y;
+        }
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+        private static extern bool GetMonitorInfo(
+            IntPtr monitor,
+            ref MonitorInfo info);
 
         [StructLayout(LayoutKind.Sequential)]
         private struct Win32Rect

@@ -11,23 +11,6 @@
 
 /* ---------- Header on ink ---------- */
 
-.st-hero {
-    padding: var(--space-6) 0;
-    color: var(--on-ink);
-    background: var(--ink);
-}
-
-    .st-hero :focus-visible {
-        outline: var(--focus-ring-on-ink);
-        outline-offset: var(--focus-offset);
-    }
-
-.st-hero__inner {
-    max-width: var(--app-frame);
-    margin: 0 auto;
-    padding: 0 var(--gutter);
-}
-
 .st-who {
     display: flex;
     align-items: center;
@@ -86,12 +69,6 @@
     padding: var(--space-3) 0 var(--space-6);
 }
 
-.st-sheet {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
-}
-
 .st-setting {
     padding: var(--space-6);
 }
@@ -112,16 +89,6 @@
 .st-form {
     display: grid;
     gap: var(--space-5);
-}
-
-/* a label sits closer to its own box than to the field above */
-.st-field {
-    display: grid;
-    gap: 6px;
-}
-
-.st-label {
-    font-weight: var(--weight-medium);
 }
 
 .st-field__row {
@@ -159,16 +126,6 @@
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-sm);
 }
-
-    .st-input:hover {
-        border-color: var(--text-3);
-    }
-
-    .st-input:focus-visible {
-        outline: var(--focus-ring);
-        outline-offset: 0;
-        border-color: var(--brand-600);
-    }
 
     .st-input[aria-invalid="true"] {
         border-color: var(--danger-700);
@@ -243,16 +200,6 @@
     cursor: pointer;
 }
 
-    .st-button:hover {
-        background: var(--brand-700);
-        border-color: var(--brand-700);
-    }
-
-    .st-button:focus-visible {
-        outline: var(--focus-ring);
-        outline-offset: var(--focus-offset);
-    }
-
 /* what happened to the last change, next to the button that made it */
 .st-status {
     display: inline-flex;
@@ -315,4 +262,15 @@
     .st-form__actions .st-button {
         width: 100%;
     }
+}
+
+/* the recovery codes shown once after turning two-factor on */
+.st-codes {
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    gap: 4px 32px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+    font-family: ui-monospace, Consolas, monospace;
 }

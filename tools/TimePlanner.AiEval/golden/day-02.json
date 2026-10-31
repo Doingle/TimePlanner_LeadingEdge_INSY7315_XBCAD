@@ -1,0 +1,79 @@
+{
+  "day": "2026-10-20",
+  "projects": [
+    ["Leading Edge (Internal)", "Internal"],
+    ["Acme Foods", "Ordering App"],
+    ["Brightside Clinic", "Booking Site"]
+  ],
+  "activities": [
+    ["Coding"],
+    ["Coding", "Bug fixing"],
+    ["Meetings"],
+    ["Admin"],
+    ["Learning"]
+  ],
+  "busy": [
+    ["2026-10-20T10:00", "2026-10-20T10:30"],
+    ["2026-10-20T13:00", "2026-10-20T13:45"]
+  ],
+  "windows": [
+    {
+      "start": "2026-10-20T08:30",
+      "end": "2026-10-20T10:00",
+      "transcript": "started with twenty minutes reading the new asp net core ten release notes then coded the rest of the time on the acme cart discount calculations"
+    },
+    {
+      "start": "2026-10-20T10:30",
+      "end": "2026-10-20T12:00",
+      "transcript": "pair programming on brightside clinic booking site with sarah refactoring database queries"
+    },
+    {
+      "start": "2026-10-20T12:00",
+      "end": "2026-10-20T13:00",
+      "transcript": "quick client check in call for brightside clinic for about thirty minutes then cleared out unread emails"
+    },
+    {
+      "start": "2026-10-20T13:45",
+      "end": "2026-10-20T16:00",
+      "transcript": "fixed that broken unit test suite on acme ordering app and deployed build to staging"
+    }
+  ],
+  "expected": [
+    {
+      "start": "08:30",
+      "end": "08:50",
+      "project": "Leading Edge (Internal) › Internal",
+      "activity": "Learning"
+    },
+    {
+      "start": "08:50",
+      "end": "10:00",
+      "project": "Acme Foods › Ordering App",
+      "activity": "Coding"
+    },
+    {
+      "start": "10:30",
+      "end": "12:00",
+      "project": "Brightside Clinic › Booking Site",
+      "activity": "Coding"
+    },
+    {
+      "start": "12:00",
+      "end": "12:30",
+      "project": "Brightside Clinic › Booking Site",
+      "activity": "Meetings"
+    },
+    {
+      "start": "12:30",
+      "end": "13:00",
+      "project": "Leading Edge (Internal) › Internal",
+      "activity": "Admin"
+    },
+    {
+      "start": "13:45",
+      "end": "16:00",
+      "project": "Acme Foods › Ordering App",
+      "activity": "Coding › Bug fixing"
+    }
+  ]
+}

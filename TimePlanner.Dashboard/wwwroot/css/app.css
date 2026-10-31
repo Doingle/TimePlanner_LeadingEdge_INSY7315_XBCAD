@@ -1,7 +1,9 @@
 /* App shell
 
    The top bar and page frame shared by the signed in pages (Views/Shared/_AppLayout.cshtml).
-   The top bar uses the redesign's tokens (tokens.css). Pages not redesigned yet, such as report.css, build on the --app colours here */
+   The top bar uses the redesign's tokens (tokens.css). Pages not redesigned yet, such as report.css, build on the --app colours here.
+   After the page frame come the pieces two or more pages share, so each page's stylesheet keeps only what is its own.
+   This file loads before the page's stylesheet, so a page can still override a shared piece */
 
 :root {
     --app-purple: #7747ee;
@@ -80,7 +82,12 @@ body.app-body {
     background: var(--ink);
 }
 
-    .app-header :focus-visible {
+    .app-header :focus-visible,
+    .home-hero :focus-visible,
+    .rp-hero :focus-visible,
+    .st-hero :focus-visible,
+    .tm-hero :focus-visible,
+    .ts-hero :focus-visible {
         outline: var(--focus-ring-on-ink);
         outline-offset: var(--focus-offset);
     }
@@ -363,6 +370,576 @@ body.app-body {
     padding: 22px var(--gutter) 48px;
 }
 
+/* ---------- Hero band ----------
+   The period on the brand ink, straight under the top bar */
+
+.rp-hero,
+.st-hero,
+.tm-hero,
+.ts-hero {
+    padding: var(--space-6) 0;
+    color: var(--on-ink);
+    background: var(--ink);
+}
+
+.home-hero__inner,
+.rp-hero__inner,
+.st-hero__inner,
+.tm-hero__inner,
+.ts-hero__inner {
+    max-width: var(--app-frame);
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+}
+
+/* a problem with the period, such as an unknown view or a bad range, explained where the figure would be */
+.rp-hero__note,
+.ts-hero__note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    max-width: 62ch;
+    margin: var(--space-5) 0 0;
+    padding-left: var(--space-4);
+    font-size: var(--text-md);
+    line-height: var(--leading-body);
+    border-left: 3px solid var(--warning-on-ink);
+}
+
+.home-hero__note-icon,
+.rp-hero__note-icon,
+.ts-hero__note-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 4px;
+    color: var(--warning-on-ink);
+}
+
+.rp-hero__figure,
+.tm-hero__figure,
+.ts-hero__figure {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-3);
+    margin: var(--space-5) 0 0;
+    font-family: var(--font-display);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+}
+
+.home-hero__num,
+.rp-hero__num,
+.tm-hero__num,
+.ts-hero__num {
+    font-size: var(--text-hero);
+    font-variant-numeric: lining-nums tabular-nums;
+}
+
+.home-hero__unit,
+.rp-hero__unit,
+.tm-hero__unit,
+.ts-hero__unit {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-regular);
+    letter-spacing: 0;
+    color: var(--on-ink-2);
+}
+
+.rp-hero__sub,
+.tm-hero__intro,
+.tm-hero__sub,
+.ts-hero__sub {
+    max-width: 62ch;
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-md);
+    line-height: var(--leading-body);
+    color: var(--on-ink-2);
+}
+
+@media (max-width: 40rem) {
+    .rp-hero,
+    .tm-hero,
+    .ts-hero {
+        padding: var(--space-4) 0 var(--space-5);
+    }
+
+    .home-hero__unit,
+    .rp-hero__unit,
+    .tm-hero__unit,
+    .ts-hero__unit {
+        font-size: var(--text-xl);
+    }
+
+    .rp-hero__sub,
+    .rp-hero__note,
+    .ts-hero__sub,
+    .ts-hero__note {
+        font-size: var(--text-sm);
+    }
+}
+
+/* ---------- Period controls ----------
+   Previous, the period and next on the hero, with the week or month toggle beside them */
+
+.rp-controls,
+.tm-controls,
+.ts-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.rp-period,
+.tm-period,
+.ts-period {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.rp-period__label,
+.tm-period__label,
+.ts-period__label {
+    min-width: 11.5rem;
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.rp-icon-button,
+.tm-icon-button,
+.ts-icon-button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    color: var(--on-ink);
+    border-radius: var(--radius-sm);
+}
+
+    .rp-icon-button svg,
+    .tm-icon-button svg,
+    .ts-icon-button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .rp-icon-button[href]:hover,
+    .tm-icon-button[href]:hover,
+    .ts-icon-button[href]:hover {
+        background: var(--ink-raised);
+    }
+
+    /* there is nothing after the current week or month yet */
+    .rp-icon-button[aria-disabled="true"],
+    .tm-icon-button[aria-disabled="true"],
+    .ts-icon-button[aria-disabled="true"] {
+        color: var(--lilac-dim);
+        cursor: not-allowed;
+    }
+
+/* week or month: the chosen one gets a lilac ring, solid lilac is kept for the primary button */
+.rp-toggle,
+.ts-toggle {
+    display: inline-flex;
+    gap: 2px;
+    margin: 0;
+    padding: 2px;
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 0 0 1px var(--ink-line);
+}
+
+.rp-toggle__option,
+.ts-toggle__option {
+    min-height: 34px;
+    padding: 0 var(--space-4);
+    font: inherit;
+    font-weight: var(--weight-medium);
+    color: var(--on-ink-2);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+    .rp-toggle__option:hover:not([aria-pressed="true"]),
+    .ts-toggle__option:hover:not([aria-pressed="true"]) {
+        color: var(--on-ink);
+        background: var(--ink-raised);
+    }
+
+    .rp-toggle__option[aria-pressed="true"],
+    .ts-toggle__option[aria-pressed="true"] {
+        font-weight: var(--weight-semibold);
+        color: var(--on-ink);
+        background: var(--ink-raised);
+        box-shadow: inset 0 0 0 2px var(--lilac);
+    }
+
+@media (max-width: 40rem) {
+    .rp-controls,
+    .tm-controls,
+    .ts-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .rp-period,
+    .tm-period,
+    .ts-period {
+        justify-content: space-between;
+    }
+
+    .rp-period__label,
+    .tm-period__label,
+    .ts-period__label {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .rp-icon-button,
+    .tm-icon-button,
+    .ts-icon-button {
+        width: var(--target-touch);
+        height: var(--target-touch);
+    }
+
+    .rp-toggle,
+    .ts-toggle {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* ---------- Sections ----------
+   The headed blocks on paper below the hero */
+
+.home-title,
+.rp-section__title,
+.tm-section__title,
+.ts-title {
+    margin: 0 0 var(--space-4);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-head);
+    letter-spacing: -0.01em;
+}
+
+.rp-section,
+.tm-section {
+    padding-top: var(--space-5);
+}
+
+    .rp-section + .rp-section,
+    .tm-section + .tm-section {
+        padding-top: var(--space-7);
+    }
+
+.home-alert,
+.ts-alert {
+    max-width: 60ch;
+    margin: 0;
+    padding: var(--space-3);
+    line-height: 1.5;
+    color: var(--warning-800);
+    background: var(--warning-50);
+    border: 1px solid var(--warning-200);
+    border-radius: var(--radius-sm);
+}
+
+.rp-empty,
+.rp-files__empty,
+.ts-empty {
+    max-width: 62ch;
+    margin: 0;
+    line-height: var(--leading-body);
+    color: var(--text-2);
+}
+
+.st-sheet,
+.tm-panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+}
+
+@media (max-width: 40rem) {
+    .rp-section + .rp-section,
+    .tm-section + .tm-section {
+        padding-top: var(--space-6);
+    }
+}
+
+/* ---------- Two columns and bar lists ----------
+   Where the time went, on Home, My Reports and Team */
+
+/* by category and by project, side by side with a hairline between them */
+.home-split,
+.rp-split,
+.tm-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--line);
+}
+
+.home-split__col,
+.rp-split__col,
+.tm-cols__col {
+    padding: var(--space-5) var(--space-6) 0 0;
+}
+
+    .home-split__col + .home-split__col,
+    .rp-split__col + .rp-split__col,
+    .tm-cols__col + .tm-cols__col {
+        padding: var(--space-5) 0 0 var(--space-6);
+        border-left: 1px solid var(--line);
+    }
+
+.home-split__title,
+.rp-split__title,
+.tm-cols__title {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+}
+
+.home-bars,
+.rp-bars,
+.tm-bars {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.home-bar-row__label,
+.rp-bar-row__label,
+.tm-bar-row__label {
+    grid-area: label;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+    .home-bar-row__label small,
+    .rp-bar-row__label small,
+    .tm-bar-row__label small {
+        display: block;
+        font-size: var(--text-xs);
+        color: var(--text-3);
+    }
+
+.home-bar-row__bar,
+.rp-bar-row__bar,
+.tm-bar-row__bar {
+    grid-area: bar;
+    height: 6px;
+}
+
+/* as long as its share of the largest row (data-percent), coloured by its category or by billing */
+.home-bar-row__fill,
+.rp-bar-row__fill,
+.tm-bar-row__fill {
+    display: block;
+    width: 0;
+    min-width: 2px;
+    height: 100%;
+    background: var(--logged);
+    border-radius: 0 3px 3px 0;
+}
+
+.home-bar-row__fill--billable,
+.rp-bar-row__fill--billable,
+.tm-bar-row__fill--billable {
+    background: var(--billable);
+}
+
+.home-bar-row__fill--non-billable,
+.rp-bar-row__fill--non-billable,
+.tm-bar-row__fill--non-billable {
+    background: var(--non-billable);
+}
+
+.home-bar-row__time,
+.rp-bar-row__time,
+.tm-bar-row__time {
+    grid-area: time;
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.home-bar-row__pct,
+.rp-bar-row__pct,
+.tm-bar-row__pct {
+    grid-area: pct;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--text-2);
+}
+
+@media (max-width: 56rem) {
+    .home-split,
+    .rp-split,
+    .tm-cols {
+        grid-template-columns: 1fr;
+    }
+
+    .home-split__col,
+    .home-split__col + .home-split__col,
+    .rp-split__col,
+    .rp-split__col + .rp-split__col,
+    .tm-cols__col,
+    .tm-cols__col + .tm-cols__col {
+        padding: var(--space-5) 0 0;
+        border-left: 0;
+    }
+
+        .home-split__col + .home-split__col,
+        .rp-split__col + .rp-split__col,
+        .tm-cols__col + .tm-cols__col {
+            margin-top: var(--space-5);
+            border-top: 1px solid var(--line);
+        }
+}
+
+/* ---------- Billable split ----------
+   Billable against non-billable time as one segmented bar on the hero */
+
+.rp-billing,
+.tm-billing {
+    margin-top: var(--space-6);
+}
+
+.rp-billing__groups,
+.tm-billing__groups {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin: 0 0 var(--space-3);
+}
+
+.rp-billing__group,
+.tm-billing__group {
+    display: grid;
+    gap: 2px;
+}
+
+    .rp-billing__group dt,
+    .tm-billing__group dt {
+        color: var(--on-ink-2);
+    }
+
+    .rp-billing__group dd,
+    .tm-billing__group dd {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-2);
+        margin: 0;
+    }
+
+.rp-billing__group--nb,
+.tm-billing__group--nb {
+    justify-items: end;
+    text-align: right;
+}
+
+.rp-billing__pct,
+.tm-billing__pct {
+    font-variant-numeric: tabular-nums;
+    color: var(--on-ink-3);
+}
+
+/* each part's width is its share, the parts shrink a little to make room for the gap between them */
+.rp-seg,
+.tm-seg {
+    flex: 0 1 auto;
+    min-width: 3px;
+    background: var(--lilac);
+    border-radius: var(--radius-xs);
+}
+
+.rp-seg--nb,
+.tm-seg--nb {
+    background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(185, 169, 239, 0.5) 5px 6.5px), var(--ink-raised);
+    box-shadow: inset 0 0 0 1px #8a7bb8;
+}
+
+/* a clear gap between the billable and the non-billable part */
+.rp-seg--apart,
+.tm-seg--apart {
+    margin-left: 6px;
+}
+
+/* ---------- Forms and page buttons ----------
+   The states the page forms and buttons share; each page keeps its own base look */
+
+/* a label sits closer to its own box than to the field above */
+.st-field,
+.tm-field {
+    display: grid;
+    gap: 6px;
+}
+
+.st-label,
+.tm-label {
+    font-weight: var(--weight-medium);
+}
+
+.st-input:hover,
+.tm-input:hover {
+    border-color: var(--text-3);
+}
+
+.st-input:focus-visible,
+.tm-input:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 0;
+    border-color: var(--brand-600);
+}
+
+.rp-button__icon,
+.up-button__icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+}
+
+.st-button:hover,
+.tm-button:hover {
+    background: var(--brand-700);
+    border-color: var(--brand-700);
+}
+
+.st-button:focus-visible,
+.ax-button:focus-visible,
+.tm-button:focus-visible,
+.up-button:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-offset);
+}
+
+.tm-button--secondary:hover,
+.up-button--secondary:hover {
+    background: var(--paper);
+    border-color: var(--text-3);
+}
+
+.tm-spinner,
+.up-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+}
+
 /* ---------- Narrower windows ----------
    The account name makes way for the tabs, it is still read out as the menu's name */
 
@@ -432,3 +1009,16 @@ body.app-body {
         padding: 20px var(--gutter) calc(60px + 40px + env(safe-area-inset-bottom));
     }
 }
+
+/* ---------- Staging environment banner ----------
+   Shown only on the staging site so nobody mistakes it for the live dashboard */
+.env-banner {
+    padding: 0.5rem 1rem;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    text-align: center;
+    color: var(--warning-800);
+    background: var(--warning-50);
+    border-bottom: 1px solid var(--warning-200);
+}
+

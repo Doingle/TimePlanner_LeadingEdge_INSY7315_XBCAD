@@ -26,6 +26,15 @@ namespace TimePlanner.Core.Repositories.SQLite
         }
 
         //-----------------------------
+        //saves a changed company
+        public async Task UpdateAsync(Company company)
+        {
+            _db.ChangeTracker.Clear();
+            _db.Entry(company).State = EntityState.Modified;
+            await _db.SaveChangesAsync();
+        }
+
+        //-----------------------------
         //deletes a company by id
         public async Task DeleteAsync(int id)
         {

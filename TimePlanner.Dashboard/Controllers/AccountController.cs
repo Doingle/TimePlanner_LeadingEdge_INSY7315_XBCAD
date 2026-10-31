@@ -50,21 +50,76 @@ namespace TimePlanner.Dashboard.Controllers
             var result = user == null
                 ? Microsoft.AspNetCore.Identity.SignInResult.Failed
                 : await _signInManager.PasswordSignInAsync(user, model.Password, isPersistent: false, lockoutOnFailure: true);
+            //the password was right but the account has two-factor on, so nobody is signed in until the code is checked
+            if (result.RequiresTwoFactor)
+                return RedirectToAction(nameof(TwoFactor), new { returnUrl = model.ReturnUrl });
+
             if (result.Succeeded)
             {
                 await _audit.LogAsync(AuditActions.LoginSucceeded, "website", model.Email, user!.Id);
-                //a temporary password must be replaced before anything else
-                if (user.MustChangePassword)
-                    return RedirectToAction("Index", "Settings");
-
-                //only local urls are followed, an open redirect would let an attacker bounce users to another site
-                return Url.IsLocalUrl(model.ReturnUrl) ? LocalRedirect(model.ReturnUrl!) : RedirectToAction("Index", "Home");
+                return AfterSignIn(user, model.ReturnUrl);
             }
 
             _logger.LogWarning("Failed login attempt (locked out: {LockedOut})", result.IsLockedOut);
             await _audit.LogAsync(result.IsLockedOut ? AuditActions.LoginLockedOut : result.IsNotAllowed ? AuditActions.LoginBlocked : AuditActions.LoginFailed, "website", model.Email);
             ModelState.AddModelError(string.Empty, "Invalid email or password.");
             model.Password = string.Empty;
+            return View(model);
+        }
+
+        //-----------------------------
+        //a temporary password must be replaced before anything else, and only local urls are followed because an open redirect
+        //would let an attacker bounce users to another site
+        private IActionResult AfterSignIn(ApplicationUser user, string? returnUrl)
+        {
+            if (user.MustChangePassword)
+                return RedirectToAction("Index", "Settings");
+
+            return Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl!) : RedirectToAction("Index", "Home");
+        }
+
+        //-----------------------------
+        //the second step: only reachable right after a correct password, which is remembered for a few minutes in a cookie of its own
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<IActionResult> TwoFactor(string? returnUrl = null, bool recovery = false)
+        {
+            if (await _signInManager.GetTwoFactorAuthenticationUserAsync() == null)
+                return RedirectToAction(nameof(Login));
+
+            return View(new TwoFactorViewModel { ReturnUrl = returnUrl, UseRecoveryCode = recovery });
+        }
+
+        //-----------------------------
+        //a wrong code counts towards the same lockout as a wrong password, and every failure shows the same message
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting(SecurityExtensions.LoginLimiter)]
+        public async Task<IActionResult> TwoFactor(TwoFactorViewModel model)
+        {
+            var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
+            if (user == null)
+                return RedirectToAction(nameof(Login));
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var result = model.UseRecoveryCode
+                ? await _signInManager.TwoFactorRecoveryCodeSignInAsync(model.Code)
+                : await _signInManager.TwoFactorAuthenticatorSignInAsync(model.Code, isPersistent: false, rememberClient: false);
+
+            if (result.Succeeded)
+            {
+                await _audit.LogAsync(AuditActions.LoginSucceeded, model.UseRecoveryCode ? "website, two-factor recovery code" : "website, two-factor", user.Email, user.Id);
+                if (model.UseRecoveryCode)
+                    await _audit.LogAsync(AuditActions.RecoveryCodeUsed, "website", user.Email, user.Id);
+                return AfterSignIn(user, model.ReturnUrl);
+            }
+
+            _logger.LogWarning("Failed two-factor code (locked out: {LockedOut})", result.IsLockedOut);
+            await _audit.LogAsync(result.IsLockedOut ? AuditActions.LoginLockedOut : AuditActions.TwoFactorFailed, "website", user.Email, user.Id);
+            ModelState.AddModelError(string.Empty, "That code is not right.");
+            model.Code = string.Empty;
             return View(model);
         }
 

@@ -78,6 +78,7 @@
     </ul>
   </li>
   <li><a href="#using-the-widget">Using the Widget</a></li>
+  <li><a href="#voice-notes-and-build-my-day">Voice Notes and Build My Day</a></li>
   <li><a href="#using-the-dashboard">Using the Dashboard</a></li>
   <li><a href="#domain-model-and-business-rules">Domain Model and Business Rules</a>
     <ul>
@@ -156,43 +157,34 @@ This section is for testing **the released software exactly as a Leading Edge de
 
 - A good order to test is to  test the **widget with the Demo Developer** first, then sign in to the Dashboard as the **Demo Admin** and see that developer's submitted day in the Team tab under Submissions and Exports.
 
-### Downloading The Widget: 
+### Installing the Widget
 
-### 1. Download the widget
-1. Open the **[latest release](https://github.com/Doingle/TimePlanner_LeadingEdge_INSY7315_XBCAD/releases/latest)**.
-2. Under **Assets**, download `TimePlanner-Widget-<version>-win-x64.zip`. Ignore the "Source code" downloads.
-3. Optional: check the download against the `.sha256` file in powershell:
-   Get-FileHash .\TimePlanner-Widget-<version>-win-x64.zip -Algorithm SHA256
+#### Option 1: Install with Setup (recommended)
+1. Download `TimePlanner-Setup-<version>.exe` from the **[latest release](https://github.com/Doingle/TimePlanner_LeadingEdge_INSY7315_XBCAD/releases/latest)**.
+2. If Windows SmartScreen shows **"Windows protected your PC"**, select **More info → Run anyway** (the installer is currently unsigned as this is a student project).
+3. Click through the installer. It installs per-user into `%LOCALAPPDATA%\Programs\TimePlanner` without requiring administrator privileges, creating Start menu and desktop shortcuts.
+4. Time Planner opens automatically when setup finishes.
 
+#### Option 2: Portable (no install)
+1. Under **Assets** on the latest release, download `TimePlanner-Widget-<version>-win-x64.zip`.
+2. Right-click the zip, select **Properties**, check **Unblock** if shown, and click **OK**.
+3. Extract to a preferred folder (e.g. `C:\TimePlanner`).
+4. Run `TimePlanner.Widget.exe`.
 
-### 2. Extract it
-1. Right click the zip, click **Properties**, tick **Unblock** if it's shown, click  **OK**. This can stop Windows treating every extracted file as downloaded from the internet.
-2. Right click the zip, then click **Extract All…**, then choose a folder you'll keep, for example `C:\TimePlanner`.
+### Updating the Widget
+- **One-click update:** When a new release is available, the widget displays a notice: select **Update now**, then click **Update and restart**. Time Planner downloads the update with live progress, verifies its SHA-256 checksum, updates in place, and reopens.
+- **Manual update:** Download and run the newer `TimePlanner-Setup-<version>.exe` over the old one. Timesheets and preferences are kept untouched.
 
-The folder contains `TimePlanner.Widget.exe` and a `SampleData` folder. Nothing needs installing: the widget is self contained and includes .NET.
+### Uninstalling the Widget
+Open **Windows Settings › Apps › Installed apps › Time Planner › Uninstall**.
+The uninstaller safely closes the running widget and asks two questions:
+1. *"Also remove Time Planner's voice AI?"* (defaults to **Yes** to free disk space by removing models and Ollama if managed by Time Planner; your own independent Ollama is never removed).
+2. *"Delete your Time Planner data on this PC too?"* (defaults to **No** so your local timesheets and database are kept safe).
 
-### 3. Create a shortcut (optional, recommended)
-1. Right click `TimePlanner.Widget.exe`, then **Show more options**, then **Send to**, then **Desktop (create shortcut)**.
-2. For a second shortcut that loads an example finished day: copy the shortcut, open its **Properties**, and add ` --sample-day` (with a space before it) at the end of **Target**. For example:
-   `"C:\TimePlanner\TimePlanner.Widget.exe" --sample-day`
-
-### 4. Get past Windows SmartScreen
-The MVP isn't code signed yet. So on first start Windows shows **"Windows protected your PC"**:
-1. Click **More info**.
-2. Click **Run anyway**.
-
-This is only needed once per downloaded version.
-
-### 5. Run it
-1. Start the widget (shortcut or exe). It appears in the **bottom right corner** of the screen, and its icon sits in the system tray (click **^** next to the clock if it's hidden).
-2. **First run:** choose a check in interval, then click **Start tracking**.
-3. **Fastest test:** start it with `--sample-day`. It loads a finished example day (9 entries, a lunch break and a short gap) onto the most recent weekday, then:
-   1. tray icon, click **Timesheet**, then press **‹** until you reach the sample day (or leave as current day for any self added logging).
-   2. review it, optionally **Fill** the sample data gap, then click **Send day**, then sign in as the **Demo Developer or Admin**
-   3. open the Dashboard as the Demo Developer or admin: **My Timesheet** and **My Reports** show the day
-   4. sign in as the **Demo Admin**: the day appears in **Team, Submissions** and **Exports**.
-
-Only one widget runs at a time. If nothing happens when you start it, it's already running in the tray: right click its purple clock face icon, then click **Exit** and then start it again.
+### Getting Help
+Open **Help** from the widget (or right-click the tray icon and select Help).
+Click **Copy details for support**, then paste the copied lines into your message to the Time Planner team.
+The output contains sanitized diagnostics (app version, install type, OS, dashboard host, AI status, hardware, and microphone device) with no email addresses, passwords, tokens, or personal paths.
 
 ### Optional: Fill the Dashboard With a Sample Day (to see a populated dashboard day, this step is not required though):
 
@@ -593,7 +585,109 @@ Picking things in the widget:
 - Removing an item deletes it if nothing was logged to it. If time was logged, it's hidden instead and the logged time is kept. The internal company and the top-level categories can't be removed.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Voice notes and Build my day
 
+### What it does
+Time Planner supports hands-free voice check-ins throughout the day and automated timesheet construction at the end of the day:
+- **Voice check-ins:** At each check-in alert, click **Speak your update** (or click the mic icon next to **Log now** on the timer) to record what you worked on (up to 3 minutes) instead of manually selecting projects and activities.
+- **Background transcription:** Audio is transcribed locally in the background using Whisper.net. As soon as speech is transcribed, the raw audio recording file is permanently deleted.
+- **Build my day:** At the end of the day or from the timesheet banner, click **Build my day** to have an AI language model analyze your day's voice notes, compare them against your project and activity trees, and compile non-overlapping timesheet entries fitted into your unlogged windows.
+- **Human-in-the-loop review:** All suggested entries display an AI disclaimer banner, compiler flags, and remove buttons. You can edit any suggestion, fix transcript text, add unmatched suggestions by hand, or delete notes before sending your timesheet to the dashboard.
+
+### Using voice notes (user guide)
+Five simple steps for everyday tracking:
+1. **Speak your update:** When the check-in prompt appears, click **Speak your update** (or press the microphone button on the timer card). Speak naturally about what you worked on for up to 3 minutes.
+2. **Automatic transcription:** The widget quietly turns your voice into text in the background. The audio file is deleted as soon as transcription finishes, keeping only the text note.
+3. **Review notes anytime:** Open your timesheet to see your voice notes for the day. Click any voice note row to view its transcript, make manual corrections, retry transcription, or delete the note.
+4. **Build your day:** When your workday ends or from the timesheet banner, click **Build my day**. The AI engine reads your notes and matches your tasks to your assigned clients, projects, and activities.
+5. **Accept and add:** Check the suggested times and projects. Remove suggestions you don't want, use **Add by hand** for any note flagged as needing a project, and click **Add entries** to populate your timesheet.
+
+### Local and private
+- **100% on your PC:** All speech recognition (Whisper.net) and day compilation (local Ollama) run locally on your machine by default. No audio, transcripts, or project data leave your PC.
+- **Ephemeral audio:** Raw audio recording files are deleted from your disk the moment local transcription succeeds.
+- **Local retention:** Voice notes and transcripts are stored locally in `%LOCALAPPDATA%\TimePlanner\voice\` and are automatically cleaned up after 30 days.
+
+### One-click setup
+1. In the widget, open **Settings › Voice and AI**.
+2. Click the **Install** button.
+3. The widget automatically:
+   - Downloads and installs Ollama silently as a background service managed by Time Planner. Ollama runs quietly only while Time Planner is open (no tray icon, no welcome screen, and does not start with Windows).
+   - Downloads the recommended day compilation model (`qwen2.5:3b`, about 1.9 GB). On slower machines (< 8 tokens/s), you can also choose the faster lightweight model (`qwen2.5:1.5b`).
+   - Downloads the recommended voice transcription model (`ggml-small.en-q5_1.bin`, about 190 MB).
+   - Runs a hardware speed check comparing your graphics card and processor, configuring the fastest and most stable path.
+
+### Testing and configuring your microphone
+1. Open **Settings › Voice and AI › Advanced**.
+2. Under the **Microphone** group, your current active microphone is selected (defaults to "Windows default"). If your chosen device is disconnected, Time Planner automatically falls back to Windows default and alerts you.
+3. Click **Test microphone**: Time Planner records 3 seconds without saving and shows a live level meter.
+4. The test reports one of three clear results:
+   - **Working: we can hear you:** Microphone and levels are good.
+   - **We couldn't hear anything:** Audio was received, but no speech detected. Check that your microphone is unmuted, adjust volume, or choose another microphone.
+   - **Windows gave us silence:** All incoming audio samples were pure zeros. Click the **Open sound settings** button to launch Windows Sound settings (`ms-settings:sound`) and verify microphone access permissions and format.
+
+### Troubleshooting: when nothing is heard
+- **Check mute and privacy:** Ensure physical mute switches are off and Windows Settings › Privacy & Security › Microphone allows apps to access your microphone.
+- **Microphone blocked / digital silence:** Click **Microphone settings** or **Open sound settings** directly from the note card to open Windows Sound settings.
+- **Select specific device:** In **Settings › Voice and AI › Advanced**, switch from "Windows default" directly to your headset or dedicated microphone.
+- **Slow PC hint:** If your PC compiles at fewer than 8 tokens/second, use the **Use Faster** button on the setup card to switch to `qwen2.5:1.5b`.
+- **Developer mode diagnostics:** If running with `--dev`, open the timesheet, click the failed voice note, and inspect the raw transcript, segment probabilities, and error diagnostics.
+
+### Fastest hardware detection
+The speed check measures performance on your specific machine:
+- **Build my day:** Compares tokens per second on your graphics card versus processor. The graphics card is selected only if it is at least 15% faster; otherwise the processor is selected for optimal stability.
+- **Voice recognition:** Runs Vulkan GPU transcription with automatic CPU fallback.
+- **Rerun anytime:** Open **Settings › Voice and AI › Advanced** and click **Run speed check** whenever you update graphics drivers or change hardware.
+
+### Advanced options
+Open **Settings › Voice and AI › Advanced** to customize your setup:
+- **Hardware selection:** Explicitly choose **Automatic (recommended)**, **Graphics card**, or **Processor**.
+- **Microphone picker & test:** Select any connected audio capture device and test live input levels.
+- **AI engine management:** View model storage locations and whether Ollama is managed by Time Planner.
+- **Remove AI engine and models:** An inline confirmation removes Ollama and model files (freeing ~3 GB) while preserving your timesheets and voice note history.
+- **Your own Ollama models:** Connect to any local or remote Ollama instance (`http://localhost:11434`) and choose from any model installed on that instance.
+- **Custom Whisper models:** Point to any valid GGML Whisper `.bin` model file on disk or click **Use the built-in model** to revert to catalog defaults.
+- **Build my day engine:** Switch between **This PC (Ollama)** and **Your organisation's AI (dashboard)**.
+
+### Developer mode
+Developer features are gated behind the `--dev` command-line switch:
+- **Enable developer mode:**
+  - Launch with `--dev`, e.g., via the Visual Studio / `dotnet run` profile `Widget (dev)` or a desktop shortcut:
+    ```
+    "C:\Program Files\TimePlanner\TimePlanner.Widget.exe" --dev
+    ```
+- **What `--dev` enables:**
+  - **Developer: Check in now** in the tray menu.
+  - **Preview screens** in the tray menu (Debug builds).
+  - Direct OpenAI-compatible cloud API settings in Advanced settings (`--dev` only).
+  - `--sample-day` loading (ignored in user mode without `--dev`).
+  - Tray tooltip indicates `Time Planner (developer mode)`.
+
+### Organisation AI (groundwork)
+For teams that prefer running day compilation centrally on an organisation server:
+- **Server configuration:** In the dashboard's environment variables or Azure App Service App Settings:
+  - `Ai__Url`: The OpenAI-compatible API base URL (e.g. Azure OpenAI or self-hosted endpoint).
+  - `Ai__Model`: The model name to request.
+  - `Ai__ApiKey`: Secret API key. **API keys are set in Azure App Settings or user secrets only—never in files, database, or git repository.**
+- **Privacy:** Transcription **always stays on the employee's PC**. Only the text transcripts and catalog identifiers are sent to the dashboard endpoint using the employee's authenticated bearer token.
+- **Status handling:** Returns plain-language errors if not configured (503), unauthenticated (401), or rate-limited (429).
+
+### Removing everything
+- **Voice models:** Stored in `%LOCALAPPDATA%\TimePlanner\models\` and can be safely deleted.
+- **Voice notes & transcripts:** Stored in `%LOCALAPPDATA%\TimePlanner\voice\` and can be deleted.
+- **Ollama models:** Removed via Ollama CLI: `ollama rm qwen2.5:3b`.
+- **Ollama app:** Uninstalled via Windows **Settings › Apps › Installed apps › Ollama**.
+- **Saved API keys:** Stored with Windows DPAPI encryption in `%LOCALAPPDATA%\TimePlanner\ai-keys.bin`.
+
+### Model comparison
+Results are added after the harness has been run on recorded test days; see `tools/TimePlanner.AiEval`.
+
+| Model | Mode | Valid JSON | Project match | Activity match | Time overlap | Avg seconds |
+|---|---|---|---|---|---|---|
+
+| Whisper model | File | Size | Word error rate | Seconds per minute of audio |
+|---|---|---|---|---|
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Using the dashboard
 Every page needs a sign-in, except Login, Privacy, the error page, /health and (when enabled) the Swagger page.
@@ -1003,23 +1097,24 @@ The **Build** workflow runs on every pull request and every push to `main` and `
 A rule on main and development required a pull request with passing Build checks, and blocks force pushes and branch deletion, with no bypass. When commits were pushed straight to main by mistake, we moved them to development through a pull request and reverted them on main, this ultimately led to a better configuration of our branch protection as we set the rule but it wasn't enforced until the mistaken main merge occured.
 
 ### Deployment
-The **Deploy Dashboard** workflow runs on every push to `main`, which only happens through a release or hotfix pull request:
+The **Deploy Dashboard** workflow tests and publishes the dashboard once, then deploys that package:
 
-1. runs the Core and API tests again (on Linux so that it matched the server)
-2. publishes the dashboard in Release
-3. deploys to Azure App Service with the publish profile stored as a GitHub secret
-4. polls `/health` for up to five minutes, and fails the run if the site doesn't come back healthy.
+- **Staging:** triggered by hand from the Actions tab (`workflow_dispatch`) from any branch (default `development`) to verify changes on a hosted environment before release.
+- **Main:** a push to `main` (release or hotfix pull request) deploys to the **demo** site and verifies its `/health` check.
+- **Pilot:** deployed from Leading Edge's private mirror repository, never from this public repository (see the Leading Edge pilot site section below).
 
-Deploys first ran from `development` too. We changed it to `main` only, so the live site only changes when we release create a release, this was to avoid future changes occuring untested during the pilot.
+Deploys first ran from `development` too. We changed it to `main` only, so the live site only changes when we create a release, this was to avoid future changes occuring untested during the pilot.
 
 ### Releasing the widget
 The **Release Widget** workflow runs when a version tag is created (we create it by publishing a GitHub Release on `main`):
 
 1. runs the Core tests;
 2. publishes the widget as a **self contained single file** for Windows x64, with the version taken from the tag;
-3. zips it, writes a **SHA-256** checksum and attaches both to the release.
+   - The optional repository variable `WIDGET_DASHBOARD_URL` sets the dashboard address built into the release executable (falling back to the hosted default if not set).
+3. compiles the Inno Setup installer (`TimePlanner-Setup-<version>.exe`);
+4. zips the standalone widget, writes a **SHA-256** checksum for every file in `dist/`, and attaches the zip, installer, and checksums to the release.
 
-It can also be run by hand from the Actions tab to get a test zip without making a release.
+It can also be run by hand from the Actions tab (`workflow_dispatch`) to get a test installer and zip without making a release.
 
 ### Supply chain and secrets
 - **Dependabot** opens weekly update pull requests for NuGet packages and GitHub Actions against `development`. Major version updates are paused until after marking, because they can break the build.
@@ -1044,16 +1139,42 @@ It can also be run by hand from the Actions tab to get a test zip without making
 
 | Setting | Value |
 |---|---|
-| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `ASPNETCORE_ENVIRONMENT` | `Production` (staging uses `Staging`) |
 | `Database__Provider` | `SqlServer` |
 | `ConnectionStrings__Default` | the Azure SQL connection string with: `Connection Timeout=60;` in case of slow first connections|
-| `Jwt__Key` | a long random key |
+| `Jwt__Key` | a long random key (each environment uses its own) |
 | `Seed__AdminEmail`, `Seed__AdminPassword` | Grit Solutions Admin |
 | `AllowedHosts` | the site's host names |
 | `Proxy__TrustForwardedHeaders` | `true` |
 | `Api__EnableDocs` | shows Swagger |
 
-Deploys come only from `main` through the workflow action **Deploy Dashboard**. The database is migrated automatically when the a new version starts
+Staging uses `ASPNETCORE_ENVIRONMENT=Staging` and its own `Jwt__Key`. The staging banner is shown only when `ASPNETCORE_ENVIRONMENT=Staging`.
+
+### Environments
+
+| Site | Web app | Database | Deployed by | Data |
+|---|---|---|---|---|
+| Staging | 3rd app on B1 | free offer SQL | Run workflow (by hand) | test data only |
+| Demo | 1st app on B1 | Basic | push to `main` | sample data for markers |
+| Pilot | Leading Edge's app | Basic | Leading Edge's private mirror: staging by hand, then push to its main | Leading Edge's real data |
+
+The Leading Edge pilot dashboard is deployed from a separate private repository owned by Leading Edge, which mirrors this one. The mirror runs the same Deploy Dashboard workflow with its own variables and secrets. It deploys to the staging site by hand (test data only), then deploys automatically to the Leading Edge site on every push to its `main`. A version reaches the mirror only after it has run on this repository's demo site.
+
+For security, the mirror is not linked or named here, and this public repository holds no Leading Edge credentials, so nothing pushed here can reach the Leading Edge site. Leading Edge controls who can change its live site, while this repository stays public for marking.
+
+### Deployment lifecycle
+
+```mermaid
+flowchart TD
+  FB[Feature branch] -->|PR| DEV[development]
+  DEV -.->|Run workflow (by hand)| STAGE[Staging]
+  DEV -->|Release PR| MAIN[main]
+  MAIN -->|Deploy Dashboard| DEMO[Demo]
+  MAIN -.->|mirrored| MIRROR["Leading Edge mirror (private)"]
+  MIRROR -.->|Run workflow (by hand)| STAGE
+  MIRROR -->|Push to main| PILOT[Pilot]
+  MAIN -->|Tag| WIDGET[Widget release]
+```
 
 ### Hosting rationale
 
@@ -1065,39 +1186,51 @@ Deploys come only from `main` through the workflow action **Deploy Dashboard**. 
 | Region | **South Africa North** | None | Closest to Leading Edge and the team. Page sends are quicker. |
 | Widget data | **SQLite on each PC** | Logging straight to the server | Works offline, and a dev's day stays private and editable until they send it, a requirement from Leading Edge to avoid feeling spyed on. |
 | Secrets | **App settings and GitHub secrets** | Config files in the repo | Nothing secret is committed, and each environment has its own keys |
-| Environments | **Separate demo and pilot sites**, they have their own web app and database | One shared site | Leading Edge's real timesheets and client names are never visible to markers or anyone outside the company or Grit Solutions |
+| Environments | **Separate staging, demo and pilot sites**, each with their own web app and database | One shared site | Leading Edge's real timesheets and client names are never visible to markers or anyone outside the company or Grit Solutions, and staging enables pre-release testing with test data |
 | Long term | Azure for the MVP and pilot | Leading Edge's own server | Moving to Leading Edge's on site server was out of MVP scope. Hosting on Azure lets us show the dashboard working at task 2, and the app runs on any .NET 10 host when they're ready so that the transfer is easier with the dashboard hosted now. The server dashboard will be dockerized though before hosting|
 
 **Scaling:** a bigger App Service plan or database tier is a setting change, with no code changes.
 
 **Stability:**
 - `/health` is checked after every deploy and a failing check fails the workflow
-- migrations run at startup and  schema changes repair old rows first
+- migrations run at startup and schema changes repair old rows first
 - sign in and import are rate limited
-- deploys come only from our protected `main` branch
+- live deploys come only from our protected `main` branch
 - the database has point in time restore
 
-**Approximate monthly cost (Changes from documentation projection):** App Service B1  US$13 (shared by both web apps), and US$5 per Azure SQL Basic database, it's protected by a budget alert. This decision let's us demonstrate the dashboard hosting capability before deployment to leading edges on site server, which was out of our MVP scope.
+### Monitoring
+- **Application Insights** is switched on in the Azure portal (no SDK, no code to maintain) on the demo and pilot web apps.
+- A free URL ping **availability test on `/health`** runs with an email alert.
+- The Azure App Service **Health check stays off**: it would query the database every minute, creating unnecessary overhead on Basic DTU databases.
+
+### Costs
+- **App Service plan (B1):** about $17.70 a month, shared by all three web apps.
+- **Azure SQL Database:** each Basic database is about $7.15 a month (demo and pilot); the staging database is $0 on the Azure SQL free offer (serverless auto-pause).
+- **Total:** about $32 a month in total.
+- The **$100 Azure credit** lasts to about early January 2027, which sets the deadline for moving to Leading Edge's hosting.
 
 ### Environment separation
 
-| | Demo  | Leading Edge pilot |
-|---|---|---|
-| Who uses it | for markers | Leading Edge staff only |
-| Azure Web App | its own | its own |
-| Azure SQL | its own database, on its own server | its own database, on its own server |
-| Signing key and admin | its own | its own, different |
-| Accounts | the demo accounts | real employees only|
-| Widget download |  regular release zip | the pilot zip which pointes at seperate pilot site |
+| | Staging | Demo | Leading Edge pilot |
+|---|---|---|---|
+| Who uses it | Grit Solutions testing | for markers | Leading Edge staff only |
+| Azure Web App | 3rd app on B1 | 1st app on B1 | Leading Edge's app |
+| Azure SQL | free offer SQL | its own database, on its own server | its own database, on its own server |
+| Signing key and admin | its own | its own | its own, different |
+| Accounts | test accounts | demo accounts | real employees only |
+| Widget download | points to staging | regular release zip | pilot zip pointing to pilot site |
 
 ```mermaid
 flowchart TB
-  subgraph Plan[Same build from main]
+  subgraph Plan[Shared B1 App Service Plan]
+    S[Staging web app]
     M[Demo / marking web app]
-    P[Pilot web app]
   end
+  P[Leading Edge pilot web app]
+  S --> DS[(Azure SQL: free offer)]
   M --> DM[(Azure SQL: demo)]
   P --> DP[(Azure SQL: pilot)]
+  Testers[Testers / Devs] --> S
   Markers[Demo users] --> M
   Staff[Leading Edge staff] --> P
 ```

@@ -462,3 +462,16 @@ body.login-body {
         min-height: calc(48 * var(--u));
     }
 }
+
+/* ---------- Staging environment banner ----------
+   Shown only on the staging site so nobody mistakes it for the live dashboard */
+.env-banner {
+    padding: 0.5rem 1rem;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    text-align: center;
+    color: var(--warning-800);
+    background: var(--warning-50);
+    border-bottom: 1px solid var(--warning-200);
+}
+

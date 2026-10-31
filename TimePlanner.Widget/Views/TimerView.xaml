@@ -1,32 +1,59 @@
-﻿<UserControl x:Class="TimePlanner.Widget.Views.TimerView"
+<UserControl x:Class="TimePlanner.Widget.Views.TimerView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
     
-    <controls:WidgetCard x:Name="Card" Padding="{StaticResource ShellPaddingWithFoot}"
-                         MouseEnter="Card_MouseEnter" MouseLeave="Card_MouseLeave">
+    <controls:WidgetCard x:Name="Card" Padding="{StaticResource ShellPaddingWithFoot}" MouseEnter="Card_MouseEnter" MouseLeave="Card_MouseLeave">
         <controls:WidgetCard.CornerContent>
-            <Button Style="{StaticResource Button.Icon}" ToolTip="Settings" AutomationProperties.Name="Settings" Click="Settings_Click">
-                <controls:Icon Kind="Settings" />
-            </Button>
+            <StackPanel Orientation="Horizontal">
+                <Button Style="{StaticResource Button.IconWord}" controls:WidgetCard.Word="Settings" ToolTip="Settings" AutomationProperties.Name="Settings" Click="Settings_Click">
+                    <controls:Icon Kind="Settings" />
+                </Button>
+                <Button x:Name="ExitButton" Style="{StaticResource Button.IconWord}" controls:WidgetCard.Word="Exit" ToolTip="Exit Time Planner" AutomationProperties.Name="Exit Time Planner" Click="Exit_Click">
+                    <controls:Icon Kind="Close" />
+                </Button>
+            </StackPanel>
         </controls:WidgetCard.CornerContent>
 
         <StackPanel>
+            <!-- The pause, timer and line sit a little down from the status line, taking the room from above the Log button,
+                 so nothing else moves; in large view a little further, under the words of Settings and Exit -->
             <DockPanel>
-                <Button x:Name="PauseButton" Style="{StaticResource Button.IconOutlined}" VerticalAlignment="Top" Margin="0,0,16,0"
+                <DockPanel.Style>
+                    <Style TargetType="DockPanel">
+                        <Setter Property="Margin" Value="{StaticResource GapStacked}" />
+                        <Style.Triggers>
+                            <Trigger Property="controls:WidgetCard.IsLarge" Value="True">
+                                <Setter Property="Margin" Value="{StaticResource GapFieldToField}" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </DockPanel.Style>
+                <Button x:Name="PauseButton" Style="{StaticResource Button.IconOutlinedWord}" controls:WidgetCard.Word="Pause"
+                        VerticalAlignment="Top" Margin="0,0,16,0"
                         ToolTip="Pause the timer" AutomationProperties.Name="Pause the timer" Click="PauseButton_Click">
                     <controls:Icon x:Name="PauseIcon" Kind="Pause" />
                 </Button>
-                <StackPanel>
-                    <TextBlock x:Name="TimerText" Style="{StaticResource Text.Timer}" Text="01:12"
+                <!-- The timer and its line keep level with the circle, also when the word under it makes the button taller -->
+                <DockPanel VerticalAlignment="Top">
+                    <TextBlock x:Name="TimerText" DockPanel.Dock="Left" Style="{StaticResource Text.Timer}" Text="01:12"
                                AutomationProperties.Name="1 hour 12 minutes" />
-                    <TextBlock x:Name="StatusText" Style="{StaticResource Text.Status}" Text="Until your next check-in"
+                    <!-- What the countdown is for: small, right beside it and down on its baseline -->
+                    <TextBlock x:Name="StatusText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}"
+                               Text="until next check-in" Margin="8,0,0,6" VerticalAlignment="Bottom"
                                AutomationProperties.LiveSetting="Polite" />
-                </StackPanel>
+                </DockPanel>
             </DockPanel>
 
-            <StackPanel Margin="{StaticResource GapSection}">
-                <Button Style="{StaticResource Button.Primary}" Content="Log now" Click="LogNow_Click" />
+            <StackPanel Margin="{StaticResource GapFieldToField}">
+                <DockPanel>
+                    <Button x:Name="VoiceLogButton" DockPanel.Dock="Right" Style="{StaticResource Button.IconOutlinedWord}"
+                            controls:WidgetCard.Word="Speak" VerticalAlignment="Top"
+                            Margin="8,0,0,0" Visibility="Collapsed" Click="VoiceLog_Click">
+                        <controls:Icon Kind="Mic" />
+                    </Button>
+                    <Button x:Name="LogButton" Style="{StaticResource Button.Primary}" VerticalAlignment="Top" Click="LogNow_Click" />
+                </DockPanel>
                 <Grid Style="{StaticResource FootRow}">
                     <Button Style="{StaticResource Button.Text}" Content="End day" Click="EndDay_Click" />
                 </Grid>

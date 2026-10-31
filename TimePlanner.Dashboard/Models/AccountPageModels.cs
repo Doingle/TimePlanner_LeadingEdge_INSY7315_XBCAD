@@ -23,5 +23,17 @@ namespace TimePlanner.Dashboard.Models
         public string? Message { get; set; }
         public string? Error { get; set; }
     }
+
+    //-----------------------------
+    //the two-factor page: whether it is on, the key while it is being set up, and the recovery codes only on the response that turned it on
+    public class TwoFactorPageModel
+    {
+        public bool Enabled { get; set; }
+        public int RecoveryCodesLeft { get; set; }
+        public TwoFactorSetup? Setup { get; set; }
+        public IReadOnlyList<string> RecoveryCodes { get; set; } = Array.Empty<string>();
+        public string? Message { get; set; }
+        public string? Error { get; set; }
+    }
 }
 //------------------------------EOF-----------------------------\\

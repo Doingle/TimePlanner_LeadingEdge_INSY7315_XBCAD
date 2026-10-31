@@ -1,0 +1,25 @@
+<UserControl x:Class="TimePlanner.Widget.Views.UnsentEarlierDayView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
+             Visibility="Collapsed">
+    <!-- "Sunday isn't sent yet": a warm warning row, the day and what was logged, and Send now on the right -->
+    <Border Margin="{StaticResource GapSection}" Padding="16,12,12,12" CornerRadius="{StaticResource RadiusControl}"
+            Background="{StaticResource WarningFillBrush}" BorderBrush="{StaticResource WarningBorderBrush}"
+            BorderThickness="{DynamicResource BorderWidth}" TextElement.Foreground="{StaticResource WarningTextBrush}">
+        <DockPanel>
+            <controls:Icon Kind="Send" DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Center"
+                           Foreground="{StaticResource WarningTextBrush}" />
+            <Button x:Name="SendButton" DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}"
+                    Height="{StaticResource Space32}" Padding="12,0" Margin="8,0,0,0" VerticalAlignment="Center"
+                    Foreground="{StaticResource WarningTextBrush}" BorderBrush="{StaticResource WarningTextBrush}"
+                    Content="Send now" Click="Send_Click" />
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="TitleText" Style="{StaticResource Text.Body}" FontWeight="{StaticResource FontWeightSemibold}"
+                           Foreground="{StaticResource WarningTextBrush}" Text="Sunday isn't sent yet" />
+                <TextBlock x:Name="DetailText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource WarningTextBrush}"
+                           Text="25 Oct · 1h 55m logged" />
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</UserControl>

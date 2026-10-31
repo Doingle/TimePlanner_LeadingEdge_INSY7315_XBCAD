@@ -1,0 +1,92 @@
+<UserControl x:Class="TimePlanner.Widget.Views.UpdateAvailableView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
+             Focusable="True" KeyboardNavigation.TabNavigation="Cycle"
+             AutomationProperties.Name="New version available" PreviewKeyDown="Notice_KeyDown">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/TimePlanner.Widget;component/Themes/Scroll.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid>
+        <Button x:Name="DismissBackdrop" Background="Transparent" BorderThickness="0" Padding="0"
+                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                Focusable="False" AutomationProperties.Name="Dismiss update notice" Click="Dismiss_Click">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{StaticResource ScrimBrush}" Opacity="0.58" CornerRadius="{StaticResource RadiusShell}" />
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
+        <Border Margin="14" Padding="16,10,16,12" VerticalAlignment="Center"
+                Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="1" CornerRadius="{StaticResource RadiusControl}" Effect="{StaticResource ShadowMenu}">
+            <StackPanel>
+                <DockPanel>
+                    <Button x:Name="CloseButton" DockPanel.Dock="Right" Style="{StaticResource Button.IconWord}" controls:WidgetCard.Word="Close"
+                            ToolTip="Dismiss" AutomationProperties.Name="Dismiss update notice" Click="Dismiss_Click">
+                        <controls:Icon Kind="Close" />
+                    </Button>
+                    <controls:Icon Kind="Download" Foreground="{StaticResource TextAccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <TextBlock Text="New version available" Style="{StaticResource Text.Body}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <!-- Initial prompt state -->
+                <StackPanel x:Name="PromptPanel">
+                    <TextBlock x:Name="VersionNoticeText" Text="A newer widget is ready. You can update whenever you're ready."
+                               Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,10" />
+                    <WrapPanel Orientation="Horizontal">
+                        <Button x:Name="UpdateNowButton" Style="{StaticResource Button.Primary}" Content="Update now"
+                                Margin="0,0,8,0" Click="UpdateNow_Click" />
+                        <Button x:Name="UpdateButton" Style="{StaticResource Button.Text}" Content="What's new"
+                                Click="WhatsNew_Click" />
+                    </WrapPanel>
+                </StackPanel>
+
+                <!-- Inline confirm state -->
+                <StackPanel x:Name="ConfirmPanel" Visibility="Collapsed">
+                    <TextBlock Text="Time Planner will close, update and open again. It takes about a minute. Your day stays open."
+                               Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap" Margin="0,6,0,10" />
+                    <WrapPanel Orientation="Horizontal">
+                        <Button x:Name="UpdateAndRestartButton" Style="{StaticResource Button.Primary}" Content="Update and restart"
+                                Margin="0,0,8,0" Click="UpdateAndRestart_Click" />
+                        <Button x:Name="NotNowButton" Style="{StaticResource Button.Secondary}" Content="Not now"
+                                Click="NotNow_Click" />
+                    </WrapPanel>
+                </StackPanel>
+
+                <!-- Downloading progress state -->
+                <StackPanel x:Name="DownloadingPanel" Visibility="Collapsed">
+                    <ProgressBar x:Name="DownloadProgressBar" Style="{StaticResource Bar.Progress}"
+                                 Height="6" Minimum="0" Maximum="1" Value="0" Margin="0,10,0,6" />
+                    <DockPanel>
+                        <Button x:Name="CancelDownloadButton" DockPanel.Dock="Right" Style="{StaticResource Button.Text}"
+                                Content="Cancel" Click="CancelDownload_Click" />
+                        <TextBlock x:Name="ProgressPercentText" Text="0%" Style="{StaticResource Text.Caption}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                    </DockPanel>
+                </StackPanel>
+
+                <!-- Error state with retry -->
+                <StackPanel x:Name="ErrorPanel" Visibility="Collapsed">
+                    <TextBlock x:Name="ErrorMessageText" Style="{StaticResource Text.Error}"
+                               TextWrapping="Wrap" Margin="0,6,0,10" AutomationProperties.LiveSetting="Polite" />
+                    <WrapPanel Orientation="Horizontal">
+                        <Button x:Name="TryAgainButton" Style="{StaticResource Button.Primary}" Content="Try again"
+                                Margin="0,0,8,0" Click="TryAgain_Click" />
+                        <Button x:Name="ErrorWhatsNewButton" Style="{StaticResource Button.Text}" Content="What's new"
+                                Click="WhatsNew_Click" />
+                    </WrapPanel>
+                </StackPanel>
+
+                <TextBlock x:Name="ProblemText" Style="{StaticResource Text.Help}" Visibility="Collapsed"
+                           Text="Couldn't open your browser. You can close this notice and keep working."
+                           AutomationProperties.LiveSetting="Polite" Margin="0,6,0,0" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

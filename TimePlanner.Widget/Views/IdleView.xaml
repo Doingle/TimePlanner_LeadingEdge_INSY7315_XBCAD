@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
     
-    <Grid x:Name="Root" Background="Transparent" Cursor="Hand" MouseEnter="Root_MouseEnter"
+    <Grid x:Name="Root" Background="Transparent" Cursor="Hand" MouseEnter="Root_MouseEnter" MouseLeave="Root_MouseLeave"
+          MouseRightButtonDown="Root_RightDown" MouseRightButtonUp="Root_RightUp" MouseMove="Root_MouseMove" LostMouseCapture="Root_LostCapture"
           HorizontalAlignment="Right" VerticalAlignment="Bottom">
 
         <!-- Pill: clock + time left, label type with tabular figures -->
@@ -42,5 +43,6 @@
                          HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
         </Grid>
+        <controls:HoverProgress x:Name="HoverFill" Fill="{StaticResource TextAccentBrush}" IsHitTestVisible="False" />
     </Grid>
 </UserControl>

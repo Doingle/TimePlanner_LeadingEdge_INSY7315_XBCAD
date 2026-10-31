@@ -7,5 +7,6 @@
   <Folder Name="/tests/">
     <Project Path="TimePlanner.Api.Tests/TimePlanner.Api.Tests.csproj" />
     <Project Path="TimePlanner.Core.Tests/TimePlanner.Core.Tests.csproj" />
+    <Project Path="TimePlanner.Widget.Tests/TimePlanner.Widget.Tests.csproj" />
   </Folder>
 </Solution>

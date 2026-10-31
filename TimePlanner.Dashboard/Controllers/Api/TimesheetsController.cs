@@ -25,6 +25,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //a week or month laid out day by day with what was logged and whether each day was submitted. Read only.
         //view is week (the default) or month and date is any day inside it. Developers see their own, an admin may ask for another person with userId
         [HttpGet]
+        [ProducesResponseType<TimesheetView>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<TimesheetView>> Get([FromQuery] string? view, [FromQuery] DateTime? date, [FromQuery] int? userId)
         {
             if (!Period.TryResolve(view, date, _clock.Today, out var period))
@@ -47,6 +49,10 @@ namespace TimePlanner.Dashboard.Controllers.Api
         [HttpPost("import")]
         [EnableRateLimiting(SecurityExtensions.ImportLimiter)]
         [RequestSizeLimit(2_000_000)]
+        [ProducesResponseType<ImportResult>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ImportResult>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status413PayloadTooLarge)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult<ImportResult>> Import(ImportRequest request)
         {
             if (CurrentAppUserId is not int userId)
@@ -65,6 +71,10 @@ namespace TimePlanner.Dashboard.Controllers.Api
         [HttpPost("import/csv")]
         [EnableRateLimiting(SecurityExtensions.ImportLimiter)]
         [RequestSizeLimit(1_100_000)]
+        [ProducesResponseType<ImportResult>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ImportResult>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status413PayloadTooLarge)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult<ImportResult>> ImportCsv(IFormFile file)
         {
             if (CurrentAppUserId is not int userId)

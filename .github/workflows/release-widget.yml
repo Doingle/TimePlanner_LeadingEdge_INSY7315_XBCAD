@@ -1,4 +1,4 @@
-# builds the widget as a self contained zip that runs on any Windows 10/11 64 bit machine without installing .NET.
+# builds the widget as a self contained folder, zipped and packed into an installer that runs on any Windows 10/11 64 bit machine without installing .NET.
 # Push a tag such as v1.0.0 and the zip, with a checksum file, is attached to a GitHub Release. Run it by hand to get the zip as a build artifact without a release.
 name: Release Widget
 
@@ -45,21 +45,41 @@ jobs:
         run: dotnet test TimePlanner.Core.Tests/TimePlanner.Core.Tests.csproj --configuration Release
 
       - name: Publish widget
-        run: >
-          dotnet publish TimePlanner.Widget/TimePlanner.Widget.csproj
-          --configuration Release --runtime win-x64 --self-contained true
-          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:Version=$env:VERSION
-          --output publish/widget
+        env:
+          DASHBOARD_URL: ${{ vars.WIDGET_DASHBOARD_URL }}
+        run: |
+          if ($env:DASHBOARD_URL -and -not $env:DASHBOARD_URL.StartsWith('https://')) { throw "Dashboard URL must start with https://" }
+          dotnet publish TimePlanner.Widget/TimePlanner.Widget.csproj `
+            --configuration Release --runtime win-x64 --self-contained true `
+            -p:Version=$env:VERSION `
+            "-p:DashboardUrl=$env:DASHBOARD_URL" `
+            --output publish/widget
+
+      # voice transcription needs Whisper's native files beside the exe, a single-file build hides them and voice silently returns nothing
+      - name: Check the voice engine is included
+        run: |
+          $engine = Get-ChildItem publish/widget -Recurse -Filter whisper.dll
+          if (-not $engine) { throw "whisper.dll is missing from the published widget, voice would not work" }
+          $engine | ForEach-Object { $_.FullName.Substring((Resolve-Path publish/widget).Path.Length) }
+
+      - name: Build the installer
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) { choco install innosetup -y --no-progress }
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          $numeric = ($env:VERSION -split '-')[0] + '.0'
+          & $iscc installer\TimePlanner.iss "/DAppVersion=$env:VERSION" "/DAppNumericVersion=$numeric" "/DSourceDir=..\publish\widget"
+          if ($LASTEXITCODE -ne 0) { throw "The installer did not build" }
 
       # debug symbols are left out, they are only useful to developers and add size
-      - name: Zip and checksum
+      - name: Zip, installer and checksums
         run: |
           $name = "TimePlanner-Widget-$env:VERSION-win-x64"
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Compress-Archive -Path (Get-ChildItem publish/widget -Exclude *.pdb).FullName -DestinationPath "dist/$name.zip" -Force
-          $hash = (Get-FileHash "dist/$name.zip" -Algorithm SHA256).Hash.ToLower()
-          "$hash  $name.zip" | Out-File -FilePath "dist/$name.zip.sha256" -Encoding ascii
+          Get-ChildItem dist -File -Exclude *.sha256 | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)" | Out-File -FilePath "$($_.FullName).sha256" -Encoding ascii
+          }
           Get-ChildItem dist | Select-Object Name, @{ n = 'MB'; e = { [math]::Round($_.Length / 1MB, 1) } }
 
       # unpacks the zip like a user would and starts the widget, which is a tray app that should still be running a few seconds later.

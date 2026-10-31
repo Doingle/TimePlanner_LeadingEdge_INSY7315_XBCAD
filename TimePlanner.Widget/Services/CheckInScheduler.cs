@@ -23,6 +23,7 @@ namespace TimePlanner.Widget.Services
         private readonly TimeProvider _clock;
         private readonly ILogger<CheckInScheduler> _logger;
         private readonly DispatcherTimer _timer;
+        private readonly TimePlanner.Core.Ai.IVoiceNoteStore _voiceStore;
 
         // The engine is called from the UI thread, one call at a time
         private readonly SemaphoreSlim _gate = new(1, 1);
@@ -30,17 +31,24 @@ namespace TimePlanner.Widget.Services
         // Today's open day with its pauses, or null before the day starts and after it ends
         private DaySession? _day;
 
-        // The day that was just ended, so Resume day can carry it on
+        // The latest day that has ended, so Resume day can carry it on when it is from today
         private DaySession? _ended;
 
+        // A close running at midnight, so a second tick does not start another
+        private bool _closingLeftOpen;
+
+        // How far back the latest ended day is looked for
+        private const int EndedLookBackDays = 14;
+
         public CheckInScheduler(WidgetSession session, CheckInEngine engine, IServiceScopeFactory scopes, TimeProvider clock,
-            ILogger<CheckInScheduler> logger)
+            ILogger<CheckInScheduler> logger, TimePlanner.Core.Ai.IVoiceNoteStore voiceStore)
         {
             _session = session;
             _engine = engine;
             _scopes = scopes;
             _clock = clock;
             _logger = logger;
+            _voiceStore = voiceStore;
             _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _timer.Tick += Timer_Tick;
         }
@@ -53,8 +61,22 @@ namespace TimePlanner.Widget.Services
         /// <summary>What the engine said last.</summary>
         public CheckInStatus Status { get; private set; } = new(CheckInPhase.NotTracking, null, null, null, 0, 0, false, false);
 
+        /// <summary>A day left open overnight that the widget closed at its last activity, until today is started.</summary>
+        public event EventHandler? DayClosedOvernight;
+
         /// <summary>The day has started and has not ended.</summary>
         public bool IsRunning => _day != null;
+
+        /// <summary>What today looks like, by Core's day rules.</summary>
+        public DayState State => DayRules.StateOn(Now, _day, _ended);
+
+        public bool EndedToday => State == DayState.Ended;
+
+        /// <summary>The latest day that has ended, from today or an earlier date.</summary>
+        public DaySession? LastEnded => _ended;
+
+        /// <summary>The day the widget closed because it was left open overnight, until today is started.</summary>
+        public DaySession? ClosedOvernight { get; private set; }
 
         /// <summary>Where the time not logged yet begins: the end of the last entry, or the start of the day.</summary>
         public DateTime PeriodStart { get; private set; }
@@ -65,6 +87,9 @@ namespace TimePlanner.Widget.Services
 
         public bool IsSnoozed => Status.Phase == CheckInPhase.Snoozed;
 
+        /// <summary>A day started by hand on a day off: tracked, with no check-ins, paused or not.</summary>
+        public bool IsDayOff => IsRunning && !_session.Preferences.IsWorkingDay(Now);
+
         private int UserId => _session.User.UserId;
 
         private TimeSpan Interval => TimeSpan.FromMinutes(Math.Max(1, _session.Settings.CheckInIntervalMinutes));
@@ -74,12 +99,31 @@ namespace TimePlanner.Widget.Services
         /// <summary>After sign-in: picks up a day that is still open (the widget was restarted) and starts the clock.</summary>
         public async Task InitialiseAsync()
         {
-            await ReloadDayAsync();
+            await CloseLeftOpenDayAsync();
+            _engine.Timing = Timing;
+            // Check-ins only on the working days ticked in the preferences
+            _engine.IsCheckInDay = day => _session.Preferences.IsWorkingDay(day);
             await RunAsync(() => _engine.InitialiseAsync(UserId));
+            var today = DateOnly.FromDateTime(Now);
+            var latestVoiceEnd = await _voiceStore.GetLatestWindowEndAsync(today);
+            if (latestVoiceEnd.HasValue)
+            {
+                await RunAsync(() => _engine.NotifyAnsweredWithoutEntryAsync(latestVoiceEnd.Value));
+            }
             _timer.Start();
         }
 
-        public Task StartAsync() => ChangeDayAsync(days => days.StartDayAsync(UserId, Now));
+        /// <summary>When check-ins fall, from the preferences file.</summary>
+        private CheckInTiming Timing => _session.Preferences.CheckInTiming;
+
+        /// <summary>The user changed the check-in timing, which is saved already.</summary>
+        public Task TimingChangedAsync() => RunAsync(() => _engine.SetTimingAsync(Timing));
+
+        public Task StartAsync()
+        {
+            ClosedOvernight = null;
+            return ChangeDayAsync(days => days.StartDayAsync(UserId, Now));
+        }
 
         public async Task PauseAsync()
         {
@@ -99,11 +143,20 @@ namespace TimePlanner.Widget.Services
                 await ChangeDayAsync(async days => _ended = await days.EndDayAsync(UserId, Now));
         }
 
-        /// <summary>Carries on after Day ended, as if the day had not been ended.</summary>
+        /// <summary>
+        /// Carries on after Day ended, as if the day had not been ended. Only a day from today can be
+        /// carried on: once the date has changed, today starts as a day of its own instead.
+        /// </summary>
         public async Task ResumeDayAsync()
         {
             if (IsRunning)
                 return;
+
+            if (_ended != null && !DayRules.CanResume(_ended, Now))
+            {
+                await StartAsync();
+                return;
+            }
 
             await using (var scope = _scopes.CreateAsyncScope())
             {
@@ -139,8 +192,38 @@ namespace TimePlanner.Widget.Services
                 await RunAsync(_engine.SnoozeAsync);
         }
 
-        /// <summary>Asks the engine where things stand now.</summary>
-        public Task RefreshAsync() => RunAsync(_engine.TickAsync);
+        /// <summary>Asks the engine where things stand now. A day still open after midnight closes first.</summary>
+        public async Task RefreshAsync()
+        {
+            if (DayRules.IsLeftOpen(_day, Now) && !_closingLeftOpen)
+            {
+                _closingLeftOpen = true;
+                try
+                {
+                    await CloseLeftOpenDayAsync();
+                    await RunAsync(_engine.NotifySessionChangedAsync);
+                }
+                finally
+                {
+                    _closingLeftOpen = false;
+                }
+                DayClosedOvernight?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            await RunAsync(_engine.TickAsync);
+        }
+
+        /// <summary>Closes a day left open from an earlier date at its last activity, remembering it so the widget can say so.</summary>
+        private async Task CloseLeftOpenDayAsync()
+        {
+            await using (var scope = _scopes.CreateAsyncScope())
+            {
+                if (await scope.ServiceProvider.GetRequiredService<DaySessionService>().CloseStaleSessionsAsync(UserId, Now) is { } closed)
+                    ClosedOvernight = closed;
+            }
+            await ReloadDayAsync();
+        }
 
         private async Task ChangeDayAsync(Func<DaySessionService, Task> change)
         {
@@ -148,6 +231,18 @@ namespace TimePlanner.Widget.Services
                 await change(scope.ServiceProvider.GetRequiredService<DaySessionService>());
             await ReloadDayAsync();
             await RunAsync(_engine.NotifySessionChangedAsync);
+            var today = DateOnly.FromDateTime(Now);
+            var latestVoiceEnd = await _voiceStore.GetLatestWindowEndAsync(today);
+            if (latestVoiceEnd.HasValue)
+            {
+                await RunAsync(() => _engine.NotifyAnsweredWithoutEntryAsync(latestVoiceEnd.Value));
+            }
+        }
+
+        public async Task VoiceAnsweredAsync(DateTime coveredUntil)
+        {
+            await ReloadDayAsync();
+            await RunAsync(() => _engine.NotifyAnsweredWithoutEntryAsync(coveredUntil));
         }
 
         private async Task ReloadDayAsync()
@@ -156,11 +251,25 @@ namespace TimePlanner.Widget.Services
             var services = scope.ServiceProvider;
             _day = await services.GetRequiredService<DaySessionService>().GetOpenSessionAsync(UserId);
 
+            if (_day == null)
+            {
+                var days = await services.GetRequiredService<IDaySessionRepository>()
+                    .GetForUserBetweenAsync(UserId, Now.Date.AddDays(-EndedLookBackDays), Now.Date.AddDays(1));
+                _ended = days.LastOrDefault(day => day.EndedAt != null);
+            }
+
             // Where Core starts the time still to log
             var latest = await services.GetRequiredService<ITimeEntryRepository>().GetLatestForUserAsync(UserId);
             PeriodStart = _day == null ? Now
                 : latest != null && latest.EndTime > _day.StartedAt ? latest.EndTime
                 : _day.StartedAt;
+
+            var today = DateOnly.FromDateTime(Now);
+            var latestVoiceEnd = await _voiceStore.GetLatestWindowEndAsync(today);
+            if (latestVoiceEnd.HasValue && latestVoiceEnd.Value > PeriodStart)
+            {
+                PeriodStart = latestVoiceEnd.Value;
+            }
         }
 
         private async Task RunAsync(Func<Task<CheckInStatus>> step)
@@ -243,7 +352,7 @@ namespace TimePlanner.Widget.Services
         {
             get
             {
-                if (!IsRunning)
+                if (!IsRunning || IsDayOff)
                     return null;
                 if (PausedAt is { } pausedAt)
                     return Longer(TimeSpan.Zero, Interval - WorkedBetween(PeriodStart, pausedAt));
@@ -252,19 +361,32 @@ namespace TimePlanner.Widget.Services
         }
 
         /// <summary>How much of the interval has been worked, 0 to 1: the idle ring.</summary>
-        public double Elapsed => IsRunning ? Math.Clamp(WorkedBetween(PeriodStart, PausedAt ?? Now) / Interval, 0, 1) : 0;
+        /// <remarks>Measured against the time left, so on the hour and half hour the ring is full just as the check-in shows.</remarks>
+        public double Elapsed
+        {
+            get
+            {
+                if (!IsRunning || TimeLeft is not { } left)
+                    return 0;
+                var worked = WorkedBetween(PeriodStart, PausedAt ?? Now);
+                return worked + left > TimeSpan.Zero ? Math.Clamp(worked / (worked + left), 0, 1) : 1;
+            }
+        }
 
         /// <summary>
         /// When a check-in would come due with <paramref name="interval"/>. Before the day starts it
-        /// counts from now; during it, the work since the last check-in counts towards it. Null while paused.
+        /// counts from now; during it, the work since the last check-in counts towards it. On the hour and
+        /// half hour, uses the engine's next clock mark. Null while paused or on a day off.
         /// </summary>
         public DateTime? NextCheckIn(TimeSpan interval)
         {
-            if (!IsRunning)
-                return Now + interval;
-            if (IsPaused)
+            if (IsPaused || IsDayOff)
                 return null;
-            return Now + Longer(TimeSpan.Zero, interval - Unlogged);
+
+            if (Timing == CheckInTiming.OnTheHalfHour)
+                return IsRunning ? PromptAt : CheckInEngine.NextHalfHour(Now);
+            var due = IsRunning ? Now + Longer(TimeSpan.Zero, interval - Unlogged) : Now + interval;
+            return due;
         }
 
         private static TimeSpan Longer(TimeSpan a, TimeSpan b) => a > b ? a : b;

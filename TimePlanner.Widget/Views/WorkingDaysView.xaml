@@ -1,0 +1,64 @@
+<UserControl x:Class="TimePlanner.Widget.Views.WorkingDaysView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls"
+             PreviewKeyDown="View_KeyDown">
+    <UserControl.Resources>
+        <!-- One day: a tick box, filled in the action colour with a white tick while chosen, then the day's name -->
+        <Style x:Key="DayRow" TargetType="CheckBox">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Control}" />
+            <Setter Property="Height" Value="{StaticResource SizeControl}" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="FontFamily" Value="{StaticResource FontFamily}" />
+            <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <DockPanel Background="Transparent">
+                            <Grid DockPanel.Dock="Left" Width="{StaticResource SizeIcon}" Height="{StaticResource SizeIcon}" VerticalAlignment="Center">
+                                <Border x:Name="Box" CornerRadius="{StaticResource RadiusRow}" Background="{StaticResource SurfaceBrush}"
+                                        BorderBrush="{StaticResource BorderControlBrush}" BorderThickness="{DynamicResource BorderWidthSelected}" />
+                                <controls:Icon x:Name="Tick" Kind="Check" Size="{StaticResource SizeIconSm}" Visibility="Collapsed"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource TextOnActionBrush}" />
+                            </Grid>
+                            <ContentPresenter Margin="12,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="False" />
+                        </DockPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="{StaticResource ActionBrush}" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource ActionBrush}" />
+                                <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <controls:WidgetCard AutomationProperties.Name="Working days">
+        <StackPanel>
+            <DockPanel Margin="-8,0,0,0">
+                <Button x:Name="BackButton" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back"
+                        AutomationProperties.Name="Back to more options" Click="Back_Click">
+                    <controls:Icon Kind="ChevronLeft" />
+                </Button>
+                <TextBlock Style="{StaticResource Text.Title}" Text="Working days" Margin="4,0,0,0" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock Style="{StaticResource Text.Subtitle}" Text="Check-ins only happen on ticked days." />
+
+            <!-- Monday to Sunday, built in code, with a hairline between the days -->
+            <StackPanel x:Name="DaysList" Margin="{StaticResource GapFieldToField}" />
+
+            <TextBlock Style="{StaticResource Text.Help}" Text="On other days you can still start a day yourself." />
+
+            <Button Style="{StaticResource Button.Primary}" Margin="{StaticResource GapSection}" Content="Done" Click="Back_Click" />
+        </StackPanel>
+    </controls:WidgetCard>
+</UserControl>

@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="TimePlanner.Widget.Views.CheckInAlertView"
+<UserControl x:Class="TimePlanner.Widget.Views.CheckInAlertView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
@@ -18,6 +18,22 @@
 
             <StackPanel Margin="{StaticResource GapSection}">
                 <Button Style="{StaticResource Button.Primary}" Content="Log time" Click="LogTime_Click" />
+                <!-- One click: the period goes to the last entry's project and activity, named under the label -->
+                <Button x:Name="SameTaskButton" Style="{StaticResource Button.Secondary}" Height="Auto" Padding="16,8"
+                        Margin="{StaticResource GapStacked}" Visibility="Collapsed" Click="SameTask_Click">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Still on the same task" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="SameTaskText" Style="{StaticResource Text.Caption}" FontWeight="{StaticResource FontWeightRegular}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"
+                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="SpeakUpdateButton" Style="{StaticResource Button.Secondary}" Click="SpeakUpdate_Click" Margin="0,8,0,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <controls:Icon Kind="Mic" Size="{StaticResource SizeIconSm}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Speak your update" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
                 <Grid Style="{StaticResource FootRow}">
                     <Button x:Name="SnoozeButton" Style="{StaticResource Button.Text}" Content="Snooze 10m (3 left)" Click="Snooze_Click" />
                     <StackPanel x:Name="NoSnoozes" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -26,8 +42,20 @@
                         <TextBlock Text="No snoozes left" VerticalAlignment="Center" />
                     </StackPanel>
                 </Grid>
+
+                <!-- first-use tip -->
+                <DockPanel x:Name="FirstUseTipPanel" Margin="0,4,0,0" Visibility="Collapsed">
+                    <Button x:Name="DismissTipButton" DockPanel.Dock="Right" Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Close"
+                            ToolTip="Don't show again" AutomationProperties.Name="Don't show again"
+                            Click="DismissTip_Click" VerticalAlignment="Center">
+                        <controls:Icon Kind="Close" Size="{StaticResource SizeIconSm}" />
+                    </Button>
+                    <Button x:Name="TipLinkButton" Style="{StaticResource Button.Text}"
+                            Content="New: speak your update instead. Set it up ›"
+                            HorizontalAlignment="Left" VerticalAlignment="Center"
+                            Click="TipLink_Click" />
+                </DockPanel>
             </StackPanel>
         </StackPanel>
     </controls:WidgetCard>
 </UserControl>
-

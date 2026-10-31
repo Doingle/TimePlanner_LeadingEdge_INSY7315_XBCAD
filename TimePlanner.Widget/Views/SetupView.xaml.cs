@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -11,7 +11,13 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using System.Windows.Automation;
+using System.Globalization;
+using TimePlanner.Core.Services;
+using TimePlanner.Core.Services.Models;
+using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
+using TimePlanner.Core.Ai;
 
 namespace TimePlanner.Widget.Views
 {
@@ -34,10 +40,14 @@ namespace TimePlanner.Widget.Views
 
         private const string ShapeOff = "Nothing shows while the widget is hidden.";
 
+
         private readonly WidgetFlow _flow;
         private readonly bool _isSettings;
         private readonly List<int> _intervals;
         private readonly bool _ready;
+        private bool _revertingStartup;
+        private bool _settingTiming;
+        private Task _intervalSave = Task.CompletedTask;
 
         public SetupView(WidgetFlow flow, bool isSettings)
         {
@@ -50,14 +60,35 @@ namespace TimePlanner.Widget.Views
             if (isSettings)
             {
                 SettingsHeader.Visibility = Visibility.Visible;
+                HelpButton.Visibility = Visibility.Collapsed;
+                ManageListsRow.Visibility = Visibility.Visible;
                 IntervalField.Margin = (Thickness)FindResource("GapSection");
                 PrimaryButton.Content = "Done";
+                AiSettingsRow.Visibility = Visibility.Visible;
+                UpdateAiSummary();
+            }
+            else
+            {
+                // The banner's pill carries the date and state here, so the card's own status line stays off
+                WidgetCard.SetStatus(Card, null);
+
+                // After an earlier day the button starts today; the very first run just starts tracking
+                if (flow.Scheduler.LastEnded != null)
+                    PrimaryButton.Content = "Start today";
+                _ = EarlierNotice.LoadAsync(flow, flow.ShowStart);
             }
             ShowWelcome(!isSettings);
 
             _intervals = CheckInPolicy.ChoicesIncluding(settings.CheckInIntervalMinutes);
             IntervalSelect.ItemsSource = _intervals.Select(Format.Interval).ToList();
             IntervalSelect.SelectedIndex = _intervals.IndexOf(settings.CheckInIntervalMinutes);
+
+            // Clock times are the tick box at the top of the drop-down, with no interval chosen
+            HalfHourBox.IsChecked = preferences.CheckInTiming == CheckInTiming.OnTheHalfHour;
+            if (HalfHourBox.IsChecked == true)
+                IntervalSelect.SelectedIndex = -1;
+            WorkingDaysSummary.Text = Format.Days(preferences.WorkingDays);
+            LargerTextSwitch.IsChecked = preferences.LargerText;
 
             (preferences.IdleVisibility switch
             {
@@ -74,6 +105,8 @@ namespace TimePlanner.Widget.Views
             }).IsChecked = true;
 
             SoundSwitch.IsChecked = preferences.SoundOnCheckIn;
+            StartupSwitch.IsChecked = preferences.StartWithWindows;
+            ShowStartup();
 
             _ready = true;
             ApplyIdleSettings();
@@ -106,22 +139,109 @@ namespace TimePlanner.Widget.Views
 
         private async void Primary_Click(object sender, RoutedEventArgs e)
         {
+            await _intervalSave;
             if (_isSettings)
                 _flow.ShowTimer(activate: true);
             else
                 await _flow.StartTrackingAsync();
         }
 
-        private void BackToTimer_Click(object sender, RoutedEventArgs e) => _flow.ShowTimer(activate: true);
+        private async void BackToTimer_Click(object sender, RoutedEventArgs e)
+        {
+            await _intervalSave;
+            _flow.ShowTimer(activate: true);
+        }
+
+        private async void ManageLists_Click(object sender, RoutedEventArgs e)
+        {
+            await _intervalSave;
+            await _flow.ShowManageListsAsync();
+        }
+
+        private async void Help_Click(object sender, RoutedEventArgs e)
+        {
+            await _intervalSave;
+            _flow.ShowHelp();
+        }
 
         private async void Interval_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!_ready || IntervalSelect.SelectedIndex < 0)
+            if (!_ready || _settingTiming || IntervalSelect.SelectedIndex < 0)
                 return;
 
-            var saving = _flow.ChangeIntervalAsync(_intervals[IntervalSelect.SelectedIndex]);
+            IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = false;
+            try
+            {
+                _intervalSave = _flow.ChangeIntervalAsync(_intervals[IntervalSelect.SelectedIndex]);
+                await _intervalSave;
+
+                // Picking an interval leaves clock times
+                if (HalfHourBox.IsChecked == true)
+                {
+                    _settingTiming = true;
+                    HalfHourBox.IsChecked = false;
+                    _settingTiming = false;
+                    _intervalSave = _flow.ChangeTimingAsync(CheckInTiming.FromLastCheckIn);
+                    await _intervalSave;
+                }
+                ShowNextCheckIn();
+            }
+            finally { IntervalSelect.IsEnabled = PrimaryButton.IsEnabled = true; }
+        }
+
+        // The tick box in the drop-down: clock times, or back to the interval last chosen
+        private async void HalfHourBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!_ready || _settingTiming)
+                return;
+
+            var clock = HalfHourBox.IsChecked == true;
+            IntervalSelect.IsDropDownOpen = false;
+            _settingTiming = true;
+            IntervalSelect.SelectedIndex = clock ? -1 : _intervals.IndexOf(_flow.Session.Settings.CheckInIntervalMinutes);
+            _settingTiming = false;
+
+            _intervalSave = _flow.ChangeTimingAsync(clock ? CheckInTiming.OnTheHalfHour : CheckInTiming.FromLastCheckIn);
+            await _intervalSave;
             ShowNextCheckIn();
-            await saving;
+        }
+
+        // In the open drop-down, Up from the first interval goes to the tick box and Down comes back
+        private void IntervalSelect_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (!IntervalSelect.IsDropDownOpen || IntervalSelect.Tag == null)
+                return;
+
+            var first = IntervalSelect.ItemContainerGenerator.ContainerFromIndex(0) as ComboBoxItem;
+            if (e.Key == Key.Up && first != null && first.IsKeyboardFocused)
+            {
+                e.Handled = HalfHourBox.Focus();
+            }
+            else if (e.Key == Key.Down && HalfHourBox.IsKeyboardFocused && first != null)
+            {
+                e.Handled = first.Focus();
+            }
+        }
+
+        // The next two marks the clock times would land on, as an example beside the tick box
+        private void IntervalSelect_DropDownOpened(object? sender, EventArgs e)
+        {
+            var next = CheckInEngine.NextHalfHour(_flow.Scheduler.Now);
+            // Non-breaking spaces keep the marks together if they wrap under the label
+            HalfHourMarks.Text = $" ({next.ToString("h:mm", CultureInfo.InvariantCulture)} & {next.AddMinutes(30).ToString("h:mm", CultureInfo.InvariantCulture)})";
+        }
+
+        // The working days list is a screen of its own, which comes back to More options
+        private void WorkingDays_Click(object sender, RoutedEventArgs e)
+        {
+            var settings = _isSettings;
+            _flow.ShowWorkingDays(() => _flow.ShowMoreOptions(settings));
+        }
+
+        private void LargerText_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_ready)
+                _flow.ChangeLargerText(LargerTextSwitch.IsChecked == true);
         }
 
         private void ShowNextCheckIn()
@@ -132,7 +252,8 @@ namespace TimePlanner.Widget.Views
             var lead = _isSettings ? "Next check-in moves to " : "First check-in at ";
 
             // Tracking runs until the day is ended, so a check-in is always coming unless the timer is paused
-            IntervalHelp.Text = next is { } at ? lead + Format.Clock(at)
+            IntervalHelp.Text = scheduler.IsDayOff ? "No check-ins on this working-day setting."
+                : next is { } at ? lead + Format.Clock(at)
                 : "The interval counts from when you resume the timer.";
         }
 
@@ -166,6 +287,30 @@ namespace TimePlanner.Widget.Views
             _flow.SavePreferences();
         }
 
+        private void Startup_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!_ready || _revertingStartup)
+                return;
+
+            if (!_flow.ChangeStartWithWindows(StartupSwitch.IsChecked == true))
+            {
+                // Windows refused: the switch goes back to what is really set, and the message says why
+                _revertingStartup = true;
+                StartupSwitch.IsChecked = _flow.Session.Preferences.StartWithWindows;
+                _revertingStartup = false;
+            }
+            ShowStartup();
+        }
+
+        private void ShowStartup()
+        {
+            StartupHelp.Text = _flow.Session.Preferences.StartWithWindows
+                ? "Opens when you sign in to Windows."
+                : "Open it yourself after signing in.";
+            StartupError.Text = _flow.StartupProblem ?? "";
+            StartupError.Visibility = _flow.StartupProblem == null ? Visibility.Collapsed : Visibility.Visible;
+        }
+
         private void ApplyIdleSettings()
         {
             var preferences = _flow.Session.Preferences;
@@ -179,5 +324,37 @@ namespace TimePlanner.Widget.Views
                 ? "Hidden"
                 : $"{preferences.IdleShape}, {(preferences.IdleVisibility == IdleVisibility.Faded ? "faded" : "visible")}";
         }
+
+        //-----------------------------
+        //opens voice and ai settings view
+        private void AiSettings_Click(object sender, RoutedEventArgs e)
+        {
+            _flow.ShowAiSettings(() => _flow.ShowSettings());
+        }
+
+        //-----------------------------
+        //updates summary displayed on voice and ai settings row
+        private void UpdateAiSummary()
+        {
+            var ai = _flow.Session.Preferences.Ai;
+            //not setup state
+            if (!ai.SetupCompleted)
+            {
+                AiSummary.Text = "Not set up";
+                return;
+            }
+
+            //organisation ai or local model readiness
+            if (ai.Compiler == CompilerKind.Dashboard || _flow.Ai.VoiceReady)
+            {
+                AiSummary.Text = "Ready";
+            }
+            //otherwise needs attention
+            else
+            {
+                AiSummary.Text = "Needs attention";
+            }
+        }
     }
 }
+//------------------------------EOF-----------------------------\\

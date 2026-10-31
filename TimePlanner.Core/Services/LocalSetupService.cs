@@ -33,7 +33,8 @@ namespace TimePlanner.Core.Services
 
         //-----------------------------
         //migrates makes user settings and internal project available to app
-        public async Task<AppUser> InitialiseAsync(string localAccountName, DateTime now)
+        //the widget closes days left open itself so it can tell the user, so it passes false for closeLeftOpenDays
+        public async Task<AppUser> InitialiseAsync(string localAccountName, DateTime now, bool closeLeftOpenDays = true)
         {
             //the account name finds the user again
             if (string.IsNullOrWhiteSpace(localAccountName))
@@ -61,7 +62,12 @@ namespace TimePlanner.Core.Services
             }
 
             await EnsureInternalProjectAsync();
-            await _sessions.CloseStaleSessionsAsync(user.UserId, now);
+
+            //a day left open from an earlier date closes at its last activity
+            if (closeLeftOpenDays)
+            {
+                await _sessions.CloseStaleSessionsAsync(user.UserId, now);
+            }
 
             return (await _users.GetByIdAsync(user.UserId))!;
         }

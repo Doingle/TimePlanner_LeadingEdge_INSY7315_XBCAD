@@ -17,11 +17,21 @@ namespace TimePlanner.Widget
         public static IReadOnlyList<ScreenPreview> All { get; } =
         [
             new("setup", "Setup", "Setup", Do(s => s.At(8, 30).Flow.ShowSetup())),
+            new("help", "Setup", "Help", Do(s => { s.Flow.ShowSetup(); s.Flow.ShowHelp(); })),
             new("settings", "Setup", "Settings, reached from the timer", async s =>
             {
                 (await s.StartDayAtAsync(8, 30)).Session.Settings.CheckInIntervalMinutes = 45;
                 s.At(9, 0).Flow.ShowSettings();
             }),
+            new("manage-lists", "Setup", "Manage lists: projects, one hidden", async s =>
+            {
+                await HideAtlasAsync(s);
+                (await s.Flow.ShowManageListsAsync()).Open(showHidden: true);
+            }),
+            new("manage-lists-add", "Setup", "Manage lists: adding a project", async s =>
+                (await s.Flow.ShowManageListsAsync()).Open(addingUnder: "Contoso")),
+            new("manage-lists-activities", "Setup", "Manage lists: activities", async s =>
+                (await s.Flow.ShowManageListsAsync()).Open(activities: true)),
             new("advanced-hidden", "Setup", "Advanced options, hidden when idle", Do(s =>
             {
                 var preferences = s.Flow.Session.Preferences;
@@ -35,6 +45,7 @@ namespace TimePlanner.Widget
             new("idle-ring", "Idle and timer", "Resting: ring", s => Idle(s, IdleShape.Ring)),
             new("idle-dot", "Idle and timer", "Resting: dot", s => Idle(s, IdleShape.Dot)),
             new("timer", "Idle and timer", "Timer, running", async s => (await Afternoon(s, 15, 23)).ShowTimer(activate: true)),
+            new("tray-menu", "Idle and timer", "Tray menu", async s => (await Afternoon(s, 15, 23)).ShowTimer(activate: true)),
             // Without the sample entries, which run to 3:05 PM and so would come after a morning start
             new("timer-paused", "Idle and timer", "Timer, paused", async s =>
             {
@@ -44,6 +55,15 @@ namespace TimePlanner.Widget
                 s.Flow.ShowTimer(activate: true);
             }, WithEntries: false),
 
+            new("timer-large", "Large view", "Timer, running", Large(async s => (await Afternoon(s, 15, 23)).ShowTimer(activate: true))),
+            new("timer-paused-large", "Large view", "Timer, paused", Large(async s =>
+            {
+                await s.StartDayAtAsync(9, 57);
+                await s.At(10, 15).Flow.Scheduler.PauseAsync();
+                await s.At(10, 20).Flow.Scheduler.RefreshAsync();
+                s.Flow.ShowTimer(activate: true);
+            }), WithEntries: false),
+
             new("log-entry", "Log entry", "Activity chosen", async s => await (await Afternoon(s, 16, 35)).LogTimeAsync(LogEntryMode.CheckIn)),
             new("log-now", "Log entry", "Opened early with Log now", async s =>
             {
@@ -51,7 +71,7 @@ namespace TimePlanner.Widget
                 await s.At(16, 57).Flow.LogTimeAsync(LogEntryMode.LogNow);
             }),
             new("menu-open", "Log entry", "Menu open", s => OpenMenu(s)),
-            new("menu-coding", "Log entry", "Hovering Coding opens the next level", s => OpenMenu(s, expand: ["Coding"])),
+            new("menu-coding", "Log entry", "Coding opened in place", s => OpenMenu(s, expand: ["Coding"])),
             new("menu-adding", "Log entry", "Adding an item to Coding", s => OpenMenu(s, addingAt: ["Coding"])),
             new("no-activity", "Log entry", "Saved without an activity", async s =>
             {
@@ -83,7 +103,38 @@ namespace TimePlanner.Widget
                 flow.ShowTimesheet(await flow.EndDayAsync());
             }),
 
+            new("timesheet-wide", "Day ended", "Timesheet, wide window", async s =>
+            {
+                var flow = await Afternoon(s, 16, 35);
+                await flow.EndDayAsync();
+                await flow.ShowWideTimesheetAsync(DateOnly.FromDateTime(PreviewSession.Day), flow.ShowFromTray);
+            }),
+            new("timesheet-large", "Large view", "Timesheet", Large(async s =>
+            {
+                var flow = await Afternoon(s, 16, 35);
+                flow.ShowTimesheet(await flow.EndDayAsync());
+            })),
+            new("timesheet-wide-large", "Large view", "Timesheet, wide window", Large(async s =>
+            {
+                var flow = await Afternoon(s, 16, 35);
+                await flow.EndDayAsync();
+                await flow.ShowWideTimesheetAsync(DateOnly.FromDateTime(PreviewSession.Day), flow.ShowFromTray);
+            })),
+
             new("check-in", "Check-in alert", "Check-in alert", async s => (await Afternoon(s, 16, 35)).CheckIn()),
+
+            new("ai-settings", "Voice and AI", "Voice and AI settings", async s =>
+                (await Afternoon(s, 16, 35)).ShowAiSettings(() => s.Flow.ShowSettings())),
+            new("ai-advanced", "Voice and AI", "Voice and AI, advanced options", async s =>
+                (await Afternoon(s, 16, 35)).ShowAiSettings(() => s.Flow.ShowSettings(), openAdvanced: true)),
+            new("voice-note", "Voice and AI", "Recording a voice note", async s =>
+            {
+                var flow = await Afternoon(s, 16, 35);
+                flow.CheckIn();
+                flow.StartVoiceNote();
+            }),
+            new("day-build", "Voice and AI", "Build my day", async s =>
+                await (await Afternoon(s, 16, 35)).ShowDayBuildAsync(DateOnly.FromDateTime(PreviewSession.Day), s.Flow.ShowFromTray)),
         ];
 
         public static ScreenPreview? Find(string id) =>
@@ -93,6 +144,13 @@ namespace TimePlanner.Widget
         {
             show(s);
             return Task.CompletedTask;
+        };
+
+        // The same figure with "Larger text and buttons" on
+        private static Func<PreviewSession, Task> Large(Func<PreviewSession, Task> show) => s =>
+        {
+            s.Flow.Session.Preferences.LargerText = true;
+            return show(s);
         };
 
         // The spec's afternoon: the day running since the 3:05 PM check-in, at the given time
@@ -107,6 +165,12 @@ namespace TimePlanner.Widget
             flow.SaveEntryAsync(LogEntryMode.CheckIn, flow.GetLogPeriod(),
                 new[] { LocalSetupService.InternalCompanyName, LocalSetupService.InternalProjectName },
                 flow.Session.Activity, note: null);
+
+        private static async Task HideAtlasAsync(PreviewSession s)
+        {
+            var atlas = (await s.Flow.GetManagedListsAsync()).Clients.First(c => c.Name == "Atlas Group");
+            await s.Flow.SetListItemHiddenAsync(ListKind.Client, atlas.Id, hidden: true);
+        }
 
         private static async Task Idle(PreviewSession s, IdleShape shape)
         {

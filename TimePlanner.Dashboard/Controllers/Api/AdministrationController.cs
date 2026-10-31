@@ -23,6 +23,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
 
         //team hours, hours by category, project and person, and the submission rate for today and for the period
         [HttpGet("overview")]
+        [ProducesResponseType<AdminOverview>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<AdminOverview>> Overview([FromQuery] string? view, [FromQuery] DateTime? date)
         {
             if (!Period.TryResolve(view, date, _clock.Today, out var period))
@@ -32,6 +34,8 @@ namespace TimePlanner.Dashboard.Controllers.Api
 
         //each person against each working day, marked Submitted, Pending, Missing or NotDue
         [HttpGet("submissions")]
+        [ProducesResponseType<SubmissionGrid>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<SubmissionGrid>> Submissions([FromQuery] string? view, [FromQuery] DateTime? date)
         {
             if (!Period.TryResolve(view, date, _clock.Today, out var period))
@@ -42,6 +46,9 @@ namespace TimePlanner.Dashboard.Controllers.Api
         //-----------------------------
         //one person's timesheet as an excel or csv file, or without userId a zip holding one file per person who logged time in the period
         [HttpGet("exports/timesheets")]
+        [ProducesResponseType(typeof(byte[]), StatusCodes.Status200OK, "text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/zip")]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Export([FromQuery] string? view, [FromQuery] DateTime? date, [FromQuery] int? userId, [FromQuery] string format = "csv")
         {
             if (!Period.TryResolve(view, date, _clock.Today, out var period))

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -6,14 +6,14 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Windows.Threading;
 using TimePlanner.Widget.Controls;
 using TimePlanner.Widget.Models;
+using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace TimePlanner.Widget.Views
 {
@@ -23,23 +23,28 @@ namespace TimePlanner.Widget.Views
     public partial class TimerView : UserControl
     {
         private readonly WidgetFlow _flow;
-        private readonly DispatcherTimer _leaveTimer;
+        private readonly DispatcherTimer _leaveTimer = new() { Interval = TimeSpan.FromSeconds(5) };
 
         public TimerView(WidgetFlow flow)
         {
             InitializeComponent();
             _flow = flow;
-
-            _leaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
             _leaveTimer.Tick += (_, _) =>
             {
                 _leaveTimer.Stop();
-                if (!Card.IsMouseOver && IsLoaded)
+                if (!IsLoaded || Card.IsMouseOver) return;
+                if (Mouse.LeftButton == MouseButtonState.Pressed || IsMouseCaptureWithin)
+                    _leaveTimer.Start();
+                else
                     _flow.ShowIdle();
             };
 
             ShowState();
-            Loaded += (_, _) => flow.Scheduler.Ticked += Scheduler_Ticked;
+            Loaded += (_, _) =>
+            {
+                flow.Scheduler.Ticked += Scheduler_Ticked;
+                if (!Card.IsMouseOver) _leaveTimer.Start();
+            };
             Unloaded += (_, _) =>
             {
                 _leaveTimer.Stop();
@@ -52,21 +57,44 @@ namespace TimePlanner.Widget.Views
         private void ShowState()
         {
             var scheduler = _flow.Scheduler;
+            LogButton.Content = $"Log time since {Format.Clock(_flow.GetLogPeriod().Start)}";
             var paused = scheduler.PausedAt;
             PauseIcon.Kind = paused != null ? IconKind.Play : IconKind.Pause;
+            WidgetCard.SetWord(PauseButton, paused != null ? "Resume" : "Pause");
             var action = paused != null ? "Resume the timer" : "Pause the timer";
             PauseButton.ToolTip = action;
             AutomationProperties.SetName(PauseButton, action);
+
+            TimerText.Foreground = (Brush)FindResource(paused != null ? "TextTertiaryBrush" : "TextPrimaryBrush");
+
+            // A day off has no check-ins to count down to, so it counts up the time not logged yet
+            if (scheduler.IsDayOff)
+            {
+                TimerText.Text = Format.Countdown(scheduler.Unlogged);
+                AutomationProperties.SetName(TimerText, $"{Format.Spoken(scheduler.Unlogged)} not logged yet");
+                StatusText.Text = paused is { } breakAt ? $"Paused at {Format.Clock(breakAt)}" : "not logged yet";
+                return;
+            }
 
             var left = scheduler.TimeLeft;
             TimerText.Text = left is { } time ? Format.Countdown(time) : "--:--";
             AutomationProperties.SetName(TimerText, left is { } spoken ? Format.Spoken(spoken) : "No more check-ins today");
 
-            TimerText.Foreground = (Brush)FindResource(paused != null ? "TextTertiaryBrush" : "TextPrimaryBrush");
             StatusText.Text = paused is { } pausedAt ? $"Paused at {Format.Clock(pausedAt)}"
                 : left == null ? "No more check-ins today"
                 : scheduler.IsSnoozed && _flow.Snooze.SnoozedUntil is { } until ? $"Check-in snoozed until {Format.Clock(until)}"
-                : "Until your next check-in";
+                : "until next check-in";
+
+            var ai = _flow.Session.Preferences.Ai;
+            var voiceAvailable = ai.VoiceEnabled && _flow.AiSetup.IsVoiceReady;
+            VoiceLogButton.Visibility = voiceAvailable ? Visibility.Visible : Visibility.Collapsed;
+            //configure voice button tooltip when enabled
+            if (voiceAvailable)
+            {
+                var tip = $"Speak your update since {Format.Clock(_flow.GetLogPeriod().Start)}";
+                VoiceLogButton.ToolTip = tip;
+                AutomationProperties.SetName(VoiceLogButton, tip);
+            }
         }
 
         private async void PauseButton_Click(object sender, RoutedEventArgs e)
@@ -80,12 +108,25 @@ namespace TimePlanner.Widget.Views
 
         private void Settings_Click(object sender, RoutedEventArgs e) => _flow.ShowSettings();
 
-        private async void LogNow_Click(object sender, RoutedEventArgs e) => await _flow.LogTimeAsync(LogEntryMode.LogNow);
-
-        private void EndDay_Click(object sender, RoutedEventArgs e) => _flow.AskEndDay();
+        private void Exit_Click(object sender, RoutedEventArgs e) => _flow.AskExit();
 
         private void Card_MouseEnter(object sender, MouseEventArgs e) => _leaveTimer.Stop();
+        private void Card_MouseLeave(object sender, MouseEventArgs e)
+        {
+            _leaveTimer.Stop();
+            _leaveTimer.Start();
+        }
 
-        private void Card_MouseLeave(object sender, MouseEventArgs e) => _leaveTimer.Start();
+        private async void LogNow_Click(object sender, RoutedEventArgs e) => await _flow.LogTimeAsync(LogEntryMode.LogNow);
+
+        //-----------------------------
+        //handles voice update button click from timer
+        private void VoiceLog_Click(object sender, RoutedEventArgs e)
+        {
+            _flow.StartVoiceNote();
+        }
+
+        private void EndDay_Click(object sender, RoutedEventArgs e) => _flow.AskEndDay();
     }
 }
+//------------------------------EOF-----------------------------\\

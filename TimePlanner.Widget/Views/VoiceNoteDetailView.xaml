@@ -1,0 +1,35 @@
+<UserControl x:Class="TimePlanner.Widget.Views.VoiceNoteDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:TimePlanner.Widget.Controls">
+    <controls:WidgetCard AutomationProperties.Name="Voice note details">
+        <StackPanel>
+            <DockPanel Margin="-8,0,0,0">
+                <Button Style="{StaticResource Button.IconWordSide}" controls:WidgetCard.Word="Back" ToolTip="Back" AutomationProperties.Name="Back" Click="Back_Click">
+                    <controls:Icon Kind="ChevronLeft" />
+                </Button>
+                <TextBlock Style="{StaticResource Text.Title}" Text="Voice note" Margin="4,0,0,0" VerticalAlignment="Center" />
+            </DockPanel>
+
+            <TextBlock x:Name="WindowText" Style="{StaticResource Text.Subtitle}" Margin="0,8,0,0" />
+            <TextBlock x:Name="StatusText" Style="{StaticResource Text.Caption}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0" />
+
+            <TextBlock x:Name="ErrorText" Style="{StaticResource Text.Error}" Margin="0,4,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
+            <Button x:Name="RetryButton" Style="{StaticResource Button.Secondary}" Content="Retry" ToolTip="Try transcribing this note again" AutomationProperties.Name="Try transcribing this note again" Visibility="Collapsed" Margin="0,8,0,0" Click="Retry_Click" />
+
+            <TextBlock Text="Transcript" Style="{StaticResource Text.Label}" Margin="0,12,0,4" />
+            <TextBox x:Name="TranscriptBox" Style="{StaticResource TextArea}" Height="100" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
+            <TextBlock x:Name="ActionErrorText" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed" />
+            <Button x:Name="SaveButton" Style="{StaticResource Button.Primary}" Content="Save" ToolTip="Save changes to transcript" AutomationProperties.Name="Save" Margin="0,8,0,0" Click="Save_Click" />
+
+            <StackPanel Margin="0,12,0,0">
+                <Button x:Name="DeleteButton" Style="{StaticResource Button.Text}" Content="Delete note" ToolTip="Delete this voice note" AutomationProperties.Name="Delete note" HorizontalAlignment="Left" Click="Delete_Click" />
+                <StackPanel x:Name="ConfirmDeletePanel" Orientation="Horizontal" Visibility="Collapsed" Margin="0,4,0,0">
+                    <TextBlock Text="Delete this note?" Style="{StaticResource Text.Body}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Button Style="{StaticResource Button.Text}" Content="Yes" Foreground="{StaticResource TextAccentBrush}" FontWeight="Bold" Margin="0,0,8,0" ToolTip="Confirm deleting this voice note" AutomationProperties.Name="Yes, delete note" Click="ConfirmDelete_Click" />
+                    <Button Style="{StaticResource Button.Text}" Content="No" ToolTip="Cancel delete" AutomationProperties.Name="Cancel" Click="CancelDelete_Click" />
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </controls:WidgetCard>
+</UserControl>
