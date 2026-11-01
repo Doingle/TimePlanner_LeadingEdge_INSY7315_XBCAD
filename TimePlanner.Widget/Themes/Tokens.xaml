@@ -171,6 +171,8 @@
     <CornerRadius x:Key="RadiusSwitch">12</CornerRadius>
     <CornerRadius x:Key="RadiusGrip">2</CornerRadius>
     <CornerRadius x:Key="RadiusBanner">16,16,0,0</CornerRadius>
+    <!-- A band along the foot of the card (the check-in's voice tip): round only where the card is -->
+    <CornerRadius x:Key="RadiusShellFoot">0,0,16,16</CornerRadius>
     <CornerRadius x:Key="RadiusMark">5</CornerRadius>
 
     <!-- Line widths -->
