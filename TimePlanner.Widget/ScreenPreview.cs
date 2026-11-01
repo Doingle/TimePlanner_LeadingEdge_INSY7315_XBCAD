@@ -137,8 +137,18 @@ namespace TimePlanner.Widget
                 await (await Afternoon(s, 16, 35)).ShowDayBuildAsync(DateOnly.FromDateTime(PreviewSession.Day), s.Flow.ShowFromTray)),
         ];
 
-        public static ScreenPreview? Find(string id) =>
-            All.FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase));
+        // Any id with "-large" on the end is that preview in large view, unless it has an entry of its own
+        public static ScreenPreview? Find(string id)
+        {
+            var found = All.FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase));
+            if (found != null || !id.EndsWith("-large", StringComparison.OrdinalIgnoreCase))
+            {
+                return found;
+            }
+
+            var normal = Find(id[..^"-large".Length]);
+            return normal == null ? null : normal with { Id = id, Section = "Large view", Show = Large(normal.Show) };
+        }
 
         private static Func<PreviewSession, Task> Do(Action<PreviewSession> show) => s =>
         {
