@@ -35,6 +35,7 @@ namespace TimePlanner.Widget.Views
 
             var tipVisible = !ai.SetupCompleted && !flow.Session.Preferences.VoiceTipDismissed;
             FirstUseTipPanel.Visibility = tipVisible ? Visibility.Visible : Visibility.Collapsed;
+            DismissTipButton.Visibility = FirstUseTipPanel.Visibility;
 
             var snoozes = flow.Snooze.Left;
             SnoozeButton.Content = $"Snooze {Format.Interval(flow.Snooze.Minutes)} ({snoozes} left)";
@@ -110,6 +111,7 @@ namespace TimePlanner.Widget.Views
             _flow.Session.Preferences.VoiceTipDismissed = true;
             _flow.SavePreferences();
             FirstUseTipPanel.Visibility = Visibility.Collapsed;
+            DismissTipButton.Visibility = Visibility.Collapsed;
         }
 
         //-----------------------------
