@@ -192,7 +192,7 @@ To see the Dashboard populated without logging time yourself, as you'd otherwise
 
 1. **The sample file comes with the widget.** `SampleData\sample-day.csv`, next to `TimePlanner.Widget.exe`, holds a finished working day in the company timesheet layout: 9 entries across three clients, a lunch break and a short untracked gap.
 2. **The date is set for you.** The day is always loaded onto the **most recent weekday before today** (for example last Friday when run on a Monday), so the sample works in any week. It's only loaded if that day has no entries yet.
-3. **Released widget:** add ` --sample-day` to the end of a shortcut's **Target**, or run `.\TimePlanner.Widget.exe --sample-day` in the widget's folder. (create a shortcut by right clicking and add the '--sample-day to the end of the target (name) of the shortcut)
+3. **Released widget:** add ` --dev --sample-day` to the end of a shortcut's **Target**, or run `.\TimePlanner.Widget.exe --dev --sample-day` in the widget's folder. (create a shortcut by right clicking and add ` --dev --sample-day` to the end of the target (name) of the shortcut). The sample day only loads in developer mode, so `--sample-day` on its own is ignored.
 4. **Send the day.** Exit any running widget first; only one can run. The widget confirms which day it loaded. Open **Timesheet** from the tray icon, press the  **‹** (back button) at the top left of the widget until you reach that day, optionally **fill** any gap, and press **Send day**, signing in with the demo account information shared in the table above when you're asked.
 5. **Look at the Dashboard.** As that developer: Home, My Timesheet and My Reports for that week. As an admin: Team, then Overview, Submissions and Exports.
 
@@ -234,9 +234,19 @@ Current version: **0.1.1** (set in [`Directory.Build.props`](Directory.Build.pro
 
 - **Timesheet review:** Step through past days, see entries, untracked gaps and breaks, fill gaps and add missing time, edit or delete entries (with a 10-second undo), and export the day to CSV.
 
-- **Send day:** Send to the dashboard once the day has ended. The widget signs in once, never stores the password, and stays signed in for up to 30 days (a sign-in session is capped at 90 days).
+- **Send day:** Send to the dashboard once the day has ended. The widget signs in once (asking for a two-factor code only if the account has it turned on), never stores the password, and stays signed in for up to 30 days (a sign-in session is capped at 90 days).
 
 - **Offline first:** Everything is saved to a local SQLite database, so the widget works without a network connection; only *sending* a day needs the dashboard.
+
+- **Automatic retry:** If a send fails because the dashboard is unreachable, busy or has a server error, the day shows *Waiting to send · will retry* and is sent again on its own (after 1 minute, 2 minutes, then every 5 minutes), including after the widget restarts. Only days you pressed Send day on are retried.
+
+- **Unsent day reminders:** After you end a working day that isn't sent, the widget shows *Timesheet not sent yet*, and an earlier day with logged time that was never sent is offered with **Send now**.
+
+- **Voice check-ins and Build my day:** Speak your update instead of picking from lists, and let local AI turn the day's notes into draft entries (see [Voice notes and Build my day](#voice-notes-and-build-my-day)).
+
+- **Working days and start with Windows:** Check-ins only happen on ticked working days (Mon to Fri by default), and the widget can open when you sign in to Windows.
+
+- **One-click updates:** The widget notices a newer release and can download, verify (SHA-256) and install it, then restart.
 
 - **Idle appearance:**  A pill (time left), ring (fills as time runs out) or dot. The widget can be always visible, faded until you point at it, or hidden in the tray until a check-in. A sound on check-in is optional.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -250,7 +260,7 @@ Current version: **0.1.1** (set in [`Directory.Build.props`](Directory.Build.pro
 
 - **Upload CSV:** Import a timesheet file (for example one exported from the widget).
 
-- **Settings:** Change your display name and password. **Accessibility:** text size (100–150%), bold and italic, remembered in the browser.
+- **Settings:** Change your display name and password, and turn on optional two-factor sign-in with an authenticator app (ten one-time recovery codes are shown once). **Accessibility:** text size (100–150%), bold and italic, remembered in the browser.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
@@ -261,7 +271,7 @@ Current version: **0.1.1** (set in [`Directory.Build.props`](Directory.Build.pro
 
 - **Exports:** One person's timesheet as Excel or CSV, or a `.zip` with one file per person.
 
-- **Users:** Create accounts (a temporary password is shown once), reset passwords, deactivate and reactivate accounts, and see lockouts and last sign-in.
+- **Users:** Create accounts (a temporary password is shown once), reset passwords, deactivate and reactivate accounts, and see lockouts and last sign-in. Two-factor for someone who lost their phone is reset through the API (`POST /api/v1/users/{id}/reset-two-factor`).
 
 - **Audit log:** Log of security-relevant events (through the API).
 
@@ -333,7 +343,7 @@ sequenceDiagram
 - An expired 30 minute access token is swapped silently with the refresh token. A refused send gets one refresh and one retry before the user is asked to sign in again.
 - The widget remembers what it sent. If an entry on a sent day is edited later, the timesheet shows changed since sent.
 
-If the server rejects the day, the widget lists the row errors and nothing is stored. If the dashboard can't be reached, the day stays saved locally and can be sent later.
+If the server rejects the day, the widget lists the row errors and nothing is stored. If the dashboard can't be reached, is busy or has a server error, the day is kept in a pending-send list (`pending-sends.json`) and retried automatically after 1 minute, 2 minutes and then every 5 minutes, also after a restart. The timesheet shows *Waiting to send · will retry* until it goes through.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
@@ -342,12 +352,14 @@ If the server rejects the day, the widget lists the row errors and nothing is st
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime   | .NET 10 (`net10.0`, widget `net10.0-windows`), C# with nullable reference types and implicit usings                                                        |
 | Desktop   | WPF, [Hardcodet.NotifyIcon.Wpf](https://github.com/hardcodet/wpf-notifyicon) (tray icon), Microsoft.Extensions.Hosting / DependencyInjection               |
+| Voice and AI | NAudio (microphone recording), Whisper.net with CPU and Vulkan runtimes (local transcription), Ollama (local language model, installed on demand), optional OpenAI-compatible endpoints |
+| Installer | Inno Setup (per-user `TimePlanner-Setup-<version>.exe`, no administrator rights) |
 | Web       | ASP.NET Core MVC (Razor views), ASP.NET Core Identity, JWT bearer authentication, built-in rate limiter                                                    |
 | Data      | Entity Framework Core 10 with **SQLite** (widget, local dev, tests) and **SQL Server** (hosted dashboard)                                                  |
 | Files     | [CsvHelper](https://joshclose.github.io/CsvHelper/) (CSV), [ClosedXML](https://github.com/ClosedXML/ClosedXML) (Excel `.xlsx`)                             |
 | API docs  | Swashbuckle (OpenAPI + Swagger UI)                                                                                                                         |
 | Other     | Windows DPAPI (`System.Security.Cryptography.ProtectedData`) for the widget's token. HtmlSanitizer is referenced by the dashboard but not used in code yet |
-| Tests     | xUnit, `Microsoft.AspNetCore.Mvc.Testing` (in-memory test server), coverlet                                                                                |
+| Tests     | xUnit, `Microsoft.AspNetCore.Mvc.Testing` (in-memory test server), coverlet. Three test projects: Core, API and Widget                                     |
 | CI/CD     | GitHub Actions, Dependabot, CodeQL, Azure Web Apps deploy                                                                                                  |
 | Front end | Plain CSS with design tokens and plain JavaScript (no framework, no CDN). Self-hosted Inter and Lora fonts                                                 |
 
@@ -375,6 +387,7 @@ TimePlanner_LeadingEdge_INSY7315_XBCAD/
 │   ├── Services/                   
 │   │                                
 │   ├── Sync/                        
+│   ├── Ai/ (transcription and Build my day: ITranscriber, IDayCompiler)
 │   ├── Extensions/                 
 │   └── Adapters/                    
 │
@@ -402,7 +415,10 @@ TimePlanner_LeadingEdge_INSY7315_XBCAD/
 │   └── Assests/insy.ico           
 │
 ├── TimePlanner.Core.Tests/          
-└── TimePlanner.Api.Tests/           
+├── TimePlanner.Api.Tests/           
+├── TimePlanner.Widget.Tests/ (widget logic: update, reminders, preferences, timesheet review)
+├── tools/TimePlanner.AiEval/ (harness that scores AI models against golden test days)
+└── installer/ (Inno Setup script, TimePlanner.iss)
 ```
 
 ---
@@ -491,15 +507,16 @@ The widget's launch profiles (in Visual Studio's run menu) cover the common case
 |Profile|What it does|
 |---|---|
 |`TimePlanner.Widget`|normal start|
-|`Widget (sample day)`|starts with `--sample-day` (see below)|
-|`Widget (sample day, local dashboard)`|`--sample-day` and `TIMEPLANNER_DASHBOARD_URL=https://localhost:7043/`|
+|`Widget (dev)`|starts with `--dev` (developer mode, see [Developer mode](#developer-mode))|
+|`Widget (dev, sample day)`|starts with `--dev --sample-day` (see below)|
+|`Widget (local-dashboard)`|`--dev` and `TIMEPLANNER_DASHBOARD_URL=https://localhost:7043/`|
 
 The widget opens on Setup (_Welcome to Time Planner_): pick a check-in interval and press Start tracking.
 
 
 ### 6. Try a full round trip
 1. Start the dashboard locally (step 3) and create a developer account (step 4). Sign in once on the website as that developer and set a permanent password.
-2. Start the widget with the Widget (sample day, local dashboard) profile. --sample-day loads SampleData/sample-day.csv into the most recent weekday before today, provided that day has no entries yet. It creates the entries and a finished day session, and turns gaps of 30 minutes or more into breaks.
+2. Start the widget against the local dashboard with the sample day: set `TIMEPLANNER_DASHBOARD_URL=https://localhost:7043/` and run with `--dev --sample-day` (for example, add `--sample-day` to the Widget (local-dashboard) profile's arguments). --sample-day loads SampleData/sample-day.csv into the most recent weekday before today, provided that day has no entries yet. It creates the entries and a finished day session, and turns gaps of 30 minutes or more into breaks.
 3. Right-click the tray icon → Timesheet, step back to that day, review it and press Send day. Sign in as the developer when asked.
 4. On the website, that day now shows as Submitted on My Timesheet (step back a week if it was last Friday), and in Team → Submissions for the admin.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -524,6 +541,9 @@ Settings come from the standard ASP.NET Core sources: `appsettings.json` → `ap
 | `Api:EnableDocs`                        | `false`                      | Serve Swagger UI and the OpenAPI document outside Development.                                                                                                                                                                                                                                  |
 | `RateLimiting:LoginPerMinute`           | `10`                         | Sign-in, refresh, sign-out and password-change requests per **IP address** per minute.                                                                                                                                                                                                          |
 | `RateLimiting:ImportPerMinute`          | `20`                         | Timesheet imports and uploads per **signed-in user** per minute.                                                                                                                                                                                                                                |
+| `RateLimiting:AiPerHour`                | `30`                         | Organisation AI *Build my day* requests per **signed-in user** per hour. |
+| `Ai:Url`, `Ai:Model`, `Ai:ApiKey`       | _(empty)_                    | Optional OpenAI-compatible endpoint for organisation AI. When not set, `/api/v1/ai/build-day` answers `503`. Set the key in App Settings or user secrets only. |
+| `WidgetUpdate:LatestVersion`            | _(none)_                     | The newest widget version (for example `1.0.1`), returned by `/api/v1/widget/version` so widgets can offer the one-click update. |
 | `Display:TimeZone`                      | `Africa/Johannesburg`        | The company time zone used for "today" (Windows and IANA ids are both tried; falls back to UTC).                                                                                                                                                                                                |
 | `Goals:DailyHours`                      | `8`                          | Daily goal on Home when the person has no saved goal.                                                                                                                                                                                                                                           |
 | `Home:DayStart`, `Home:DayEnd`          | `08:00`, `17:00`             | The window of Home's timeline (`HH:mm`), widened to fit earlier or later entries.                                                                                                                                                                                                               |
@@ -537,7 +557,8 @@ Other built-in behaviour (not configurable): sign-in cookie lifetime 8 hours (sl
 | --------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `TIMEPLANNER_DASHBOARD_URL` | environment variable                                         | Dashboard address. Must be **https**, except a loopback address (`http://localhost:...` is allowed). Defaults to the hosted Azure dashboard (`SyncServiceCollectionExtensions.DefaultDashboardUrl`).                                                                                                                                                                                                                                        |
 | `ConnectionStrings:Default` | optional `appsettings.json` next to `TimePlanner.Widget.exe` | Overrides the local database location. Defaults to `%LOCALAPPDATA%\TimePlanner\timeplanner.db`.                                                                                                                                                                                                                                                                                                                                             |
-| `--sample-day`              | command-line switch                                          | Loads the sample day. Available in release builds too.                                                                                                                                                                                                                                                                                                                                                                                      |
+| `--dev`                     | command-line switch                                          | Developer mode (release builds too): developer tray items, direct cloud AI settings and `--sample-day`. See [Developer mode](#developer-mode). |
+| `--sample-day`              | command-line switch                                          | Loads the sample day. Only works together with `--dev`; on its own it is ignored and a warning is logged. |
 | `--screen <id>`             | command-line switch, **Debug builds only**                   | Opens a single screen on throwaway in-memory sample data, for design review. Ids: `setup`, `settings`, `advanced-hidden`, `idle-pill`, `idle-ring`, `idle-dot`, `timer`, `timer-paused`, `log-entry`, `log-now`, `menu-open`, `menu-coding`, `menu-adding`, `no-activity`, `entry-saved`, `end-day`, `end-day-logged`, `day-ended`, `day-ended-empty`, `timesheet`, `check-in`. Debug builds also add **Preview screens** to the tray menu. |
 
 **Files the widget keeps** in `%LOCALAPPDATA%\TimePlanner\`:
@@ -545,9 +566,14 @@ Other built-in behaviour (not configurable): sign-in cookie lifetime 8 hours (sl
 |File|Contents|
 |---|---|
 |`timeplanner.db`|The local SQLite database: entries, days and breaks, projects, activities, settings. Migrated automatically on start.|
-|`widget.json`|Appearance preferences: idle visibility, idle shape, sound on check-in.|
+|`widget.json`|Widget preferences: idle visibility, idle shape, sound on check-in, working days, Start with Windows, check-in timing, larger text, AI settings and window positions.|
 |`sent-days.json`|Which days were sent and when (last 366), and whether a day changed after it was sent.|
 |`dashboard-token.bin`|Dashboard access and refresh token, encrypted with Windows DPAPI for the current Windows user. The password is never stored.|
+|`pending-sends.json`|Days waiting to be sent again after a failed send.|
+|`backups\`|A dated copy of the database, made before any pending migrations are applied.|
+|`voice\`|Voice notes and transcripts (`voice-notes.json`), cleaned up after 30 days.|
+|`models\`|Downloaded Whisper transcription models.|
+|`ai-keys.bin`|Saved AI API keys, encrypted with Windows DPAPI.|
 
 Deleting the folder resets the widget completely. **Unsent time is lost** if you do.
 
@@ -565,7 +591,7 @@ Stored per user in UserSettings. Ranges are enforced both by SettingsService and
 | `IgnoredCheckInAction`    | `KeepAsking`  | `KeepAsking`, `LogAsUntracked`, `AutoSkip` | What happens to an unanswered prompt.                                                            |
 | `LunchStart` / `LunchEnd` | 12:00 / 13:00 | start < end                                | No prompts in this window. A prompt that would fall inside it waits until it ends.               |
 
-The widget's Setup and Settings screens currently change **only the interval** (plus the appearance preferences above). The other values use their defaults 
+The widget's Setup and Settings screens change the **interval** (with an option to check in on the half hour and hour), plus widget preferences kept in `widget.json`: **working days** (Mon to Fri by default), **Start with Windows**, larger text and buttons, idle appearance and sound. They also open **Voice and AI** and **Manage lists**. The other values in this table use their defaults.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
@@ -576,7 +602,8 @@ The widget's Setup and Settings screens currently change **only the interval** (
 3. **Check-in:** when the interval of active time has passed, Time to check in appears: Log what you did since 3:05 PM. Choose Log time or Snooze.
 4. **Log entry:** choose Client › Project and an Activity (top-level category, then optional sub-activities), and add an optional note (up to 500 characters). The period runs from the end of your last entry (or the start of the day) until now. Breaks inside it are cut out, so it may be saved as more than one entry. Pieces under a minute are dropped.
 5. **End day:** if time is still unlogged, you're offered Log the last 1h 12m or End without logging. Day ended shows the total logged and the number of entries, with Export CSV, Open timesheet and Resume day (to carry on as if you hadn't ended).
-6. **Timesheet:** step through days (not into the future). Rows are entries, Untracked gaps (5 minutes or more) and Breaks. Click an entry to edit it, press Fill on a gap to log it, use + Add time for other missing work, or delete an entry with a 10-second Undo. The status line shows Not sent, Sent 5:12 PM or Changed since sent · send again. Send day is enabled once the day is finished and has entries.
+6. **Timesheet:** step through days (not into the future). Rows are entries, Untracked gaps (5 minutes or more) and Breaks. Click an entry to edit it, press Fill on a gap to log it, use + Add time for other missing work, or delete an entry with a 10-second Undo. The status line shows Not sent, Sent 5:12 PM, Changed since sent · send again, or Waiting to send · will retry. Send day is enabled once the day is finished and has entries. The first send asks you to sign in, with a code box that only appears when the account uses two-factor.
+7. **Reminders:** after an unsent working day has ended, the widget shows *Timesheet not sent yet*, and offers *Send now* for an earlier day with logged time that was never sent.
 
 Picking things in the widget:
 
@@ -695,6 +722,8 @@ Every page needs a sign-in, except Login, Privacy, the error page, /health and (
 | Page               | Path                                                | Who      | Contents                                                                                                                                                                     |
 | ------------------ | --------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Login              | `/Account/Login`                                    | anyone   | Email + password. The same message is shown for every failure.                                                                                                               |
+| Two-factor step    | `/Account/TwoFactor`                                | anyone   | Asks for the authenticator code (or a recovery code) after the password, for accounts with two-factor on. Wrong codes count towards the same lockout. |
+| Two-factor         | `/Settings/TwoFactor`                               | everyone | Turn two-factor on (scan the key, confirm with a code, save the ten recovery codes) or off (needs the password and a code). |
 | Home               | `/` (`?period=week`)                                | everyone | Today's timeline, minutes vs goal, gaps over 15 min (lunch excluded), last submitted day in full, breakdown for today or the week.                                           |
 | My Timesheet       | `/Timesheet?view=week\|month&date=yyyy-MM-dd`       | everyone | Day-by-day status (Submitted, Pending = today not sent yet, Missing = past working day not sent, Not due, Non-working day). The month view is a keyboard-navigable calendar. |
 | My Reports         | `/Report?view=week\|month&date=…` or `?from=…&to=…` | everyone | Totals, billable split, by category and project, submitted-day count, Excel/CSV download, quick downloads for the last 8 weeks or 6 months.                                  |
@@ -752,6 +781,8 @@ This context uses its own history table (`__AuthMigrationHistory`), separate fro
 | `RefreshTokens` | Long-lived API sessions | `TokenHash` (unique, SHA-256), `FamilyId`, `FamilyStartedUtc`, `CreatedUtc`, `ExpiresUtc`, `UsedUtc`, `RevokedUtc`, `Stamp` |
 
 `AppUserId` points at a profile in the other database. There is no foreign key between the two, because they are separate contexts.
+
+Two-factor sign-in uses Identity's own storage: the `TwoFactorEnabled` column on `AspNetUsers`, and the authenticator key and recovery codes in `AspNetUserTokens`, so it needed no extra migration.
 
 ---
 
@@ -854,8 +885,9 @@ Interactive documentation is at `/swagger` in Development, or anywhere when `Api
 ### Authentication flow
 
 ```text
-POST /api/v1/auth/login     { "email": "...", "password": "..." }
+POST /api/v1/auth/login     { "email": "...", "password": "...", "otp": "123456" }   (otp only for two-factor accounts)
   -> 200 { accessToken, tokenType: "Bearer", expiresAtUtc, refreshToken, refreshExpiresAtUtc }
+  -> 401 with "twoFactorRequired": true when the password is right but a code is missing or wrong
 
 (send)  Authorization: Bearer <accessToken>    on every other call
 
@@ -871,6 +903,7 @@ POST /api/v1/auth/logout    { "refreshToken": "..." }
 - Changing a password, deactivating the account, or an account still on a temporary password all end every refresh token.
 - Every failure of login, refresh and logout looks the same (`401`, or `204` for logout), so nobody can tell an unknown email from a wrong password, or a stolen token from an expired one.
 - An account with a temporary password gets `403` from login until it has chosen a new password on the website.
+- For an account with two-factor on, login needs `otp` (the six-digit authenticator code or a recovery code). The one deliberate exception to identical failures: once the password is right, the `401` carries `twoFactorRequired: true` so a client knows to ask for the code. Wrong codes count towards the lockout.
 - Clients must store the new `refreshToken` after every refresh, and should refresh from one place only.
 
 ### Endpoints
@@ -900,6 +933,10 @@ All paths start with `/api/v1`. Every endpoint needs a bearer token unless marke
 | `GET /administration/exports/timesheets?view=&date=&userId=&format=` | Admin | One person's file, or a `.zip` of everyone's without `userId`. `format` is `csv` (default) or `xlsx`. |
 | `GET /users`, `POST /users` | Admin | List accounts, create one (the response holds the temporary password, shown once). |
 | `POST /users/{id}/reset-password`, `/deactivate`, `/reactivate` | Admin | Account actions. |
+| `POST /users/{id}/reset-two-factor` | Admin | Turn off two-factor for someone who lost their phone. |
+| `GET /ai/status` | anyone | Whether organisation AI is configured, and its model. |
+| `POST /ai/build-day` | signed in | Build my day on the organisation's AI (30 per hour per user; `503` if not configured). |
+| `GET /widget/version` | anyone | The newest widget version, for the widget's update check. No database access. |
 | `GET /audit?action=&take=` | Admin | Newest audit events first (`take` 1 to 500, default 100). |
 | `GET /health` (no `/api/v1`) | anyone | `{"status":"ok"}`, or `503` if the database cannot be reached. |
 
@@ -920,6 +957,7 @@ All paths start with `/api/v1`. Every endpoint needs a bearer token unless marke
 - Passwords are hashed by ASP.NET Core Identity. They must be at least 12 characters with an upper-case letter, a lower-case letter, a digit and a symbol.
 - **Lockout:** five wrong passwords lock the account for 15 minutes. Every sign-in failure shows the same message, and an unknown email still costs a password hash, so response time does not reveal which emails have accounts.
 - **Temporary passwords.** An administrator creating or resetting an account gets a 16-character random password, shown once. The person must choose their own before doing anything else, on the website or the API.
+- **Two-factor sign-in (optional).** A time-based code from an authenticator app. Turning it on needs a code from the app and creates ten one-time recovery codes, shown once. Wrong codes share the password lockout, turning it off needs the password and a code, and an admin can reset it. The widget shows a code box only when the dashboard asks for one.
 - **Sessions.** The website cookie is `Secure`, `HttpOnly` and `SameSite=Lax`, and lasts 8 hours with sliding expiry. It is re-checked against the account on **every request**, so deactivating someone or changing their password ends their open sessions at once.
 - **Tokens.** Access tokens are signed JWTs (HS256) with issuer and audience checked and a 30-minute life. Each carries a security stamp that is checked on every request. Refresh tokens are random, **stored only as a SHA-256 hash**, single-use, rotated on every use, and a replay ends the whole session. A session is capped at 90 days.
 - **Roles.** Two roles, **Developer** and **Admin**. A login is required everywhere by default. Developers see only their own data, and admin-only pages and endpoints check the role.
@@ -945,18 +983,18 @@ All paths start with `/api/v1`. Every endpoint needs a bearer token unless marke
 
 **Rate limiting**
 
-Sign-in, token refresh, logout and password change are limited to 10 per minute per address (`RateLimiting:LoginPerMinute`), on top of the per-account lockout. Imports and uploads are limited to 20 per minute **per signed-in user** (`RateLimiting:ImportPerMinute`), so one person cannot starve the others. A limited request gets `429` and `Retry-After: 60`.
+Sign-in, token refresh, logout and password change are limited to 10 per minute per address (`RateLimiting:LoginPerMinute`), on top of the per-account lockout. Imports and uploads are limited to 20 per minute **per signed-in user** (`RateLimiting:ImportPerMinute`), so one person cannot starve the others. Organisation AI *Build my day* calls are limited to 30 per hour per user (`RateLimiting:AiPerHour`). A limited request gets `429` and `Retry-After: 60`.
 
 **Audit trail**
 
-Security relevant events are written to an add-only `AuditEvents` table: `LoginSucceeded`, `LoginFailed`, `LoginLockedOut`, `LoginBlocked`, `Logout`, `RefreshFailed`, `RefreshTokenReuse`, `UserCreated`, `PasswordReset`, `UserDeactivated`, `UserReactivated`, `PasswordChanged`, `ProfileUpdated`, `TimesheetImported`, `TimesheetImportRejected` and `TimesheetExported`. Each row holds the time, the person, the address and a short detail. **Passwords and tokens are never written.** Text that came from a request is shortened and stripped of control characters, so a crafted value cannot forge or hide log lines. Administrators read it at `GET /api/v1/audit`.
+Security relevant events are written to an add-only `AuditEvents` table: `LoginSucceeded`, `LoginFailed`, `LoginLockedOut`, `LoginBlocked`, `Logout`, `RefreshFailed`, `RefreshTokenReuse`, `UserCreated`, `PasswordReset`, `UserDeactivated`, `UserReactivated`, `PasswordChanged`, `ProfileUpdated`, `TimesheetImported`, `TimesheetImportRejected`, `TimesheetExported`, `TwoFactorEnabled`, `TwoFactorDisabled`, `TwoFactorFailed`, `RecoveryCodeUsed` and `TwoFactorReset`. Each row holds the time, the person, the address and a short detail. **Passwords and tokens are never written.** Text that came from a request is shortened and stripped of control characters, so a crafted value cannot forge or hide log lines. Administrators read it at `GET /api/v1/audit`.
 
 **Widget**
 
 - The widget signs in once and **never stores the password**. It keeps the access and refresh tokens in a file encrypted with **Windows DPAPI** for the current Windows user (`dashboard-token.bin`), so another Windows account, or a copy of the file, cannot read it.
 - It only sends a day when the person chooses **Send day**.
 - Signing in with a temporary password is refused until the person has chosen their own on the website.
-- The widget zip is not code-signed, so Windows may show an "unknown publisher" warning the first time. Each release publishes a SHA-256 checksum so the download can be verified.
+- The widget installer and zip are not code-signed, so Windows SmartScreen may show an "unknown publisher" warning the first time. Each release publishes a SHA-256 checksum so the download can be verified.
 - The Dashboard address must use **HTTPS**; plain `http` is refused except for `localhost`, so a token is never sent unencrypted.
 - Only **one token refresh runs at a time**, because refresh tokens rotate and a parallel refresh would look like token theft and end the session. **Sign out** also ends the session on the server.
 
@@ -1027,9 +1065,10 @@ Each model change needs both a SQLite and a SQL Server migration. Two tests in `
 ```bash
 dotnet test TimePlanner.Core.Tests
 dotnet test TimePlanner.Api.Tests
+dotnet test TimePlanner.Widget.Tests   # Windows only (targets net10.0-windows)
 ```
 
-At the time of writing: **128 Core tests and 380 API tests, all passing.** The same two commands run in CI on every pull request and again before every deployment, and a release is not built unless the Core tests pass.
+At the time of writing there are **255 Core, 341 API and 129 widget test methods** (`[Fact]` and `[Theory]`, so the number of test cases run is higher). The Core and API tests run in CI on every pull request and again before every deployment, the widget tests run in the Build workflow's Widget job, and a release is not built unless the Core tests pass.
 
 ### What the tests cover
 
@@ -1043,6 +1082,8 @@ At the time of writing: **128 Core tests and 380 API tests, all passing.** The s
   - user administration, account settings, temporary passwords and the audit log
   - security headers, the content-security policy, and a guard that **no page loads anything from another site**
   - page output encoding, accessibility settings and the SQL Server model
+  - two-factor sign-in on the website and the API, organisation AI and the widget version endpoint
+- **Widget tests** (`TimePlanner.Widget.Tests`): logic that doesn't need a screen, such as the update check and downloader, unsent-day reminders, the activity picker, preferences, working days, Start with Windows, idle behaviour, database backup, AI removal, support details and the timesheet review model.
 - **Fixed clock.** Date-dependent tests run with a fixed clock, so they never depend on the day they run.
 - **Mutation checks.** For every security control, I broke the code on purpose and confirmed at least one test failed. Where none did, the test was strengthened.
 
@@ -1086,9 +1127,9 @@ The **Build** workflow runs on every pull request and every push to `main` and `
 | Job | Steps |
 |---|---|
 | **Backend (Core, Dashboard, tests)** | Restore, which also checks every package against the public vulnerability list, build in Release with the .NET security analysers, run the **Core tests**, run the **API tests** |
-| **Widget (WPF)** | Restore and build the widget |
+| **Widget (WPF)** | Restore and build the widget, then run the **widget tests** |
 
-- **Tests:** 128 Core tests and 380 API tests. They cover what our documentation planned (time entry logic, check in limits, skip and override rules, timesheet export, EF Core repository layer) and more, for example security headers, refresh tokens, imports, and the SQL Server migrations staying in sync.
+- **Tests:** 255 Core, 341 API and 129 widget test methods. They cover what our documentation planned (time entry logic, check in limits, skip and override rules, timesheet export, EF Core repository layer) and more, for example security headers, refresh tokens, imports, and the SQL Server migrations staying in sync.
 - **Static analysis:** we planned `dotnet format` and the built in analysers. We kept the analysers and made about 70 security rules fail the build (weak crypto, injection, missing antiforgery). We decided to switch from dotnet format because the code style is reviewed in pull requests.
 - **Each test project is its own step.** We found that running both in one step only reported the last result, which was hiding failing Core tests. Splitting them up fixed the issue.
 - **Tests run again before every deploy and before every widget release**: so a change that got past a pull request wasn't shipped.
@@ -1111,8 +1152,11 @@ The **Release Widget** workflow runs when a version tag is created (we create it
 1. runs the Core tests;
 2. publishes the widget as a **self contained single file** for Windows x64, with the version taken from the tag;
    - The optional repository variable `WIDGET_DASHBOARD_URL` sets the dashboard address built into the release executable (falling back to the hosted default if not set).
-3. compiles the Inno Setup installer (`TimePlanner-Setup-<version>.exe`);
-4. zips the standalone widget, writes a **SHA-256** checksum for every file in `dist/`, and attaches the zip, installer, and checksums to the release.
+3. checks that the voice engine (`whisper.dll`) is included in the published widget;
+4. compiles the Inno Setup installer (`TimePlanner-Setup-<version>.exe`);
+5. zips the standalone widget, writes a **SHA-256** checksum for every file in `dist/`, checks that the unpacked widget starts and keeps running, and attaches the zip, installer, and checksums to the release.
+
+After a release, set `WidgetUpdate:LatestVersion` on the dashboard so installed widgets offer the update.
 
 It can also be run by hand from the Actions tab (`workflow_dispatch`) to get a test installer and zip without making a release.
 
@@ -1242,7 +1286,9 @@ flowchart TB
 An Admin sees every user's hours, which is right inside one company but would expose real timesheets and client names if lecturers had access and a shared database with the pilot. This was a security concern addressed to make sure Leading Edge data stays private. 
 
 ### Distributing the widget
-- The widget is released as a self contained, single file Windows x64 zipD, so no .NET install is needed. 
+- The widget is released as a self contained, single file Windows x64 build, so no .NET install is needed.
+- Each release has a per-user **Inno Setup installer** (`TimePlanner-Setup-<version>.exe`, no administrator rights, installs to `%LOCALAPPDATA%\Programs\TimePlanner`) and a **portable zip**, both with SHA-256 checksums.
+- Installed widgets ask the dashboard (`/api/v1/widget/version`) for the newest version and offer a one-click update that verifies the checksum before restarting. Data in `%LOCALAPPDATA%\TimePlanner` is kept across updates.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
