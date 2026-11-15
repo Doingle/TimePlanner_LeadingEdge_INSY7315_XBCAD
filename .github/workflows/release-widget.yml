@@ -76,7 +76,7 @@ jobs:
           $name = "TimePlanner-Widget-$env:VERSION-win-x64"
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Compress-Archive -Path (Get-ChildItem publish/widget -Exclude *.pdb).FullName -DestinationPath "dist/$name.zip" -Force
-          Get-ChildItem dist -File -Exclude *.sha256 | ForEach-Object {
+          Get-ChildItem dist -File | Where-Object Extension -ne '.sha256' | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
             "$hash  $($_.Name)" | Out-File -FilePath "$($_.FullName).sha256" -Encoding ascii
           }

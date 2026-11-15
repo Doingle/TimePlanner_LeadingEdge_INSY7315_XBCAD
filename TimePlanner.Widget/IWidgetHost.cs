@@ -15,5 +15,10 @@ namespace TimePlanner.Widget
 
         // Applies the "Larger text and buttons" preference straight away, to the screen that is showing
         void ApplySize() { }
+
+        //-----------------------------
+        //indicates whether the update notice is currently open on the host
+        bool IsUpdateNoticeOpen => false;
     }
 }
+//------------------------------EOF-----------------------------\\
