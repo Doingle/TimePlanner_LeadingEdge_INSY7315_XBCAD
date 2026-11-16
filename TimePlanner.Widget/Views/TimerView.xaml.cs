@@ -32,6 +32,11 @@ namespace TimePlanner.Widget.Views
             _leaveTimer.Tick += (_, _) =>
             {
                 _leaveTimer.Stop();
+                if (_flow.IsUpdateNoticeOpen)
+                {
+                    _leaveTimer.Start();
+                    return;
+                }
                 if (!IsLoaded || Card.IsMouseOver) return;
                 if (Mouse.LeftButton == MouseButtonState.Pressed || IsMouseCaptureWithin)
                     _leaveTimer.Start();

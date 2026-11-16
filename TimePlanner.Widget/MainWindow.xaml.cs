@@ -149,6 +149,10 @@ namespace TimePlanner.Widget
             ApplySize();
         }
 
+        //-----------------------------
+        //determines whether the update notice is currently open
+        public bool IsUpdateNoticeOpen => UpdateNotice.Visibility == Visibility.Visible;
+
         private sealed class Slot(MainWindow window) : IWidgetHost
         {
             public WidgetPreferences? Preferences { get; private set; }
@@ -182,6 +186,10 @@ namespace TimePlanner.Widget
                 if (window._shown == this)
                     window.ApplySize();
             }
+
+            //-----------------------------
+            //determines whether the update notice is currently open
+            public bool IsUpdateNoticeOpen => window.IsUpdateNoticeOpen;
         }
 
         // Large view: one 1.5 times scale at the root (a layout transform, so click areas grow too), and the room kept
@@ -647,3 +655,4 @@ namespace TimePlanner.Widget
         }
     }
 }
+//------------------------------EOF-----------------------------\\

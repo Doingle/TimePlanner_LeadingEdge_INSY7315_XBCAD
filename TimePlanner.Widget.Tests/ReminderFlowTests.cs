@@ -1481,7 +1481,7 @@ public class ReminderFlowTests
         }
     }
 
-    private sealed class RecordingHost : IWidgetHost
+    internal sealed class RecordingHost : IWidgetHost
     {
         public bool Activated { get; private set; }
         public FrameworkElement? Screen { get; private set; }
@@ -1500,7 +1500,7 @@ public class ReminderFlowTests
         public void ApplySize() => SizeApplied++;
     }
 
-    private sealed class FakeDashboard : HttpMessageHandler
+    internal sealed class FakeDashboard : HttpMessageHandler
     {
         public int Requests { get; private set; }
         public bool Succeeds { get; set; } = true;
@@ -1544,7 +1544,7 @@ public class ReminderFlowTests
         }
     }
 
-    private sealed class TestHost : IDisposable
+    internal sealed class TestHost : IDisposable
     {
         private readonly SqliteConnection _connection = new("Data Source=:memory:");
         // Voice notes and keys go in a throwaway folder, so the tests never touch the real ones

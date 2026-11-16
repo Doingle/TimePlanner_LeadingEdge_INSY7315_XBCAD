@@ -153,6 +153,10 @@ namespace TimePlanner.Widget
 
         public UnsentDayReminder Reminder { get; }
 
+        //-----------------------------
+        //determines whether the update notice is currently open on the host
+        public bool IsUpdateNoticeOpen => _host.IsUpdateNoticeOpen;
+
         /// <summary>Why Windows startup doesn't match the setting, or null when it does. Settings shows it.</summary>
         public string? StartupProblem { get; private set; }
 
@@ -838,3 +842,4 @@ namespace TimePlanner.Widget
     //an undo the timesheet shows once, with the words for its bar
     public sealed record UndoOffer(string Message, Func<Task<EditResult>> Undo);
 }
+//------------------------------EOF-----------------------------\\

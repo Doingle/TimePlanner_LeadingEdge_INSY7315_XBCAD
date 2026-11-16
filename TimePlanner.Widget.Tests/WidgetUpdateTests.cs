@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Extensions.DependencyInjection;
 using TimePlanner.Core.Sync;
 using TimePlanner.Widget.Services;
 using TimePlanner.Widget.Views;
@@ -117,4 +118,60 @@ public class WidgetUpdateTests
         Assert.True(dismissed);
         await Task.CompletedTask;
     });
+
+    //-----------------------------
+    //fake host with notice explicitly open
+    private sealed class NoticeOpenHost : IWidgetHost
+    {
+        public void Present(FrameworkElement screen, bool activate = true) { }
+        public void HideWidget() { }
+        public bool IsUpdateNoticeOpen => true;
+    }
+
+    //-----------------------------
+    //fake host relying on default interface implementation
+    private sealed class DefaultHost : IWidgetHost
+    {
+        public void Present(FrameworkElement screen, bool activate = true) { }
+        public void HideWidget() { }
+    }
+
+    [Fact]
+    public Task NoticeOpen_ExposesHostNoticeStateOnWidgetFlow() => ReminderFlowTests.OnUi(async () =>
+    {
+        using var host = await ReminderFlowTests.TestHost.CreateAsync();
+        IWidgetHost openHost = new NoticeOpenHost();
+        IWidgetHost defaultHost = new DefaultHost();
+
+        Assert.True(openHost.IsUpdateNoticeOpen);
+        Assert.False(defaultHost.IsUpdateNoticeOpen);
+
+        var openFlow = ActivatorUtilities.CreateInstance<WidgetFlow>(host.Services, openHost);
+        var defaultFlow = ActivatorUtilities.CreateInstance<WidgetFlow>(host.Services, defaultHost);
+
+        Assert.True(openFlow.IsUpdateNoticeOpen);
+        Assert.False(defaultFlow.IsUpdateNoticeOpen);
+    });
+
+    [Fact]
+    public Task MainWindowAndSlot_ReflectUpdateNoticeVisibility() => ReminderFlowTests.OnUi(async () =>
+    {
+        var window = new MainWindow();
+        var slot = window.OpenSlot();
+        var updateNotice = (FrameworkElement)window.FindName("UpdateNotice");
+
+        Assert.False(window.IsUpdateNoticeOpen);
+        Assert.False(slot.IsUpdateNoticeOpen);
+
+        updateNotice.Visibility = Visibility.Visible;
+        Assert.True(window.IsUpdateNoticeOpen);
+        Assert.True(slot.IsUpdateNoticeOpen);
+
+        updateNotice.Visibility = Visibility.Collapsed;
+        Assert.False(window.IsUpdateNoticeOpen);
+        Assert.False(slot.IsUpdateNoticeOpen);
+
+        await Task.CompletedTask;
+    });
 }
+//------------------------------EOF-----------------------------\\
